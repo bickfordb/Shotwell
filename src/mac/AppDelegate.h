@@ -9,6 +9,12 @@ using namespace std;
 using namespace std::tr1;
 
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSTableViewDataSource, NSTableViewDelegate, NSToolbarDelegate> {
+  BOOL needsReload_; 
+  int seekToRow_;
+  NSFont *trackTableFont_;
+  NSFont *trackTablePlayingFont_;
+  NSImage *emptyImage_;
+  NSImage *playImage_;
   NSButton *nextButton_;
   NSButton *playButton_;
   NSButton *previousButton_;
@@ -34,12 +40,18 @@ using namespace std::tr1;
   shared_ptr<Library> library_;
   shared_ptr<Movie> movie_;
   shared_ptr<Track> track_;
+  shared_ptr<vector<shared_ptr<Track> > > allTracks_;  
   shared_ptr<vector<shared_ptr<Track> > > tracks_;  
+  NSString *searchQuery_;
+  bool predicateChanged_;
 }
+
+@property (retain) NSString *searchQuery;
 
 - (void)displayElapsed:(double)elapsed duration:(double)duration;
 - (void)handleMovie:(Movie *)m event:(MovieEvent)event data:(void *)data;
 - (void)playTrackAtIndex:(int)idx;
 - (void)playNextTrack;
+- (void)executeSearch;
 
 @end

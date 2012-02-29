@@ -1,28 +1,54 @@
 #import "AppDelegate.h"
 #import "movie.h"
 #import "MD1Slider.h"
-
-static NSString *kArtist = @"artist";
-static NSString *kAlbum = @"album";
-static NSString *kTitle = @"title";
-static NSString *kYear = @"year";
-static NSString *kTrackNumber = @"track_number";
-static NSString *kGenre = @"genre";
-static NSString *kPath = @"path";
-static NSString *kPlayButton = @"PlayButton";
-static NSString *kNextButton = @"NextButton";
-static NSString *kPreviousButton = @"PreviousButton";
-static NSString *kSearchControl = @"SearchControl";
-static NSString *kProgressControl = @"ProgressControl";
-static NSString *kVolumeControl = @"VolumeControl";
+#include <locale>
 
 static NSSize kStartupSize = {1100, 600};
+static NSString *kAlbum = @"album";
+static NSString *kArtist = @"artist";
+static NSString *kGenre = @"genre";
+static NSString *kNextButton = @"NextButton";
+static NSString *kPath = @"path";
+static NSString *kPlayButton = @"PlayButton";
+static NSString *kPreviousButton = @"PreviousButton";
+static NSString *kProgressControl = @"ProgressControl";
+static NSString *kSearchControl = @"SearchControl";
+static NSString *kStatus = @"status";
+static NSString *kTitle = @"title";
+static NSString *kTrackNumber = @"track_number";
+static NSString *kVolumeControl = @"VolumeControl";
+static NSString *kYear = @"year";
 
 using namespace std;
 using namespace std::tr1;
 
 static NSString *FormatSeconds(double seconds); 
+static NSString *GetString(const string &s);
+static bool Contains(string &haystack, string &needle);
+static bool IsTrackMatchAllTerms(Track *t, vector<string> &terms);
 static void HandleMovieEvent(void *ctx, MovieEvent e, void *data);
+
+static NSString *GetString(const string &s) {
+  return [NSString stringWithUTF8String:s.c_str()];
+}
+
+static bool Contains(const string &haystack, const string &needle) {
+  return strcasestr(haystack.c_str(), needle.c_str()) != NULL;
+}
+
+static bool IsTrackMatchAllTerms(Track *t, vector<string> &terms) { 
+  bool ret = true;
+  for (vector<string>::iterator i = terms.begin(); i < terms.end(); i++) {
+    string token = *i;
+    if (!(Contains(t->artist(), token)
+        || Contains(t->album(), token)
+        || Contains(t->title(), token)
+        || Contains(t->path(), token))) {
+      return false;
+    }
+  }
+  return true;
+}
 
 static NSString *FormatSeconds(double seconds) { 
   int hours = seconds / (60 * 60);
@@ -41,6 +67,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 }
 
 @implementation AppDelegate
+@synthesize searchQuery = searchQuery_;
 
 - (void)dealloc { 
   NSLog(@"dealloc");
@@ -51,7 +78,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 
 - (void)refresh { 
   @synchronized (self) { 
-    tracks_ = library_->GetAll();
+    allTracks_ = library_->GetAll();
   }
   [trackTableView_ reloadData];
 }
@@ -64,6 +91,8 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   library_->Open("/Users/bran/.md1.db");
   tracks_.reset(new vector<shared_ptr<Track> >());
   movie_.reset();
+  seekToRow_ = -1;
+  needsReload_ = NO;
 
   std::vector<std::string> pathsToScan;
   pathsToScan.push_back("/Users/bran/Music/rsynced");
@@ -84,6 +113,9 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   mainWindow_.title = @"MD1";
   [mainWindow_ display];
   [mainWindow_ makeKeyAndOrderFront:self];
+  
+  trackTableFont_ = [[NSFont systemFontOfSize:11.0] retain];
+  trackTablePlayingFont_ = [[NSFont boldSystemFontOfSize:11.0] retain];
 
   trackTableScrollView_ = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 22, kStartupSize.width, kStartupSize.height)];
   trackTableView_ = [[NSTableView alloc] initWithFrame:NSMakeRect(0, 0, 364, 200)];
@@ -91,6 +123,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [trackTableView_ setUsesAlternatingRowBackgroundColors:YES];
   [trackTableView_ setGridStyleMask:NSTableViewSolidVerticalGridLineMask];
 
+  NSTableColumn * statusColumn = [[[NSTableColumn alloc] initWithIdentifier:kStatus] autorelease];
   NSTableColumn * artistColumn = [[[NSTableColumn alloc] initWithIdentifier:kArtist] autorelease];
   NSTableColumn * albumColumn = [[[NSTableColumn alloc] initWithIdentifier:kAlbum] autorelease];
   NSTableColumn * titleColumn = [[[NSTableColumn alloc] initWithIdentifier:kTitle] autorelease];
@@ -98,6 +131,12 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   NSTableColumn * genreColumn = [[[NSTableColumn alloc] initWithIdentifier:kGenre] autorelease];
   NSTableColumn * yearColumn = [[[NSTableColumn alloc] initWithIdentifier:kYear] autorelease];
   NSTableColumn * pathColumn = [[[NSTableColumn alloc] initWithIdentifier:kPath] autorelease];
+   
+  emptyImage_ = [[NSImage alloc] initWithSize:NSMakeSize(22, 22)];
+  playImage_ = [[NSImage imageNamed:@"NSRightFacingTriangleTemplate"] retain];
+  [statusColumn setDataCell:[[NSImageCell alloc] initImageCell:emptyImage_]];
+  [statusColumn setWidth:30];
+  [statusColumn setMaxWidth:30];
   [artistColumn setWidth:252];
   [albumColumn setWidth:252];
   [titleColumn setWidth:252];
@@ -106,13 +145,22 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [yearColumn setWidth:252];
   [pathColumn setWidth:1000];
 
+  [[statusColumn headerCell] setStringValue:@""];
   [[artistColumn headerCell] setStringValue:@"Artist"];
+  [[artistColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
+  [[artistColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
   [[albumColumn headerCell] setStringValue:@"Album"];
+  [[albumColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
   [[titleColumn headerCell] setStringValue:@"Title"];
+  [[titleColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
   [[yearColumn headerCell] setStringValue:@"Year"];
+  [[yearColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
   [[genreColumn headerCell] setStringValue:@"Genre"];
+  [[genreColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
   [[trackNumberColumn headerCell] setStringValue:@"#"];
+  [[trackNumberColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
   [[pathColumn headerCell] setStringValue:@"Path"];
+  [[pathColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
 
   [[artistColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
   [[albumColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
@@ -122,6 +170,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [[pathColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
   [[trackNumberColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
 
+  [trackTableView_ addTableColumn:statusColumn];
   [trackTableView_ addTableColumn:trackNumberColumn];
   [trackTableView_ addTableColumn:titleColumn];
   [trackTableView_ addTableColumn:artistColumn];
@@ -233,6 +282,9 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   searchField_ = [[NSSearchField alloc] initWithFrame:NSMakeRect(0, 0, 100, 22)];
   searchField_.font = [NSFont systemFontOfSize:12.0];
   searchField_.autoresizingMask = NSViewMinXMargin;
+  searchField_.target = self;
+  searchField_.action = @selector(onSearch:);
+
   [searchField_ setRecentsAutosaveName:@"recentSearches"];
 
   searchItem_ = [[NSToolbarItem alloc] initWithItemIdentifier:kSearchControl];
@@ -243,6 +295,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [toolbar_ setDisplayMode:NSToolbarDisplayModeIconOnly];
   [toolbar_ insertItemWithItemIdentifier:kPlayButton atIndex:0];
   [mainWindow_ setToolbar:toolbar_];
+  predicateChanged_ = YES;
   [self refresh];
 }
 
@@ -281,6 +334,41 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 }
 
 - (void)toolbarWillRemoveItem:(NSNotification *)notification {
+}
+
+- (void)executeSearch { 
+  NSArray *parts = [searchQuery_ componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+  NSLog(@"search for %@", parts);
+  vector<string> parts0;
+  if (parts) {
+    for (NSString *p in parts) {
+      string s = p.UTF8String; 
+      if (s.length() > 0)
+        parts0.push_back(s); 
+    }
+  }
+  shared_ptr<vector<shared_ptr<Track> > > filteredTracks(new vector<shared_ptr<Track > >);
+  for (vector<shared_ptr<Track> >::iterator i = allTracks_->begin();   
+      i < allTracks_->end(); 
+      i++) {
+    shared_ptr<Track> t = *i;  
+    if (parts0.size() == 0 || IsTrackMatchAllTerms(t.get(), parts0)) {
+      filteredTracks->push_back(t);
+    }
+  }
+  @synchronized(self) {
+    tracks_ = filteredTracks;
+    needsReload_ = YES;
+  }
+}
+
+- (void)onSearch:(id)sender { 
+  self.searchQuery = searchField_.stringValue;
+  predicateChanged_ = YES;
+  needsReload_ = YES;
+
+
+  
 }
 
 - (void)volumeClicked:(id)sender { 
@@ -327,6 +415,23 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     durationText_.stringValue = @"";
     elapsedText_.stringValue = @"";
   }
+
+  if (predicateChanged_) {
+    [self executeSearch];
+    predicateChanged_ = NO;
+  } 
+
+  if (needsReload_) {
+    [trackTableView_ reloadData];
+    needsReload_ = NO;
+  }
+
+  if (seekToRow_ >= 0) {
+    NSLog(@"seeking to row %d", seekToRow_);
+    [trackTableView_ scrollRowToVisible:seekToRow_];
+    seekToRow_ = -1;
+  }
+
 }
 
 - (void)onPollLibraryTimer:(id)sender { 
@@ -358,6 +463,8 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     movie_->Play();
     movie_->SetListener(HandleMovieEvent, self);
     movie_->SetVolume(volumeSlider_.doubleValue);
+    needsReload_ = YES;
+    seekToRow_ = index;
   }
 }
 
@@ -404,25 +511,39 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 }
 
 - (id)tableView:(NSTableView *)aTableView objectValueForTableColumn:(NSTableColumn *)aTableColumn row:(NSInteger)rowIndex {
-  std::string s;
   shared_ptr<Track> t = (*tracks_)[rowIndex];
   NSString *identifier = aTableColumn.identifier;
+  id result = nil;
+  NSString *s = nil;
+  bool isPlaying = (track_
+        && movie_
+        && movie_->state() == kPlayingMovieState
+        && t->path() == track_->path());
   if (identifier == kArtist)
-    s = t->artist();
+    s = GetString(t->artist());
   else if (identifier == kAlbum)
-    s = t->album();
+    s = GetString(t->album());
   else if (identifier == kGenre)
-    s = t->genre();
+    s = GetString(t->genre());
   else if (identifier == kYear)
-    s = t->year();
+    s = GetString(t->year());
   else if (identifier == kTitle)
-    s = t->title();
+    s = GetString(t->title());
   else if (identifier == kTrackNumber)
-    s = t->track_number();
+    s = GetString(t->track_number());
   else if (identifier == kPath)
-    s = t->path();
-  NSString *s0 = [[[NSString alloc] initWithUTF8String:s.c_str()] autorelease];
-  return s0;
+    s = GetString(t->path());
+  else if (identifier == kStatus) {
+    if (isPlaying)
+      result = playImage_;
+  }
+  if (s) {
+    result = s;
+    [[aTableColumn dataCell] setFont:isPlaying ? trackTablePlayingFont_ : trackTableFont_];
+  } else { 
+     
+  }
+  return result;
 }
 
 - (void)playClicked:(id)sender { 
