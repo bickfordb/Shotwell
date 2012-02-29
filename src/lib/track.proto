@@ -1,0 +1,13 @@
+
+message Track { 
+  optional string path = 1;
+  optional string artist = 2;
+  optional string album = 3;
+  optional string title = 4;
+  optional string year = 5;
+  optional string track_number = 6;
+  optional string genre = 7;
+  optional int64 created_at = 8;
+  optional int64 updated_at = 9;
+}
+
