@@ -1,4 +1,4 @@
-all:
+mll:
 	@echo Targets:
 	@echo "  run-mac  -- Run the mac application"
 
@@ -6,7 +6,7 @@ APPNAME = MD1
 APP = build/$(APPNAME).app
 APPSRCS := src/mac/*.m src/mac/*.mm
 APPHDRS := src/mac/*.h
-LIBSRCS := src/lib/*.cc
+LIBSRCS := src/lib/*.cc src/lib/*.c
 LIBHDRS = src/lib/*.h
 RESOURCES=
 RESOURCETARGETS=$(patsubst src/mac/res/%,$(APP)/Contents/Resources/%, $(RESOURCES))
@@ -16,9 +16,14 @@ CXXFLAGS += -Werror
 CXXFLAGS += -Ibuild/vendor/include
 LDFLAGS += -Lbuild/vendor/lib
 LDFLAGS += -lleveldb
+LDFLAGS += -ljansson
+LDFLAGS += -levent
+LDFLAGS += -lpcrecpp
 LDFLAGS += -lSDL
 LDFLAGS += -lpcre
 LDFLAGS += -lpthread
+LDFLAGS += -lpcrecpp 
+LDFLAGS += -lpcrecpp 
 LDFLAGS += -lavcodec
 LDFLAGS += -lavdevice
 LDFLAGS += -ggdb 

@@ -145,7 +145,6 @@ int Library::Count() {
   leveldb::Iterator *i = db_->NewIterator(leveldb::ReadOptions());
   i->SeekToFirst();
   while (i->Valid()) {
-    db_->Delete(leveldb::WriteOptions(), i->key());
     i->Next();
     total++;
   }

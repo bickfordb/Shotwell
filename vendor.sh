@@ -112,7 +112,36 @@ then
     touch ${BUILDROOT}/leveldb.stamp
 fi  
 
+if [ ! -e "${BUILDROOT}/libevent.stamp" ]
+then
+  echo "Building libevent" 
+  rm -rf ${BUILDROOT}/scratch
+  mkdir -p ${BUILDROOT}/scratch
+  cd ${BUILDROOT}/scratch
 
+  tar xzvf ${projectroot}/src/vendor/libevent-2.0.17-stable.tar.gz
+  cd libevent-2.0.17-stable
+  ./configure --disable-shared --prefix=${BUILDROOT}/vendor
+  make
+  make install
+  rm -rf ${BUILDROOT}/scratch
+  touch ${BUILDROOT}/libevent.stamp
+fi
 
-touch ${BUILDROOT}/vendor.stamp
+if [ ! -e "${BUILDROOT}/jansson.stamp" ]
+then
+  echo "Building jansson" 
+  rm -rf ${BUILDROOT}/scratch
+  mkdir -p ${BUILDROOT}/scratch
+  cd ${BUILDROOT}/scratch
+
+  tar xzvf ${projectroot}/src/vendor/jansson-2.3.tar.gz
+  cd jansson-2.3
+  ./configure --disable-shared --prefix=${BUILDROOT}/vendor
+  make
+  make install
+  rm -rf ${BUILDROOT}/scratch
+  touch ${BUILDROOT}/jansson.stamp
+fi
+
 

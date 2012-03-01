@@ -49,6 +49,7 @@ private:
     double volume_;
     MovieListener listener_;
     void *listener_ctx_;
+
 public:
     void SetListener(MovieListener listener, void *ctx);
     void ReadAudio(uint8_t *stream, int len);

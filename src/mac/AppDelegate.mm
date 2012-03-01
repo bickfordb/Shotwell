@@ -2,6 +2,7 @@
 #import "movie.h"
 #import "MD1Slider.h"
 #include <locale>
+#include "strnatcmp.h"
 
 static NSSize kStartupSize = {1100, 600};
 static NSString *kAlbum = @"album";
@@ -22,6 +23,7 @@ static NSString *kYear = @"year";
 using namespace std;
 using namespace std::tr1;
 
+
 static NSString *FormatSeconds(double seconds); 
 static NSString *GetString(const string &s);
 static bool Contains(string &haystack, string &needle);
@@ -32,9 +34,69 @@ static NSString *GetString(const string &s) {
   return [NSString stringWithUTF8String:s.c_str()];
 }
 
+static NSString *GetWindowTitle(Track *t);
+static NSString *GetWindowTitle(Track *t) { 
+  if (t->title().length() && t->artist().length() && t->album().length())
+    return [NSString stringWithFormat:@"%@ - %@ - %@ - MD1", 
+      GetString(t->title()),
+      GetString(t->artist()),
+      GetString(t->album()),
+      nil];
+  else if (t->title().length())
+    return [NSString stringWithFormat:@"%@ - MD1", GetString(t->title()), nil];
+  else
+    return [NSString stringWithFormat:@"%@ - MD1", GetString(t->path()), nil];
+}
+
 static bool Contains(const string &haystack, const string &needle) {
   return strcasestr(haystack.c_str(), needle.c_str()) != NULL;
 }
+
+static inline int natural_compare(const string &l, const string &r) {
+  if (l.length() == 0 && r.length() > 0) 
+    return 1;
+  else if (l.length() > 0 && r.length() == 0)
+    return -1;
+  else
+    return strnatcasecmp(l.c_str(), r.c_str());
+}
+
+struct TrackComparator {
+private:
+  vector<tuple<NSString *, Direction> > sorts_;
+public:
+  TrackComparator(const vector<tuple<NSString *, Direction> > &sorts) : sorts_(sorts) {};
+
+  inline bool operator()(const shared_ptr<Track> &l, const shared_ptr<Track> &r) {
+    int cmp = 0; 
+    for (vector<SortField>::iterator i = sorts_.begin(); i < sorts_.end(); i++) {
+      tuple<NSString *, Direction> field = *i;
+      NSString *key = get<0>(field);
+      Direction direction = get<1>(field);
+      if (key == kArtist) { 
+        cmp = natural_compare(l->artist(), r->artist());
+      } else if (key == kAlbum) {
+        cmp = natural_compare(l->album(), r->album());
+      } else if (key == kTitle) {
+        cmp = natural_compare(l->title(), r->title());
+      } else if (key == kGenre) {
+        cmp = natural_compare(l->genre(), r->genre());
+      } else if (key == kYear) {
+        cmp = natural_compare(l->year(), r->year());
+      } else if (key == kPath) {
+        cmp = natural_compare(l->path(), r->path());
+      } else if (key == kTrackNumber) {
+        cmp = natural_compare(l->track_number(), r->track_number());
+      }
+      if (direction == Descending)
+        cmp = -cmp;
+      if (cmp != 0)
+        break;
+      
+    }
+    return cmp < 0;
+  }
+};
 
 static bool IsTrackMatchAllTerms(Track *t, vector<string> &terms) { 
   bool ret = true;
@@ -42,6 +104,9 @@ static bool IsTrackMatchAllTerms(Track *t, vector<string> &terms) {
     string token = *i;
     if (!(Contains(t->artist(), token)
         || Contains(t->album(), token)
+        || Contains(t->track_number(), token)
+        || Contains(t->year(), token)
+        || Contains(t->genre(), token)
         || Contains(t->title(), token)
         || Contains(t->path(), token))) {
       return false;
@@ -86,6 +151,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 
 - (void)applicationDidFinishLaunching:(NSNotification *)n {
   MovieInit();
+  trackEnded_ = NO;
   NSApplication *sharedApp = [NSApplication sharedApplication];
   library_.reset(new Library());
   library_->Open("/Users/bran/.md1.db");
@@ -93,6 +159,12 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   movie_.reset();
   seekToRow_ = -1;
   needsReload_ = NO;
+
+  vector<tuple<string, int> > hosts;
+  tuple<string, int> host("0.0.0.0", 6226);
+  hosts.push_back(host);
+  daemon_.reset(new Daemon(hosts, library_));
+  daemon_->Start();
 
   std::vector<std::string> pathsToScan;
   pathsToScan.push_back("/Users/bran/Music/rsynced");
@@ -175,8 +247,8 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [trackTableView_ addTableColumn:titleColumn];
   [trackTableView_ addTableColumn:artistColumn];
   [trackTableView_ addTableColumn:albumColumn];
-  [trackTableView_ addTableColumn:genreColumn];
   [trackTableView_ addTableColumn:yearColumn];
+  [trackTableView_ addTableColumn:genreColumn];
   [trackTableView_ addTableColumn:pathColumn];
   [trackTableView_ setDelegate:self];
   [trackTableView_ setDataSource:self];
@@ -296,11 +368,63 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [toolbar_ insertItemWithItemIdentifier:kPlayButton atIndex:0];
   [mainWindow_ setToolbar:toolbar_];
   predicateChanged_ = YES;
+
+  sortFields_.clear();
+  [self updateTableColumnHeaders];
   [self refresh];
 }
 
+- (void)tableView:(NSTableView *)tableView didClickTableColumn:(NSTableColumn *)tableColumn {
+  NSString *ident = tableColumn.identifier;
+  if (!ident || ident == kStatus) { 
+    return;
+  }
+
+  @synchronized(self) { 
+    int found = -1;
+    int idx = 0;
+    for (vector<SortField>::iterator i = sortFields_.begin(); i < sortFields_.end(); i++) {
+      NSString *f = get<0>(*i);
+      if (f == ident) {
+        found = idx; 
+        break;
+      }
+      idx++;
+    }
+    if (found < 0) {
+      tuple<NSString *, Direction> f(ident, Ascending);
+      sortFields_.insert(sortFields_.begin(), f);
+    } else if (found > 0) {
+      tuple<NSString *, Direction> f(ident, Ascending);
+      sortFields_.erase(sortFields_.begin() + found); 
+      sortFields_.insert(sortFields_.begin(), f);
+    } else { 
+      Direction d = get<1>(sortFields_[0]);
+      d = (d == Ascending) ? Descending : Ascending;
+      tuple<NSString *, Direction> f(ident, d);
+      sortFields_.erase(sortFields_.begin());
+      sortFields_.insert(sortFields_.begin(), f);
+    }
+    sortChanged_ = YES;
+
+  }
+  [self updateTableColumnHeaders];
+}
+
+- (void)updateTableColumnHeaders {
+  for (NSTableColumn *c in trackTableView_.tableColumns) { 
+    [trackTableView_ setIndicatorImage:nil inTableColumn:c];
+  }
+  for (vector<SortField>::iterator i = sortFields_.begin(); i < sortFields_.end(); i++) {
+    SortField f = *i;
+    NSString *ident = get<0>(f);
+    Direction d = get<1>(f);
+    NSImage *img = [NSImage imageNamed:d == Ascending ? @"NSAscendingSortIndicator" : @"NSDescendingSortIndicator"];
+    [trackTableView_ setIndicatorImage:img inTableColumn:[trackTableView_ tableColumnWithIdentifier:ident]];
+  }
+}
+
 - (NSToolbarItem *)toolbar:(NSToolbar *)toolbar itemForItemIdentifier:(NSString *)itemIdentifier willBeInsertedIntoToolbar:(BOOL)flag {
-  NSLog(@"get toolbar item: %@", itemIdentifier);  
   if (itemIdentifier == kPlayButton) { 
     return playButtonItem_;  
   } else if (itemIdentifier == kProgressControl) { 
@@ -338,7 +462,6 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 
 - (void)executeSearch { 
   NSArray *parts = [searchQuery_ componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-  NSLog(@"search for %@", parts);
   vector<string> parts0;
   if (parts) {
     for (NSString *p in parts) {
@@ -397,12 +520,24 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     [progressSlider_ setDoubleValue:pct];
 }
 
+- (void)executeSort { 
+  @synchronized(self) {
+    TrackComparator cmp(sortFields_);
+    sort(allTracks_->begin(), allTracks_->end(), cmp);  
+  }
+}
+
 - (void)onPollMovieTimer:(id)sender { 
-  if (track_ != NULL) {
-    mainWindow_.title = [NSString stringWithUTF8String:track_->path().c_str()];
+  if (track_) {
+    mainWindow_.title = GetWindowTitle(track_.get());
   } else { 
     mainWindow_.title = @"MD1";
   }
+  if (trackEnded_) {
+    [self playNextTrack];
+    trackEnded_ = NO;
+  }
+
   if (movie_ != NULL) {
     if (![progressSlider_ isMouseDown] && !movie_->isSeeking()) { 
       double duration = movie_->Duration();
@@ -416,9 +551,16 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     elapsedText_.stringValue = @"";
   }
 
+  if (sortChanged_) {
+    [self executeSort];
+    predicateChanged_ = YES;
+    needsReload_ = YES;
+    sortChanged_ = NO;
+  }
   if (predicateChanged_) {
     [self executeSearch];
     predicateChanged_ = NO;
+    needsReload_ = YES;
   } 
 
   if (needsReload_) {
@@ -427,7 +569,6 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   }
 
   if (seekToRow_ >= 0) {
-    NSLog(@"seeking to row %d", seekToRow_);
     [trackTableView_ scrollRowToVisible:seekToRow_];
     seekToRow_ = -1;
   }
@@ -454,12 +595,10 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     shared_ptr<Track> aTrack = tracks_->at(index);
     NSLog(@"play: %s", aTrack->path().c_str());
     if (movie_.get() != NULL) {
-      NSLog(@"stopping previous movie");
       movie_->Stop();
     }
     track_ = aTrack;
     movie_.reset(new Movie(aTrack->path().c_str()));
-    NSLog(@"playing new movie");
     movie_->Play();
     movie_->SetListener(HandleMovieEvent, self);
     movie_->SetVolume(volumeSlider_.doubleValue);
@@ -477,8 +616,8 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     case kRateChangeMovieEvent:
       break;
     case kEndedMovieEvent: 
-      NSLog(@"movie ended event");
-      [self playNextTrack];
+      // Handle this async to avoid deadlock / threading situations
+      trackEnded_ = YES;
       break;
     default:
       break;

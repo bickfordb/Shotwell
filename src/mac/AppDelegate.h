@@ -4,13 +4,29 @@
 #import "MD1Slider.h"
 #include <tr1/memory>
 #include <vector>
+#include <tr1/tuple>
+#include "daemon.h"
 
 using namespace std;
 using namespace std::tr1;
 
+typedef enum  {
+  Ascending = 0,
+  Descending = 1,
+  NoDirection = 2// pointing at Eris
+} Direction;
+
+typedef tuple<NSString *, Direction> SortField;
+
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSTableViewDataSource, NSTableViewDelegate, NSToolbarDelegate> {
   BOOL needsReload_; 
+  BOOL sortChanged_;
+  BOOL trackEnded_;
   int seekToRow_;
+ 
+  shared_ptr<Daemon> daemon_;
+
+  vector<SortField> sortFields_;
   NSFont *trackTableFont_;
   NSFont *trackTablePlayingFont_;
   NSImage *emptyImage_;
@@ -53,5 +69,6 @@ using namespace std::tr1;
 - (void)playTrackAtIndex:(int)idx;
 - (void)playNextTrack;
 - (void)executeSearch;
+- (void)updateTableColumnHeaders;
 
 @end
