@@ -76,6 +76,7 @@ if [ ! -e "${BUILDROOT}/protobuf.stamp" ];
 then
     echo "building protocol buffers"
     cd $projectroot/src/vendor/protobuf-2.4.1
+    export CXXFLAGS=-g
     ./configure --prefix=${BUILDROOT}/vendor --disable-shared
     make clean
     make
@@ -144,4 +145,21 @@ then
   touch ${BUILDROOT}/jansson.stamp
 fi
 
+if [ ! -e "${BUILDROOT}/icu.stamp" ]
+then
+  echo "Building icu" 
+  rm -rf ${BUILDROOT}/scratch
+  mkdir -p ${BUILDROOT}/scratch
+  cd ${BUILDROOT}/scratch
+
+  tar xzvf ${projectroot}/src/vendor/icu4c-4_8_1_1-src.tgz
+  cd icu/source
+  ./configure --disable-shared --enable-static --prefix=${BUILDROOT}/vendor --enable-rpath --disable-extras --disable-tests --disable-samples --disable-layout --disable-icuio --with-data-packaging=static
+  make
+  make install
+  rm -rf ${BUILDROOT}/scratch
+  touch ${BUILDROOT}/icu.stamp
+fi
+
+touch ${BUILDROOT}/vendor.stamp
 

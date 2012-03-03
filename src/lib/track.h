@@ -5,7 +5,7 @@
 #include "track.pb.h"
 #include <string>
 
-int ReadTag(Track *t);
+int ReadTag(const std::string &p, Track *t);
 
 #undef ATTR
 #endif _TRACK_H_

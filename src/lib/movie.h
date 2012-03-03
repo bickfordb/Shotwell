@@ -4,11 +4,11 @@
 
 #include <string>
 #include <pthread.h>
-#include "av.h"
-
-#include "packet_chan.h"
+#include <tr1/memory>
 
 void MovieInit();
+using namespace std;
+using namespace std::tr1;
 
 typedef enum {
   kErrorMovieState = -1,
@@ -24,37 +24,23 @@ typedef enum  {
 } MovieEvent;
 
 class Movie;
+class ReaderThreadState;
 typedef void (*MovieListener)(void *ctx, Movie *m, MovieEvent event, void *data);
+double GetVolume();
+void SetVolume(double);
 
 class Movie {
 private:
-    std::string filename_;
-    pthread_t reader_thread_;
-    AVInputFormat *src_format_;
-    AVFormatContext *format_ctx_;
-    int audio_stream_idx_;
+    string filename_;
     pthread_mutex_t lock_;
-    PacketChan *audio_packet_chan_;
-    unsigned int audio_buf_size_;
-    AVPacket *curr_audio_packet_;
-    AVPacket curr_audio_packet_adj_;
-    AVFrame *curr_audio_frame_;
-    int curr_audio_frame_offset_;
-    int curr_audio_frame_remaining_;
-    int64_t duration_;
-    int64_t elapsed_;
-    int64_t seek_to_;
-    AVRational time_base_;
-    MovieState state_;
-    double volume_;
     MovieListener listener_;
     void *listener_ctx_;
-
+    shared_ptr<ReaderThreadState> reader_thread_state_;
+    void Lock();
+    void Unlock();
 public:
-    void SetListener(MovieListener listener, void *ctx);
-    void ReadAudio(uint8_t *stream, int len);
-    void Read(void);
-    int AdvanceFrame(void);
+    void SetListener(MovieListener listener, void *ctx); 
+    void Signal(MovieEvent event, void *data);
     Movie(const std::string & filename);
     ~Movie();
     void Play();
@@ -63,8 +49,7 @@ public:
     double Elapsed();
     MovieState state();
     void Seek(double seconds); 
-    void SetVolume(double pct); 
-    double Volume(); 
+    string filename() { return filename_; }
     bool isSeeking();
 };
 #endif

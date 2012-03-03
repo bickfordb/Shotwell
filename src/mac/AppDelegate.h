@@ -22,15 +22,20 @@ typedef tuple<NSString *, Direction> SortField;
   BOOL needsReload_; 
   BOOL sortChanged_;
   BOOL trackEnded_;
+  BOOL requestPrevious_;
+  BOOL requestNext_;
+  BOOL requestTogglePlay_;
   int seekToRow_;
- 
+  long double lastLibraryRefresh_;
   shared_ptr<Daemon> daemon_;
-
+  NSNetService *netService_;
   vector<SortField> sortFields_;
   NSFont *trackTableFont_;
   NSFont *trackTablePlayingFont_;
   NSImage *emptyImage_;
   NSImage *playImage_;
+  NSImage *startImage_;
+  NSImage *stopImage_;
   NSButton *nextButton_;
   NSButton *playButton_;
   NSButton *previousButton_;
@@ -60,6 +65,7 @@ typedef tuple<NSString *, Direction> SortField;
   shared_ptr<vector<shared_ptr<Track> > > tracks_;  
   NSString *searchQuery_;
   bool predicateChanged_;
+
 }
 
 @property (retain) NSString *searchQuery;
@@ -70,5 +76,9 @@ typedef tuple<NSString *, Direction> SortField;
 - (void)playNextTrack;
 - (void)executeSearch;
 - (void)updateTableColumnHeaders;
+- (void)setupWindow;
+- (void)setupTrackTable;
+- (void)setupToolbar;
+- (void)playPreviousTrack;
 
 @end

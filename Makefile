@@ -1,16 +1,18 @@
 mll:
 	@echo Targets:
 	@echo "  run-mac  -- Run the mac application"
+	@echo "  gdb  -- Run the mac application in gdb"
 
 APPNAME = MD1
 APP = build/$(APPNAME).app
+BUILD = build
 APPSRCS := src/mac/*.m src/mac/*.mm
 APPHDRS := src/mac/*.h
 LIBSRCS := src/lib/*.cc src/lib/*.c
 LIBHDRS = src/lib/*.h
-RESOURCES=
-RESOURCETARGETS=$(patsubst src/mac/res/%,$(APP)/Contents/Resources/%, $(RESOURCES))
+
 CXX = g++
+VENDOR_STAMP = $(BUILD)/vendor.stamp
 CXXFLAGS += -iquote src/lib
 CXXFLAGS += -Werror
 CXXFLAGS += -Ibuild/vendor/include
@@ -22,12 +24,12 @@ LDFLAGS += -lpcrecpp
 LDFLAGS += -lSDL
 LDFLAGS += -lpcre
 LDFLAGS += -lpthread
-LDFLAGS += -lpcrecpp 
+LDFLAGS += -licuuc
+LDFLAGS += -licudata
 LDFLAGS += -lpcrecpp 
 LDFLAGS += -lavcodec
 LDFLAGS += -lavdevice
 LDFLAGS += -ggdb 
-#LDFLAGS += -O2
 LDFLAGS += -lavfilter
 LDFLAGS += -lavformat
 LDFLAGS += -lavutil
@@ -48,8 +50,13 @@ LDFLAGS += -framework OpenGL
 LDFLAGS += -framework VideoDecodeAcceleration 
 LDFLAGS += -framework QuartzCore
 LDFLAGS += -lprotobuf
-DST_RES = $(APP)/Contents/Resources
-SRC_RES = src/mac/res
+DST_RES := $(APP)/Contents/Resources
+SRC_RES := src/mac/res
+#RESOURCES := src/mac/res/Play_Play.png
+#RESOURCES := src/mac/res/Play_Play.png
+SRC_RESOURCES = $(wildcard $(SRC_RES)/*.png $(SRC_RES)/*.pdf)
+RESOURCETARGETS := $(foreach f, $(SRC_RESOURCES), $(addprefix $(DST_RES)/, $(notdir $(f)))) 
+
 GTEST = src/vendor/gtest-1.6.0
 TESTCFLAGS += -iquote src/vendor/gtest-1.6.0/include 
 TESTLDFLAGS += -Lsrc/vendor/gtest-1.6.0/lib -lgtest -lgtest_main
@@ -75,8 +82,7 @@ $(APP)/Contents/MacOS:
 	mkdir -p $@
 mac: $(APP)/Contents/MacOS
 
-
-$(APP)/Contents/MacOS/MD1: $(APP) $(APPSRCS) $(LIBSRCS) $(APPHDRS) $(LIBHDRS)
+$(APP)/Contents/MacOS/MD1: $(APPSRCS) $(LIBSRCS) $(APPHDRS) $(LIBHDRS) $(VENDOR_STAMP)
 	mkdir -p $(APP)/Contents/MacOS
 	$(CXX) $(CXXFLAGS) $(APPSRCS) $(LIBSRCS) -o $@ $(LDFLAGS)
 mac: $(APP)/Contents/MacOS/MD1
@@ -88,7 +94,11 @@ mac: $(APP)/Contents/Info.plist
 run-mac: mac
 	$(APP)/Contents/MacOS/$(APPNAME)
 
-gdb-mac: mac
+gdb: mac
+	echo run >build/gdb-commands
+	gdb -f -x build/gdb-commands $(APP)/Contents/MacOS/$(APPNAME) 
+
+gdb2: mac
 	gdb $(APP)/Contents/MacOS/$(APPNAME) 
 
 $(DST_RES)/en.lproj:
@@ -99,7 +109,12 @@ $(DST_RES)/en.lproj/MainMenu.nib: $(SRC_RES)/en.lproj/MainMenu.xib
 	ibtool --compile $@ $+
 mac: $(DST_RES)/en.lproj/MainMenu.nib
 
-build/test-runner: $(TESTSRCS) $(LIBSRCS) $(LIBHDRS) vendor $(PROTOSRCS)
+$(RESOURCETARGETS): $(DST_RES)/%: $(SRC_RES)/% 
+	cp $< $@
+
+mac: $(RESOURCETARGETS)
+
+build/test-runner: $(TESTSRCS) $(LIBSRCS) $(LIBHDRS) $(VENDOR_STAMP) $(PROTOSRCS) 
 	$(CXX) $(CXXFLAGS) $(TESTCFLAGS) $(LIBSRCS) $(GTESTSRCS) $(TESTSRCS) -o $@ $(LDFLAGS) $(TESTLDFLAGS)
 
 test: build/test-runner
@@ -112,14 +127,18 @@ clean-libtest:
 
 clean: clean-libtest
 
-# check vendor libraries
-vendor: 
+# build vendor libraries
+$(VENDOR_STAMP):
 	./vendor.sh
-.PHONY: vendor
 
-src/lib/track.pb.cc src/lib/track.pb.h: src/lib/track.proto vendor
+src/lib/track.pb.cc src/lib/track.pb.h: src/lib/track.proto $(VENDOR_STAMP)
 	cd src/lib && $(PROTOC) --cpp_out=. track.proto 
 
 test-gdb: build/test-runner
 	gdb build/test-runner
 
+fuzz:
+	echo $(DST_RES)
+	echo $(SRC_RES)
+	echo $(SRC_RESOURCES)
+	echo $(RESOURCETARGETS)
