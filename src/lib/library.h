@@ -31,6 +31,7 @@ class Library {
     void Prune();
     void RunPruneThread();
     int Count();
+    int Delete(const string &);
 };
 
 #endif 

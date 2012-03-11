@@ -2,10 +2,13 @@
 #include "movie.h"
 #include "av.h"
 #include "chan.h"
+#include "raop.h"
+#include <sys/time.h>
 
 #define MIN(A, B) ((A < B) ? A : B)
 #define AUDIO_CODEC_CONTEXT() (format_ctx_->streams[audio_stream_idx_]->codec)
 
+long double Now(); 
 static void ResetAudioPackets(); 
 static void *ReadMovieThread(void *m);
 static void GetAudioThread(void *m, Uint8 *stream, int len);
@@ -294,6 +297,7 @@ static void *ReadMovieThread(void *m) {
   if (reader_thread_state == st.get())
     reader_thread_state = NULL;
   pthread_mutex_unlock(&lock);
+  return NULL;
 }
 
 static void GetAudioThread(void *m, Uint8 *stream, int len)  {
@@ -308,7 +312,7 @@ static int movie_inited = 0;
 static void ResetAudioPackets() { 
   pthread_mutex_lock(&lock);
   AVPacket *p;
-  while (p = (AVPacket *)audio_packet_chan->Get()) {
+  while ((p = (AVPacket *)audio_packet_chan->Get())) {
     av_free_packet(p);
   }
   pthread_mutex_unlock(&lock);
@@ -326,7 +330,7 @@ void MovieInit() {
   avformat_network_init();
   int sdl_flags = SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER;
 #if !defined(__MINGW32__) && !defined(__APPLE__)
-  sdl_flags |= SDL_INIT_EVENTTHREAD; /* Not supported on Windows or Mac OS X */
+    sdl_flags |= SDL_INIT_EVENTTHREAD; /* Not supported on Windows or Mac OS X */
 #endif
   if (SDL_Init(sdl_flags)) {
     ERROR("Could not initialize SDL - %s\n", SDL_GetError());
@@ -421,7 +425,7 @@ void Movie::Seek(double seconds) {
   Unlock();
 }
 
-bool Movie::isSeeking() {
+bool Movie::IsSeeking() {
   bool ret = false;
   Lock();
   if (reader_thread_state_)
@@ -472,3 +476,98 @@ double Movie::Elapsed() {
   Unlock();
   return res;
 }
+
+
+pthread_t raop_thread;
+void *RunRAOP(void *ctx) {
+  md1::raop::Client *client = (md1::raop::Client *)ctx;
+  usleep(100000);
+  while (!reader_thread_state) 
+    usleep(10000);
+  AVStream *src_stream = reader_thread_state->format_ctx_->streams[reader_thread_state->audio_stream_idx_];
+  AVCodecContext *src_codec_context = src_stream->codec;
+  AVFrame *frame = avcodec_alloc_frame();
+  AVCodec *alac = avcodec_find_encoder_by_name("alac");
+  double last_sent = 0;
+  if (!alac) {
+    ERROR("cant find alac");
+    return NULL; 
+  }
+
+  AVCodecContext *alac_ctx = avcodec_alloc_context3(alac);
+  if (!alac_ctx) {
+    ERROR("cant alloc alac ctx");
+    goto raopdone;
+  }
+  //alac_ctx->bit_rate = 44100;
+  alac_ctx->channels = src_codec_context->channels;
+  alac_ctx->sample_rate = src_codec_context->sample_rate;
+  alac_ctx->compression_level = 0;
+  //alac_ctx->sample_fmt = src_codec_context->sample_fmt;
+  alac_ctx->time_base = src_stream->time_base;
+  alac_ctx->sample_fmt = AV_SAMPLE_FMT_S16;
+  INFO("opening alac");
+  DEBUG("opening");
+  if (avcodec_open2(alac_ctx, alac, NULL) < 0) {
+    ERROR("failed to open codec");
+    goto raopdone;
+  }
+ 
+ 
+  while (1) {
+    AVPacket *src_packet = NULL;
+    for (;;) {
+      src_packet = (AVPacket *)audio_packet_chan->Get();
+      if (src_packet)
+        break;
+      usleep(10000);
+    }
+    // make a packet to keep track of offsets.
+    AVPacket src_packet_temp = *src_packet;
+    while (src_packet_temp.size > 0) { 
+      avcodec_get_frame_defaults(frame);   
+      int got_frame = 0;
+      int packet_offset = avcodec_decode_audio4(
+          src_codec_context,
+          frame, 
+          &got_frame,
+          &src_packet_temp);
+      
+      if (packet_offset < 0) {
+        ERROR("failed to decode packet: %d", packet_offset);
+        // skip the rest of this packet
+        break;
+      }
+      if (packet_offset > 0) {
+        src_packet_temp.data += packet_offset;
+        src_packet_temp.size -= packet_offset;
+      }
+      if (got_frame) {
+        bool is_eof = false;
+        INFO("line size: %d", frame->linesize[0]);
+        client->WritePCM(frame->data[0], frame->linesize[0], is_eof);
+      }
+    }
+    av_free_packet(src_packet);
+  }
+raopdone:
+  delete client;
+  return NULL;
+}
+
+int MovieStartRAOP(const string &host, int port) {
+  SDL_PauseAudio(1);
+  md1::raop::Client *remote = new md1::raop::Client(host, port);
+  if (!remote->Connect())
+    return -1;
+  pthread_create(&raop_thread, NULL, RunRAOP, remote);
+  return 0;
+};
+
+void MovieStartSDL() {
+  SDL_PauseAudio(0);
+};
+
+
+
+

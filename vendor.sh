@@ -10,6 +10,7 @@ mkdir -p ${BUILDROOT}/vendor \
     ${BUILDROOT}/vendor/bin \
     ${BUILDROOT}/vendor/lib \
 
+export CFLAGS="-O0 -ggdb ${CFLAGS}"
 export CPPFLAGS="-I${BUILDROOT}/vendor/include"
 export LDFLAGS="-L${BUILDROOT}/vendor/lib"
 export PATH="${BUILDROOT}/vendor/bin:$PATH"
@@ -50,9 +51,12 @@ fi
 if [ ! -e "${BUILDROOT}/libav.stamp" ];
 then
     echo "building libav"
-    cd $projectroot/src/vendor/libav-0.8
+    rm -rf ${BUILDROOT}/scratch
+    mkdir ${BUILDROOT}/scratch
+    cd ${BUILDROOT}/scratch
+    tar xzvf $projectroot/src/vendor/libav-0.8.tar.gz
+    cd libav-0.8
     ./configure --prefix=${BUILDROOT}/vendor --disable-shared
-    make clean
     make
     make install
     touch ${BUILDROOT}/libav.stamp
@@ -161,5 +165,5 @@ then
   touch ${BUILDROOT}/icu.stamp
 fi
 
-touch ${BUILDROOT}/vendor.stamp
 
+touch ${BUILDROOT}/vendor.stamp

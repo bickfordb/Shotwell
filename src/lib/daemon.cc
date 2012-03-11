@@ -20,6 +20,7 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 static void *MainThread(void *ctx) { 
   Daemon *d = (Daemon *)ctx;
   d->RunMainThread();
+  return NULL;
 }
 
 bool Daemon::HandleHomeRequest(Request *r) { 

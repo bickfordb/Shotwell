@@ -6,9 +6,12 @@
 #include <pthread.h>
 #include <tr1/memory>
 
-void MovieInit();
 using namespace std;
 using namespace std::tr1;
+
+void MovieInit();
+int MovieStartRAOP(const string &host, int port);
+void MovieStartSDL();
 
 typedef enum {
   kErrorMovieState = -1,
@@ -50,7 +53,7 @@ public:
     MovieState state();
     void Seek(double seconds); 
     string filename() { return filename_; }
-    bool isSeeking();
+    bool IsSeeking();
 };
 #endif
 

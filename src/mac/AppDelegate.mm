@@ -11,6 +11,7 @@
 using namespace std;
 using namespace std::tr1;
 
+static const int kLibraryRefreshInterval = 2.0;
 static NSSize kStartupSize = {1100, 600};
 static NSString *kAlbum = @"album";
 static NSString *kArtist = @"artist";
@@ -164,9 +165,121 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 }
 
 - (void)setupMenu {
-    
+  NSMenu *mainMenu = [[NSApplication sharedApplication] mainMenu];
+  NSMenuItem *editMenuItem = [mainMenu itemWithTitle:@"Edit"];
+  NSMenuItem *formatMenuItem = [mainMenu itemWithTitle:@"Format"];
+  NSMenuItem *viewMenuItem = [mainMenu itemWithTitle:@"View"];
+  NSMenuItem *fileMenuItem = [mainMenu itemWithTitle:@"File"];
+  [mainMenu removeItem:formatMenuItem];
+  [mainMenu removeItem:viewMenuItem];
+  NSMenu *fileMenu = [fileMenuItem submenu];
+  [fileMenu removeAllItems];
+  NSMenu *editMenu = [editMenuItem submenu];
+  [editMenu removeAllItems];
+
+  cutMenuItem_ = [editMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
+  cutMenuItem_.target = self;
+  copyMenuItem_ = [editMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
+  copyMenuItem_.target = self;
+  deleteMenuItem_ = [editMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:[NSString stringWithFormat:@"%C", NSBackspaceCharacter]];
+  [deleteMenuItem_ setKeyEquivalentModifierMask:0];
+  deleteMenuItem_.target = self;
+  pasteMenuItem_ = [editMenu addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
+  pasteMenuItem_.target = self;
 }
 
+- (void)delete:(id)sender { 
+  @synchronized(self) { 
+    NSIndexSet *indices = [trackTableView_ selectedRowIndexes];
+    NSUInteger i = [indices lastIndex];
+    while (i != NSNotFound) {
+      if (i < 0 || i >= tracks_->size())
+        continue;
+      needsReload_ = YES;
+      shared_ptr<Track> t = tracks_->at(i);
+      tracks_->erase(tracks_->begin() + i);
+      library_->Delete(t->path());
+      int n = allTracks_->size();
+      for (int j = 0; j < n; j++) {
+        if (allTracks_->at(j).get() == t.get()) {
+          allTracks_->erase(allTracks_->begin() + j); 
+          break;
+        }
+      }
+      i = [indices indexLessThanIndex:i];
+    }
+  }
+}
+
+- (void)paste:(id)sender { 
+  NSPasteboard *pboard = [NSPasteboard generalPasteboard];
+  NSArray *items = [pboard readObjectsForClasses:[NSArray arrayWithObjects:[NSURL class], nil]
+    options:nil]; 
+  NSLog(@"paste: %@", items);
+  vector<string> paths;
+  for (NSURL *u in items) {
+    if (![u isFileURL]) {
+      continue;
+    }
+    NSString *p = [u path];
+    paths.push_back(p.UTF8String);
+  }
+  library_->Scan(paths, false);
+}
+
+- (void)copy:(id)sender { 
+  @synchronized(self) { 
+    NSIndexSet *indices = [trackTableView_ selectedRowIndexes];
+    NSUInteger i = [indices lastIndex];
+    NSMutableArray *urls = [NSMutableArray array];
+    NSPasteboard *pb = [NSPasteboard generalPasteboard];
+    [pb clearContents];
+    [pb declareTypes:[NSArray arrayWithObject:NSURLPboardType] owner:nil];
+    while (i != NSNotFound) {
+      if (i < 0 || i >= tracks_->size())
+        continue;
+      shared_ptr<Track> t = tracks_->at(i);
+      NSString *path = [NSString stringWithUTF8String:t->path().c_str()];
+      NSURL *url = [NSURL fileURLWithPath:path];
+      [urls addObject:url];
+      i = [indices indexLessThanIndex:i];
+    }
+    [pb writeObjects:urls];
+  }
+}
+
+- (void)cut:(id)sender { 
+  @synchronized(self) { 
+    NSIndexSet *indices = [trackTableView_ selectedRowIndexes];
+    NSUInteger i = [indices lastIndex];
+    NSMutableArray *urls = [NSMutableArray array];
+    NSPasteboard *pb = [NSPasteboard generalPasteboard];
+    [pb clearContents];
+    [pb declareTypes:[NSArray arrayWithObject:NSURLPboardType] owner:nil];
+    while (i != NSNotFound) {
+      if (i < 0 || i >= tracks_->size())
+        continue;
+      needsReload_ = YES;
+      shared_ptr<Track> t = tracks_->at(i);
+      NSString *path = [NSString stringWithUTF8String:t->path().c_str()];
+      NSURL *url = [NSURL fileURLWithPath:path];
+      //[url writeToPasteboard:pb];
+      [urls addObject:url];
+      tracks_->erase(tracks_->begin() + i);
+      library_->Delete(t->path());
+      int n = allTracks_->size();
+      for (int j = 0; j < n; j++) {
+        if (allTracks_->at(j).get() == t.get()) {
+          allTracks_->erase(allTracks_->begin() + j); 
+          break;
+        }
+      }
+      i = [indices indexLessThanIndex:i];
+    }
+    requestClearSelection_ = YES;
+    [pb writeObjects:urls];
+  }
+}
 - (void)setupWindow {
   mainWindow_ = [[NSWindow alloc] 
     initWithContentRect:NSMakeRect(150, 150, kStartupSize.width, kStartupSize.height)
@@ -196,6 +309,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   trackTableView_ = [[NSTableView alloc] initWithFrame:NSMakeRect(0, 0, 364, 200)];
   [trackTableView_ setUsesAlternatingRowBackgroundColors:YES];
   [trackTableView_ setGridStyleMask:NSTableViewSolidVerticalGridLineMask];
+  [trackTableView_ setAllowsMultipleSelection:YES];
 
   NSTableColumn * statusColumn = [[[NSTableColumn alloc] initWithIdentifier:kStatus] autorelease];
   NSTableColumn * artistColumn = [[[NSTableColumn alloc] initWithIdentifier:kArtist] autorelease];
@@ -395,6 +509,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   requestPrevious_ = NO;
   requestTogglePlay_ = NO;
   requestNext_ = NO;
+  needsLibraryRefresh_ = NO;
 
   NSApplication *sharedApp = [NSApplication sharedApplication];
   library_.reset(new Library());
@@ -423,9 +538,8 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     port:kDefaultPort];
   [netService_ publish];
 
-  std::vector<std::string> pathsToScan;
-  pathsToScan.push_back("/Users/bran/Music/rsynced");
-  library_->Scan(pathsToScan, false);
+  //std::vector<std::string> pathsToScan;
+  //library_->Scan(pathsToScan, false);
   library_->Prune();
   [self setupWindow];
   [self setupToolbar];
@@ -623,6 +737,11 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     requestPrevious_ = NO;
   }
 
+  if (requestClearSelection_) { 
+    [trackTableView_ deselectAll:self];
+    requestClearSelection_ = NO;
+  }
+
   if (requestTogglePlay_) {
     @synchronized (self) {
       if (movie_) { 
@@ -661,14 +780,20 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   
   @synchronized (self) { 
     long double t = library_->last_update();
-    if (lastLibraryRefresh_ == 0 
-        || ((t - lastLibraryRefresh_) > 5.0)) {
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    long double now0 = ((long double)now.tv_sec) + (((long double)now.tv_usec) / 1000000.0);
+    if (needsLibraryRefresh_
+        || (lastLibraryRefresh_ == 0)
+        || ((lastLibraryRefresh_ < t) && ((now0 - lastLibraryRefresh_) > kLibraryRefreshInterval))) {
       predicateChanged_ = YES;
       sortChanged_ = YES;
-      struct timeval now;
-      gettimeofday(&now, NULL);
+      NSLog(@"refreshing library");
       allTracks_ = library_->GetAll();
-      lastLibraryRefresh_ = ((long double)now.tv_sec) + (((long double)now.tv_usec) / 1000000.0);
+      needsLibraryRefresh_ = NO;
+      needsReload_ = YES;
+      sortChanged_ = YES;
+      lastLibraryRefresh_ = now0;
     }
   }
   if (sortChanged_) {
@@ -839,10 +964,6 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   return NO;
 }
 
-- (void)delete {
-  NSLog(@"Delete");
-    
-}
 
 @end
 

@@ -11,15 +11,18 @@ APPHDRS := src/mac/*.h
 LIBSRCS := src/lib/*.cc src/lib/*.c
 LIBHDRS = src/lib/*.h
 
-CXX = g++
+#CXX = clan
+CXX = clang
 VENDOR_STAMP = $(BUILD)/vendor.stamp
 CXXFLAGS += -iquote src/lib
 CXXFLAGS += -Werror
+CXXFLAGS += -ferror-limit=2
 CXXFLAGS += -Ibuild/vendor/include
 LDFLAGS += -Lbuild/vendor/lib
 LDFLAGS += -lleveldb
 LDFLAGS += -ljansson
 LDFLAGS += -levent
+LDFLAGS += -lstdc++
 LDFLAGS += -lpcrecpp
 LDFLAGS += -lSDL
 LDFLAGS += -lpcre
@@ -29,12 +32,14 @@ LDFLAGS += -licudata
 LDFLAGS += -lpcrecpp 
 LDFLAGS += -lavcodec
 LDFLAGS += -lavdevice
-LDFLAGS += -ggdb 
+CXXFLAGS += -ggdb 
+CXXFLAGS += -O0 
 LDFLAGS += -lavfilter
 LDFLAGS += -lavformat
 LDFLAGS += -lavutil
 LDFLAGS += -lbz2
 LDFLAGS += -lssl 
+LDFLAGS += -lcrypto 
 LDFLAGS += -lswscale 
 LDFLAGS += -lz 
 LDFLAGS += -framework AppKit 
@@ -142,3 +147,40 @@ fuzz:
 	echo $(SRC_RES)
 	echo $(SRC_RESOURCES)
 	echo $(RESOURCETARGETS)
+
+RAOPSRCS = src/tools/raoptest.cc
+
+raop: build/raop
+	echo run >build/gdb-commands
+	gdb -f -x build/gdb-commands build/raop 
+
+build/raop: $(LIBSRCS) $(LIBHDRS) $(RAOPSRCS) $(VENDOR_STAMP) 
+	$(CXX) $(CXXFLAGS) $(RAOPSRCS) $(LIBSRCS) -o $@ $(LDFLAGS)
+
+ALACSRCS = src/test/alac.cc
+
+build/alac: $(LIBSRCS) $(LIBHDRS) $(ALACSRCS) $(VENDOR_STAMP) 
+	$(CXX) $(CXXFLAGS) $(ALACSRCS) $(LIBSRCS) -o $@ $(LDFLAGS)
+
+alac: build/alac
+	echo run >build/gdb-commands
+	gdb -f -x build/gdb-commands build/alac
+	
+TAGS:
+	ctags src/lib/* src/test/* src/mac/* $$(find build/vendor/include)
+	
+cscope:
+	#echo src/lib/* src/test/* src/mac/* $$(find build/vendor/include) >cscope.files
+	cscope -b $$(find src/lib -type f) $$(find src/test -type f) $$(find src/mac -type f) $$(find build/vendor/include -type f)
+
+raop_play:
+	cd src/pp/raop_play \
+		&& make
+	src/pp/raop_play/raop_play 10.0.1.10 test-data/y.pcm
+	#src/pp/raop_play/raop_play 10.0.1.10 test-data/y.pcm |head -n 100 >y.log
+
+raoptest: build/raop
+	#build/raop |head -n 100 >x.log
+	build/raop 
+
+

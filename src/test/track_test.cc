@@ -35,8 +35,7 @@ TEST(TrackTest, General) {
 TEST(TrackTest, Tag) {
   AVInit();
   Track track;
-  track.set_path("./test-data/x.mp3");  
-  int ret = ReadTag(&track);
+  int ret = ReadTag("./test-data/x.mp3", &track);
   ASSERT_EQ(ret, 0);
   ASSERT_EQ(track.artist(), "The Dodos");
 }
@@ -48,10 +47,8 @@ TEST(TrackTest, GetAll) {
   Track t;
   t.set_path("/efg");
   library->Save(t);
-  shared_ptr<vector<shared_ptr<Track> > > tracks = library.GetAll();
-  
-  ASSERT_EQ(tracks->length(), 0);
-  ASSERT_EQ(tracks.size(), 1);
+  shared_ptr<vector<shared_ptr<Track> > > tracks = library->GetAll();
+  ASSERT_EQ(tracks->size(), 0);
   delete library;
   system("rm -rf getall.db");
 }

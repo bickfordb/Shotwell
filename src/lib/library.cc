@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <tr1/tuple>
 #include <pcrecpp.h>
+#include <leveldb/slice.h>
 
 using namespace google::protobuf::io;
 using namespace std;
@@ -27,6 +28,7 @@ const char *kScanPathPrefix = "p:";
 
 static void *RunPrune(void *ctx) { 
   ((Library *)ctx)->RunPruneThread(); 
+  return NULL;
 }
 
 static void *ScanPaths(void *ctx) { 
@@ -49,7 +51,7 @@ static void *ScanPaths(void *ctx) {
   FTSENT *node = NULL;
   const char *error = NULL;
   int error_offset = 0;
-  pcrecpp::RE media_pat("^.*(?:mp3|m4a|ogg|avi|mkv|aac|mov)$");
+  pcrecpp::RE media_pat("^.*[.](?:mp3|m4a|ogg|avi|mkv|aac|mov)$");
   if (error != NULL) {
     ERROR("pcre error: %s", error);
     return NULL;
@@ -67,6 +69,7 @@ static void *ScanPaths(void *ctx) {
     Track t;
     if (library->Get(filename, &t) != 0) {
       ReadTag(filename, &t);
+      INFO("adding %s", t.path().c_str());
       library->Save(t);
     }
   }
@@ -89,9 +92,8 @@ long double Library::last_update() {
 void Library::MarkUpdated() { 
   struct timeval t;
   gettimeofday(&t, NULL);
-  long double t0 = t.tv_sec;
-  t0 += t.tv_usec / 1000000.0; 
-  last_update_ = t0;
+  last_update_ = t.tv_sec + (t.tv_usec / 1000000.0);
+  INFO("last update set to: %Lf", last_update_);
 }
 
 void Library::RunPruneThread() {
@@ -146,6 +148,7 @@ int Library::Close() {
     delete db_;
     db_ = NULL;
   }
+  return 0;
 }
 
 int Library::Get(const std::string &path, Track *t) {
@@ -189,6 +192,15 @@ int Library::Clear() {
     }
     i->Next();
   }
+  return 0;
+}
+
+int Library::Delete(const string &path) {
+  string key(kTrackPrefix);
+  key += path;
+  leveldb::Slice s(key);
+  db_->Delete(leveldb::WriteOptions(), s);
+  MarkUpdated();
   return 0;
 }
 
