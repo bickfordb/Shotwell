@@ -14,6 +14,9 @@
 #include "aes.h"
 #include "buffer.h"
 #include "frame.h"
+#include <event2/event.h>
+#include <event2/buffer.h>
+
 
 using namespace std;
 
@@ -24,15 +27,22 @@ namespace md1 {
 
     class Client {
       string addr_;
+      struct event_base *event_base_;
       int port_;
-      int ctrl_sd_; 
-      int data_sd_; 
+      int rtsp_sd_; 
+      int rtp_sd_; 
       int data_port_;
+ 
+      struct evbuffer *rtp_in_buf_;
+      struct evbuffer *datasrc_buf_;
+      struct evbuffer *alac_buf_;
+      struct evbuffer *rtp_out_buf_;
+
       uint32_t rtp_time_;
       uint32_t ssrc_;
       aes_context aes_ctx_;
-      struct sockaddr_in ctrl_sd_in_;
-      struct sockaddr_in data_sd_in_;
+      struct sockaddr_in rtsp_sd_in_;
+      struct sockaddr_in rtp_sd_in_;
       uint8_t key_[16];
       uint8_t iv_[16];
       uint8_t nv_[16];
@@ -43,30 +53,39 @@ namespace md1 {
       string user_agent_;
       string session_id_;
       double last_sent_;
+      double last_remote_buffer_update_at_;
+      //int32_t remote_buffer_size_;
       uint16_t rtp_seq_;
-      uint8_t *sample_buf_; 
-      size_t sample_len_;
+      struct event *rtpwrite_event_;
+      struct event *rtpread_event_;
+      struct event *datasrc_event_;
+      bool eof_;
+      int datasrc_fd_;
       AES_KEY aes_;
-      void Write(uint8_t *sample, size_t sample_len);
-      bool EncodePCM(uint8_t *in, size_t in_len, uint8_t **encoded, size_t *encoded_len);
+      bool EncodePCM(struct evbuffer *in, struct evbuffer *out);
       void Encrypt(uint8_t *in, size_t in_len);
-      bool EncodePacket(uint8_t *in, size_t in_len, uint8_t **encoded, size_t *encoded_len);
+      bool EncodePacket(struct evbuffer *in, struct evbuffer *out);
       bool Flush(); 
       bool SetVolume(double pct);
       bool ConnectControlSocket();
-      bool ConnectDataSocket();
+      bool ConnectRTP();
       bool Announce();
       bool Record();
       bool Setup(); 
       bool RunRequest(const Request &request, Response *response);
-      static void *ReaderThreadCallback(void *ctx) {
-        ((Client *)ctx)->OnReaderThread(); 
+      static void OnRTPReadyCallback(evutil_socket_t s, short evt, void *ctx) { 
+        ((Client *)ctx)->OnRTPReady(s, evt);
       }
-      void OnReaderThread();
+      void OnRTPReady(evutil_socket_t s, short evt);
+
+      void OnDataSourceReady(evutil_socket_t s, short evt);
+      static void OnDataSourceReadyCallback(evutil_socket_t s, short evt, void *ctx) {
+        ((Client *)ctx)->OnDataSourceReady(s, evt);
+      }
     public:
-      void WritePCM(uint8_t *sample, size_t sample_len, bool is_eof);
+      void Play(const string &filename);
       Client(const string &addr, int port);
-      ~Client() {};
+      ~Client();
       bool Connect();
     };
   }

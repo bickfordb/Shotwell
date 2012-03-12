@@ -1,12 +1,14 @@
 #include <algorithm>
 #include <assert.h>
+#include <cstring>
+#include <errno.h>
+#include <fcntl.h>
 #include <map>
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <pcrecpp.h>
 #include <stdlib.h>
 #include <sys/time.h>
-#include <cstring>
 #include <vector>
 #include <xlocale.h>
 
@@ -28,8 +30,6 @@ namespace md1 {
 
     // Prototypes
 
-    
-
     bool SendRequest(int fd, const Request &req);
     void LogBytes(uint8_t *b, size_t len);
     bool ReceiveResponse(int fd, Response *r);
@@ -45,6 +45,7 @@ namespace md1 {
     static const int kSamplesPerFrame = 4096; // not 1152?
     static const int kBytesPerChannel = 2;
     static const int kNumChannels = 2;
+    static const int kFrameSizeBytes = 16384;
     static const int kBitRate = 44100;
     static const int kAESKeySize = 16; // bytes
     static const char *kPublicExponent64 = "AQAB";
@@ -55,7 +56,6 @@ namespace md1 {
       "OitnZ/bDzPHrTOZz0Dew0uowxf/+sG+NCK3eQJVxqcaJ/vEHKIVd2M+5qL71yJ"
       "Q+87X6oV3eaYvt3zWZYD6z5vYTcrtij2VZ9Zmni/UAaHqn9JdsBWLUEpVviYnh"
       "imNVvYFZeCXg/IdTQ+x4IRdiXNv5hEew==";
-
 
     struct Request { 
       string method;
@@ -75,7 +75,6 @@ namespace md1 {
       Response() : status(0) { }
       ~Response() {} 
       static bool Parse(const string &s, Response *);
-
     };
 
     bool SendRequest(int fd, const Request &req) { 
@@ -177,23 +176,22 @@ namespace md1 {
     }
 
 
-    bool Client::EncodePCM(uint8_t *pcm, size_t pcm_len, uint8_t **out, size_t *out_len)
-    {
+    bool Client::EncodePCM(
+        struct evbuffer *in, 
+        struct evbuffer *out) {
       //LogBytes(pcm, pcm_len);
+      uint8_t pcm[kFrameSizeBytes];
+      size_t pcm_len = evbuffer_remove(in, pcm, kFrameSizeBytes);
       int bsize = pcm_len / 4;
       //INFO("bsize: %d, len: %d", bsize, pcm_len);
       size_t max_len = pcm_len + 64;
-      *out = (uint8_t *)malloc(max_len);
+      uint8_t alac[kFrameSizeBytes + 64];
+
       uint8_t one[4];
       int count = 0;
       int bpos = 0;
-      uint8_t *buffer = *out;
-      uint8_t *bp = buffer;
+      uint8_t *bp = alac;
       int nodata = 0;
-      if (!*out) {
-        return false;
-      }
-      *out_len = max_len;
       bits_write(&bp,1,3,&bpos); // channel=1, stereo
       bits_write(&bp,0,4,&bpos); // unknown
       bits_write(&bp,0,8,&bpos); // unknown
@@ -210,22 +208,6 @@ namespace md1 {
         bits_write(&bp,(bsize>>8)&0xff,8,&bpos);
         bits_write(&bp,bsize&0xff,8,&bpos);
       }
-      /*
-      while(1){
-        if (pcm_len <= count * 4) 
-          nodata = 1;
-        int16_t *pcm16 = (int16_t *)pcm;
-        pcm[i] = pcm[
-        *((int16_t*)one)= pcm16[count*2];
-        *((int16_t*)one+1)= pcm16[count*2+1];
-        if(nodata) break;
-
-        bits_write(&bp,one[1],8,&bpos);
-        bits_write(&bp,one[0],8,&bpos);
-        bits_write(&bp,one[3],8,&bpos);
-        bits_write(&bp,one[2],8,&bpos);
-        if(++count==bsize) break;
-      }*/
       for (int i = 0; i < pcm_len; i += 2) {
         bits_write(&bp, pcm[i + 1], 8, &bpos);
         bits_write(&bp, pcm[i], 8, &bpos);
@@ -236,41 +218,40 @@ namespace md1 {
         return false; // when no data at all, it should stop playing
       }
       /* when readable size is less than bsize, fill 0 at the bottom */
-      for(int i=0;i<(bsize-count)*4;i++){
+      for(int i = 0; i < (bsize - count) * 4; i++){
         bits_write(&bp,0,8,&bpos);
       }
       if ((bsize - count) > 0) {
         ERROR("added %d bytes of silence", (bsize - count) * 4);
       } 
-      *out_len = (bpos ? 1 : 0 ) + bp - buffer;
+      int out_len = (bpos ? 1 : 0 ) + bp - alac;
+      evbuffer_add(out, (void *)alac, out_len);
       return true;
     }
 
-
-    bool Client::EncodePacket(uint8_t *in, size_t in_len, uint8_t **encoded, size_t *encoded_len) {
+    bool Client::EncodePacket(struct evbuffer *in, struct evbuffer *out) {
       uint8_t header[] = {
         0x24, 0x00, 0x00, 0x00,
         0xF0, 0xFF, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00,
       };
-      const int header_size = 16;
-      *encoded = (uint8_t *)malloc(in_len + header_size);
-      if (!*encoded) {
-        return false;
-      }
-      uint8_t *data = *encoded;
-      *encoded_len = in_len + header_size;
-      memcpy(data, header, header_size);
-      uint16_t len = in_len + header_size - 4;
-      data[2] = len >> 8;
-      data[3] = len & 0xff;
-      memcpy(data + header_size, in, in_len);
-      //LogBytes(data, in_len + header_size); 
-      Encrypt(data + header_size, in_len);
+      const int header_size = 16;      
+      int alac_len = evbuffer_get_length(in);
+      uint8_t alac[16384 + 16];
+      evbuffer_remove(in, alac, alac_len);
+      size_t packet_len = alac_len + 16;
+      uint8_t packet[packet_len];
+      uint16_t len = alac_len + header_size - 4;
+      header[2] = len >> 8;
+      header[3] = len & 0xff;
+
+      memcpy(packet, header, header_size);
+      memcpy(packet + header_size, alac, alac_len);
+      Encrypt(packet + header_size, alac_len);
+      evbuffer_add(out, packet, packet_len);
       return true;
     }
-
 
     int SendAll(int fd, const uint8_t *bytes, int len) { 
       if (fd < 0) {
@@ -331,19 +312,66 @@ namespace md1 {
       RSA_free(rsa);
     }
 
+    void Client::Play(const string &filename) {
+      datasrc_fd_ = open(filename.c_str(), O_RDONLY);
+      if (datasrc_fd_ < 0) {
+        ERROR("unable to open filename: %s", filename.c_str());
+        return;
+      }
+      int flags = fcntl(datasrc_fd_, F_GETFL, 0);
+      flags |= O_NONBLOCK;
+      fcntl(datasrc_fd_, F_SETFL, flags);
+
+      flags = fcntl(rtp_sd_, F_GETFL, 0);
+      flags |= O_NONBLOCK;
+      fcntl(rtp_sd_, F_SETFL, flags);
+
+      rtpwrite_event_ = event_new(event_base_, rtp_sd_, EV_WRITE, Client::OnRTPReadyCallback, this);
+      rtpread_event_ = event_new(event_base_, rtp_sd_, EV_READ | EV_PERSIST, Client::OnRTPReadyCallback, this);
+      datasrc_event_ =  event_new(event_base_, datasrc_fd_, EV_READ, Client::OnDataSourceReadyCallback, this);
+      event_add(datasrc_event_, NULL);
+      event_add(rtpread_event_, NULL);
+      event_base_dispatch(event_base_);
+    }
+
+    Client::~Client() {
+      close(rtp_sd_);
+      close(rtsp_sd_);
+      close(datasrc_fd_);
+      if (rtpwrite_event_)
+        event_free(rtpwrite_event_);
+      if (rtpread_event_)
+        event_free(rtpread_event_);
+      if (datasrc_event_) 
+        event_free(datasrc_event_);
+      event_base_free(event_base_);
+    }
+
     Client::Client(const string &addr, int port) : addr_(addr), port_(port) {
       RAND_bytes(key_, kAESKeySize);
       RAND_bytes(iv_, kAESKeySize);
+      eof_ = false;
+
+      datasrc_fd_ = -1;
+      datasrc_buf_ = evbuffer_new();
+      alac_buf_ = evbuffer_new();
+      rtp_out_buf_ = evbuffer_new();
+      rtp_in_buf_ = evbuffer_new();
+
       memset(&aes_, 0, sizeof(aes_));
       AES_set_encrypt_key(key_, kAESKeySize * 8, &aes_);
-      sample_buf_ = (uint8_t *)malloc(kSamplesPerFrame * 4);
       memset((void *)&aes_ctx_, 0, sizeof(aes_ctx_));
-      aes_set_key(&aes_ctx_, key_, kAESKeySize); 
+      aes_set_key(&aes_ctx_, key_, kAESKeySize * 8); 
+      event_base_ = event_base_new();
+      datasrc_event_ = NULL;
+      rtpwrite_event_ = NULL;
+      rtpread_event_ = NULL;
       data_port_ = 6000;
       last_sent_ = 0.0;
       rtp_seq_ = 0;
-      sample_len_ = 0;
       rtp_time_ = 0;
+      //remote_buffer_size_ = 0;
+      last_remote_buffer_update_at_ = 0;
       RAND_bytes((unsigned char *)&ssrc_, sizeof(ssrc_));
       unsigned long url_key_bytes; 
       RAND_bytes((unsigned char *)&url_key_bytes, sizeof(url_key_bytes));
@@ -355,8 +383,8 @@ namespace md1 {
       cseq_ = 0;
       challenge_ = StringReplace(Base64Encode(RandBytes(16)), "=", "");
       user_agent_ = "iTunes/4.6 (Macintosh; U; PPC Mac OS X 10.3)";
-      data_sd_ = -1;
-      ctrl_sd_ = -1;
+      rtp_sd_ = -1;
+      rtsp_sd_ = -1;
     }
 
 
@@ -365,22 +393,22 @@ namespace md1 {
     }
 
     bool Client::ConnectControlSocket() { 
-      if ((ctrl_sd_ = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+      if ((rtsp_sd_ = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         ERROR("error creating socket");
         return false;
       }
-      ctrl_sd_in_.sin_family = AF_INET;
-      ctrl_sd_in_.sin_port = htons(port_);
-      if (!inet_aton(addr_.c_str(), &ctrl_sd_in_.sin_addr)) {
+      rtsp_sd_in_.sin_family = AF_INET;
+      rtsp_sd_in_.sin_port = htons(port_);
+      if (!inet_aton(addr_.c_str(), &rtsp_sd_in_.sin_addr)) {
         struct hostent *hp = (struct hostent *)gethostbyname(addr_.c_str());
         if (hp == NULL) {
           ERROR("Failed to get hostname");
           return false;
         }
-        memcpy(&ctrl_sd_in_.sin_addr, hp->h_addr, hp->h_length);
+        memcpy(&rtsp_sd_in_.sin_addr, hp->h_addr, hp->h_length);
       }
-      if (connect(ctrl_sd_, (struct sockaddr *)&ctrl_sd_in_,
-            sizeof(ctrl_sd_in_)) < 0) {
+      if (connect(rtsp_sd_, (struct sockaddr *)&rtsp_sd_in_,
+            sizeof(rtsp_sd_in_)) < 0) {
         ERROR("Failed to connect");
         return false;
       }
@@ -391,11 +419,11 @@ namespace md1 {
     bool Client::RunRequest(
         const Request & req, 
         Response *response) {
-      if (!SendRequest(ctrl_sd_, req)) {
+      if (!SendRequest(rtsp_sd_, req)) {
         ERROR("Failed to send request");
         return false;
       }
-      if (!ReceiveResponse(ctrl_sd_, response)) {
+      if (!ReceiveResponse(rtsp_sd_, response)) {
         ERROR("Failed to receive response");
         return false;
       }
@@ -419,11 +447,11 @@ namespace md1 {
         ERROR("failed to record");
         return false;
       }
-      if (!SetVolume(100.0)) {
+      if (!SetVolume(0.2)) {
         ERROR("failed to set volume");
         return false;
       }
-      if (!ConnectDataSocket()) {
+      if (!ConnectRTP()) {
         ERROR("failed to connect data socket");
         return false;
       }
@@ -442,7 +470,7 @@ namespace md1 {
       char local_addr[INET_ADDRSTRLEN];
       struct sockaddr_in ioaddr;
       socklen_t iolen = sizeof(struct sockaddr);
-      getsockname(ctrl_sd_, (struct sockaddr *)&ioaddr, &iolen);
+      getsockname(rtsp_sd_, (struct sockaddr *)&ioaddr, &iolen);
       inet_ntop(AF_INET, &(ioaddr.sin_addr), local_addr, INET_ADDRSTRLEN);
 
       req.method = "ANNOUNCE";
@@ -534,31 +562,38 @@ namespace md1 {
       return true;
     }
 
-    bool Client::ConnectDataSocket() { 
-      data_sd_ = socket(AF_INET, SOCK_STREAM, 0);
-      data_sd_in_.sin_family = AF_INET;
-      data_sd_in_.sin_port = htons(data_port_);
-      //memcpy(&data_sd_in_.sin_addr, &ctrl_sd_in_.sin_addr,
-      //   sizeof(ctrl_sd_in_.sin_addr));
-      inet_aton(addr_.c_str(), &data_sd_in_.sin_addr);
+    bool Client::ConnectRTP() { 
+      rtp_sd_ = socket(AF_INET, SOCK_STREAM, 0);
+      rtp_sd_in_.sin_family = AF_INET;
+      rtp_sd_in_.sin_port = htons(data_port_);
+      //memcpy(&rtp_sd_in_.sin_addr, &rtsp_sd_in_.sin_addr,
+      //   sizeof(rtsp_sd_in_.sin_addr));
+      inet_aton(addr_.c_str(), &rtp_sd_in_.sin_addr);
 
-      int ret = connect(data_sd_, (struct sockaddr *)&data_sd_in_, sizeof(data_sd_in_));
+      int ret = connect(rtp_sd_, (struct sockaddr *)&rtp_sd_in_, sizeof(rtp_sd_in_));
       if (ret < 0) {
         ERROR("unable to connect to control port");
         return false;
       }
-      pthread_t r;
-      pthread_create(&r, NULL, md1::raop::ReadThread, (void *)data_sd_);
-      INFO("Connected to data socket");
+      int flags = fcntl(rtp_sd_, F_GETFL, 0);
+      flags |= O_NONBLOCK;
+      fcntl(rtp_sd_, F_SETFL, flags);
       return true;
     }
 
-    bool Client::SetVolume(double pct) { 
+    bool Client::SendVolume(double pct) { 
       Request req;
       Response resp;
 
       // 0 is max, -144 is min  
       double volume = 0;  
+      if (pct < 0.01) 
+        volume = -144;
+      else {
+        double max = 0;
+        double min = -30;
+        volume = (pct * (max - min)) + min;
+      }
 
       req.method = "SET_PARAMETER";
       req.uri = Format("rtsp://%s/%s", 
@@ -570,6 +605,7 @@ namespace md1 {
       req.headers["Content-Type"] = "text/parameters";
       req.headers["Client-Instance"] = cid_;
       req.body = Format("volume: %.6f\r\n", volume);
+      req.headers["Content-Length"] = Format("%d", req.body.length());
       if (!RunRequest(req, &resp)) {
         return false;
       }
@@ -606,7 +642,7 @@ namespace md1 {
       memcpy(nv_, iv_, kAESKeySize);
       while ((i + kAESKeySize) <= size) {
         buf = data + i;
-        for (int j=0; j < kAESKeySize; j++)
+        for (int j = 0; j < kAESKeySize; j++)
           buf[j] ^= nv_[j];
         aes_encrypt(&aes_ctx_, buf, buf);
         memcpy(nv_, buf, kAESKeySize);
@@ -614,88 +650,85 @@ namespace md1 {
       }
     }
 
-    void Client::Write(uint8_t *sample, size_t sample_len) {
-      ///INFO("encode sample:%p (%d)", sample, sample_len);
-
-      // Each sample lasts this many seconds.
-      long double duration = kSamplesPerFrame / 44100.0;
-      long double diff = Now() - last_sent_;
-
-      if (false && (duration - .001) > diff) {
-        long double sleep_amt = duration - diff - 0.0001;
-        if (sleep_amt > duration)
-          sleep_amt = duration;
-        //sleep_amt -= duration / 10.0;
-        DEBUG("throttling: %f", (double)sleep_amt);
-        sleep_amt /= 2.0;
-        usleep(sleep_amt * 1000000.0);
+    void LogBytes(uint8_t *b, size_t len) {
+      static int fd = -1;
+      if (fd == -1) {
+        char *p = getenv("LOG_BYTES_PATH");
+        if (p)
+          fd = open(p, O_APPEND);
       }
+      static int i = 0;
+      if (fd > 0) {
+        dprintf(fd, "%05d: ", i);
+        for (int i = 0; i < len; i++) { 
+          dprintf(fd, "%hhX", b[i]);
+        }
+        dprintf(fd, "\n");
+        i++;
+      }
+    }
 
-      uint8_t *packet = NULL;
-      size_t packet_len = 0;
-      uint8_t *alac = NULL;
-      size_t alac_len = 0;
-      size_t send_ret = 0;
-      if (EncodePCM(sample, sample_len, &alac, &alac_len)) {
-        //INFO("alac len: %d", alac_len);
-        //LogBytes(alac, alac_len);
-        if (EncodePacket(alac, alac_len, &packet, &packet_len)) {
-          send_ret = SendAll(data_sd_, packet, packet_len);
-          if (send_ret != packet_len) {
-            ERROR("Failed to send packet: %d", send_ret);
+    void Client::OnDataSourceReady(evutil_socket_t socket, short evt) {
+      int amt_read = evbuffer_read(datasrc_buf_, datasrc_fd_, kFrameSizeBytes);
+      int len = evbuffer_get_length(datasrc_buf_);
+      if (len >= kFrameSizeBytes)
+        event_add(rtpwrite_event_, NULL);
+      if (amt_read == 0) { 
+        eof_ = true;
+        event_add(rtpwrite_event_, NULL);
+      } else if (amt_read > 0) {
+        if (len < kFrameSizeBytes)
+          event_add(datasrc_event_, NULL);
+      } else if (errno == EAGAIN || errno == EINTR) {
+        event_add(datasrc_event_, NULL);
+      } else { 
+        ERROR("error reading from data source: %s", strerror(errno));
+        eof_ = true;
+        if (len > 0)
+          event_add(rtpwrite_event_, NULL);
+      }
+    }
+    void Client::OnRTPReady(evutil_socket_t socket, short evt) { 
+      if (evt & EV_READ) {
+        int amt = evbuffer_read(rtp_in_buf_, rtp_sd_, -1);
+        evbuffer_drain(rtp_in_buf_, evbuffer_get_length(rtp_in_buf_));
+      } 
+      if (evt & EV_WRITE) {
+        size_t len = evbuffer_get_length(rtp_out_buf_);
+        if (len == 0 && evbuffer_get_length(datasrc_buf_) > 0) {
+          EncodePCM(datasrc_buf_, alac_buf_);
+          EncodePacket(alac_buf_, rtp_out_buf_);
+          event_add(datasrc_event_, NULL);
+        }
+        len = evbuffer_get_length(rtp_out_buf_);
+
+        if (len > 0) {
+          int amt = evbuffer_write(rtp_out_buf_, rtp_sd_);
+          //static int z = 0;
+          //fprintf(stderr, "%05d: rtp write: %d\r", z, amt);
+          //z++;
+          len = evbuffer_get_length(rtp_out_buf_);
+          if (len == 0) {
+            event_add(datasrc_event_, NULL);
+          } else if (amt == 0) {
+            // rtp eof 
+            // dont' do anything?
+            ERROR("rtp eof");
+          } else if (amt > 0) { 
+            event_add(rtpwrite_event_, NULL);
+          } else {
+            if (errno == EINTR || errno == EAGAIN) {
+              event_add(rtpwrite_event_, NULL);
+            } else {
+              ERROR("got error: %s", strerror(errno));
+              // end here since we cant send any more packets?
+            }
           }
         } else { 
-          ERROR("failed to encode packet");
-        }
-      } else { 
-        ERROR("failed to encode PCM");
+          // there was nothing in the out buffer... then
+          event_add(datasrc_event_, NULL);
+        } 
       }
-      if (packet) 
-        free(packet);
-      if (alac) 
-        free(alac);
-      last_sent_ = Now();
-    }
-
-    void Client::WritePCM(uint8_t *sample, size_t sample_len, bool is_eof) { 
-      int max = kSamplesPerFrame * 4;
-      for (int i = 0; i < sample_len; i++) { 
-        sample_buf_[sample_len_] = sample[i];
-        sample_len_++;
-        if (sample_len_ >= max) {
-          Write(sample_buf_, sample_len_);
-          sample_len_ = 0;
-        }
-      }
-      if (is_eof && sample_len_ > 0) { 
-        Write(sample_buf_, sample_len_);
-        sample_len_ = 0;
-      }
-    }
-   
-    void LogBytes(uint8_t *b, size_t len) {
-      static int i = 0;
-      fprintf(stdout, "%05d: ", i);
-      for (int i = 0; i < len; i++) { 
-        fprintf(stdout, "%hhX", b[i]);
-      }
-      fprintf(stdout, "\n");
-      i++;
-      fflush(stdout);
-    }
-
-    void *RAOP::OnReaderThread(void *c) { 
-      int fd = (int)((int64_t)c);
-      INFO("reading from %d", fd);
-      char x;
-      for (;;) {
-        int st = read(fd, &x, 1);
-        if (st < 0) {
-          ERROR("got %d read status", st);
-          break;
-        }
-      }
-      return NULL;
     }
   }
 }

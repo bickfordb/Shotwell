@@ -171,7 +171,7 @@ TAGS:
 	
 cscope:
 	#echo src/lib/* src/test/* src/mac/* $$(find build/vendor/include) >cscope.files
-	cscope -b $$(find src/lib -type f) $$(find src/test -type f) $$(find src/mac -type f) $$(find build/vendor/include -type f)
+	cscope -b $$(find -E src -type f -regex '.+[.](cc|h|c)') $$(find build/vendor/include -type f)
 
 raop_play:
 	cd src/pp/raop_play \

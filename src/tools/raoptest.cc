@@ -14,23 +14,7 @@ int main(int argc, char **argv) {
   } else { 
     INFO("connected");
   }
-  int f = open("/Users/bran/projects/md1/test-data/y.pcm", O_RDONLY);
-  //FILE *f = fopen("/Users/bran/projects/md1/test-data/y.pcm", "r");
-  //FILE *f = fopen("/Users/bran/projects/md1/test-data/y.pcm", "r");
-  if (f < 0) { 
-    ERROR("Failed to open file");
-    return -1;
-  }
-  uint8_t buf[64];
-  INFO("reading file");
-  while (1) {
-    int amt = read(f, buf, 4);
-    if (amt > 0) {
-      raop.WritePCM(buf, amt, false);
-    } else if (amt < 0) { 
-      break; 
-    }
-  }
+  raop.Play("/Users/bran/projects/md1/test-data/y.pcm");
   INFO("done");
   return 0;
 }

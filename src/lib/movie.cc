@@ -545,7 +545,7 @@ void *RunRAOP(void *ctx) {
       if (got_frame) {
         bool is_eof = false;
         INFO("line size: %d", frame->linesize[0]);
-        client->WritePCM(frame->data[0], frame->linesize[0], is_eof);
+        //client->WritePCM(frame->data[0], frame->linesize[0], is_eof);
       }
     }
     av_free_packet(src_packet);

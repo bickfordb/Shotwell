@@ -18,7 +18,7 @@ export PATH="${BUILDROOT}/vendor/bin:$PATH"
 if [ ! -e "${BUILDROOT}/zlib.stamp" ];
 then
     echo "building zlib"
-    cd src/vendor/zlib-1.2.6
+    cd vendor/zlib-1.2.6
     ./configure --prefix=${BUILDROOT}/vendor --static
     make clean
     make
@@ -29,7 +29,7 @@ fi
 if [ ! -e "${BUILDROOT}/openssl.stamp" ];
 then
     echo "building openssl"
-    cd $projectroot/src/vendor/openssl-1.0.0g
+    cd $projectroot/vendor/openssl-1.0.0g
     ./Configure --prefix=${BUILDROOT}/vendor --openssldir=${BUILDROOT}/vendor/openssl darwin64-x86_64-cc
     make clean
     make
@@ -40,7 +40,7 @@ fi
 if [ ! -e "${BUILDROOT}/sdl.stamp" ];
 then
     echo "building sdl"
-    cd $projectroot/src/vendor/SDL-1.2.15
+    cd $projectroot/vendor/SDL-1.2.15
     ./configure --prefix=${BUILDROOT}/vendor --disable-shared
     make clean
     make
@@ -54,7 +54,7 @@ then
     rm -rf ${BUILDROOT}/scratch
     mkdir ${BUILDROOT}/scratch
     cd ${BUILDROOT}/scratch
-    tar xzvf $projectroot/src/vendor/libav-0.8.tar.gz
+    tar xzvf $projectroot/vendor/libav-0.8.tar.gz
     cd libav-0.8
     ./configure --prefix=${BUILDROOT}/vendor --disable-shared
     make
@@ -65,21 +65,21 @@ fi
 if [ ! -e "${BUILDROOT}/gtest.stamp" ];
 then
     echo "building gtest"
-    cd $projectroot/src/vendor/gtest-1.6.0
+    cd $projectroot/vendor/gtest-1.6.0
     ./configure --prefix=${BUILDROOT}/vendor --disable-shared
     make clean
     make
-    #install $projectroot/src/vendor/gtest-1.6.0/lib
-    #install src/vendor/gtest-1.6.0/lib/.libs/libgtest.a build/vendor/lib
-    install $projectroot/src/vendor/gtest-1.6.0/lib/.libs/libgtest.a ${BUILDROOT}/vendor/lib
-    install $projectroot/src/vendor/gtest-1.6.0/lib/.libs/libgtest_main.a ${BUILDROOT}/vendor/lib
+    #install $projectroot/vendor/gtest-1.6.0/lib
+    #install vendor/gtest-1.6.0/lib/.libs/libgtest.a build/vendor/lib
+    install $projectroot/vendor/gtest-1.6.0/lib/.libs/libgtest.a ${BUILDROOT}/vendor/lib
+    install $projectroot/vendor/gtest-1.6.0/lib/.libs/libgtest_main.a ${BUILDROOT}/vendor/lib
     touch ${BUILDROOT}/gtest.stamp
 fi  
 
 if [ ! -e "${BUILDROOT}/protobuf.stamp" ];
 then
     echo "building protocol buffers"
-    cd $projectroot/src/vendor/protobuf-2.4.1
+    cd $projectroot/vendor/protobuf-2.4.1
     export CXXFLAGS=-g
     ./configure --prefix=${BUILDROOT}/vendor --disable-shared
     make clean
@@ -94,7 +94,7 @@ then
     rm -rf ${BUILDROOT}/scratch
     mkdir -p ${BUILDROOT}/scratch
     cd ${BUILDROOT}/scratch
-    tar xzvf $projectroot/src/vendor/pcre-8.30.tar.gz
+    tar xzvf $projectroot/vendor/pcre-8.30.tar.gz
     cd pcre-8.30
     ./configure --prefix=${BUILDROOT}/vendor --disable-shared
     make
@@ -108,7 +108,7 @@ then
     rm -rf ${BUILDROOT}/scratch
     mkdir -p ${BUILDROOT}/scratch
     cd ${BUILDROOT}/scratch
-    tar xzvf $projectroot/src/vendor/leveldb-239ac9d2dea.tar.gz
+    tar xzvf $projectroot/vendor/leveldb-239ac9d2dea.tar.gz
     cd leveldb-239ac9d2dea
     make
     mkdir -p ${BUILDROOT}/vendor/include/leveldb
@@ -124,8 +124,8 @@ then
   mkdir -p ${BUILDROOT}/scratch
   cd ${BUILDROOT}/scratch
 
-  tar xzvf ${projectroot}/src/vendor/libevent-2.0.17-stable.tar.gz
-  cd libevent-2.0.17-stable
+  tar xzvf ${projectroot}/vendor/libevent-2.0.17-stable.tar.gz
+  cd libevent-2.0.17
   ./configure --disable-shared --prefix=${BUILDROOT}/vendor
   make
   make install
@@ -140,7 +140,7 @@ then
   mkdir -p ${BUILDROOT}/scratch
   cd ${BUILDROOT}/scratch
 
-  tar xzvf ${projectroot}/src/vendor/jansson-2.3.tar.gz
+  tar xzvf ${projectroot}/vendor/jansson-2.3.tar.gz
   cd jansson-2.3
   ./configure --disable-shared --prefix=${BUILDROOT}/vendor
   make
@@ -156,7 +156,7 @@ then
   mkdir -p ${BUILDROOT}/scratch
   cd ${BUILDROOT}/scratch
 
-  tar xzvf ${projectroot}/src/vendor/icu4c-4_8_1_1-src.tgz
+  tar xzvf ${projectroot}/vendor/icu4c-4_8_1_1-src.tgz
   cd icu/source
   ./configure --disable-shared --enable-static --prefix=${BUILDROOT}/vendor --enable-rpath --disable-extras --disable-tests --disable-samples --disable-layout --disable-icuio --with-data-packaging=static
   make
@@ -164,6 +164,5 @@ then
   rm -rf ${BUILDROOT}/scratch
   touch ${BUILDROOT}/icu.stamp
 fi
-
 
 touch ${BUILDROOT}/vendor.stamp
