@@ -1,22 +1,27 @@
+#include <arpa/inet.h>
 #include <locale>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/utsname.h>
 
-#import "AppDelegate.h"
-#import "MD1Slider.h"
-#import "movie.h"
-#include "strnatcmp.h"
+#include "md0/mac/AppDelegate.h"
+#include "md0/mac/Slider.h"
+#include "md0/lib/movie.h"
+#include "md0/lib/strnatcmp.h"
+#include "md0/lib/remote_library.h"
 
 using namespace std;
 using namespace std::tr1;
+using namespace md0::movie;
+using namespace md0;
 
 static const int kLibraryRefreshInterval = 2.0;
 static NSSize kStartupSize = {1100, 600};
 static NSString *kAlbum = @"album";
 static NSString *kArtist = @"artist";
 static NSString *kGenre = @"genre";
-static NSString *kMDNSServiceType = @"_md1._tcp";
+static NSString *kMDNSServiceType = @"_md0._tcp.";
+static NSString *kRAOPServiceType = @"_raop._tcp.";
 static NSString *kNextButton = @"NextButton";
 static NSString *kPath = @"path";
 static NSString *kPlayButton = @"PlayButton";
@@ -28,7 +33,7 @@ static NSString *kTitle = @"title";
 static NSString *kTrackNumber = @"track_number";
 static NSString *kVolumeControl = @"VolumeControl";
 static NSString *kYear = @"year";
-static int kBottomEdgeMargin = 24;
+static int kBottomEdgeMargin = 25;
 
 static NSString *FormatSeconds(double seconds); 
 static NSString * LibraryDir();
@@ -44,7 +49,7 @@ static NSString * LibraryDir() {
       NSUserDomainMask,
       YES);
   NSString *path = [paths objectAtIndex:0];
-  path = [path stringByAppendingPathComponent:@"MD1"];
+  path = [path stringByAppendingPathComponent:@"MD0"];
   mkdir(path.UTF8String, 0755);
   return path;
 }
@@ -57,18 +62,18 @@ static NSString *GetString(const string &s) {
   return [NSString stringWithUTF8String:s.c_str()];
 }
 
-static NSString *GetWindowTitle(Track *t);
-static NSString *GetWindowTitle(Track *t) { 
-  if (t->title().length() && t->artist().length() && t->album().length())
-    return [NSString stringWithFormat:@"%@ - %@ - %@ - MD1", 
-      GetString(t->title()),
-      GetString(t->artist()),
-      GetString(t->album()),
+static NSString *GetWindowTitle(const Track &t);
+static NSString *GetWindowTitle(const Track &t) { 
+  if (t.title().length() && t.artist().length() && t.album().length())
+    return [NSString stringWithFormat:@"%@ - %@ - %@ - MD0", 
+      GetString(t.title()),
+      GetString(t.artist()),
+      GetString(t.album()),
       nil];
-  else if (t->title().length())
-    return [NSString stringWithFormat:@"%@ - MD1", GetString(t->title()), nil];
+  else if (t.title().length())
+    return [NSString stringWithFormat:@"%@ - MD0", GetString(t.title()), nil];
   else
-    return [NSString stringWithFormat:@"%@ - MD1", GetString(t->path()), nil];
+    return [NSString stringWithFormat:@"%@ - MD0", GetString(t.path()), nil];
 }
 
 static bool Contains(const string &haystack, const string &needle) {
@@ -91,26 +96,26 @@ private:
 public:
   TrackComparator(const vector<tuple<NSString *, Direction> > &sorts) : sorts_(sorts) {};
 
-  inline bool operator()(const shared_ptr<Track> &l, const shared_ptr<Track> &r) {
+  inline bool operator()(const Track &l, const Track &r) {
     int cmp = 0; 
     for (vector<SortField>::iterator i = sorts_.begin(); i < sorts_.end(); i++) {
       tuple<NSString *, Direction> field = *i;
       NSString *key = get<0>(field);
       Direction direction = get<1>(field);
       if (key == kArtist) { 
-        cmp = natural_compare(l->artist(), r->artist());
+        cmp = natural_compare(l.artist(), r.artist());
       } else if (key == kAlbum) {
-        cmp = natural_compare(l->album(), r->album());
+        cmp = natural_compare(l.album(), r.album());
       } else if (key == kTitle) {
-        cmp = natural_compare(l->title(), r->title());
+        cmp = natural_compare(l.title(), r.title());
       } else if (key == kGenre) {
-        cmp = natural_compare(l->genre(), r->genre());
+        cmp = natural_compare(l.genre(), r.genre());
       } else if (key == kYear) {
-        cmp = natural_compare(l->year(), r->year());
+        cmp = natural_compare(l.year(), r.year());
       } else if (key == kPath) {
-        cmp = natural_compare(l->path(), r->path());
+        cmp = natural_compare(l.path(), r.path());
       } else if (key == kTrackNumber) {
-        cmp = natural_compare(l->track_number(), r->track_number());
+        cmp = natural_compare(l.track_number(), r.track_number());
       }
       if (direction == Descending)
         cmp = -cmp;
@@ -177,6 +182,12 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   NSMenu *editMenu = [editMenuItem submenu];
   [editMenu removeAllItems];
 
+  selectAllMenuItem_ = [editMenu addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
+  selectAllMenuItem_.target = trackTableView_;
+  selectNoneMenuItem_ = [editMenu addItemWithTitle:@"Select None" action:@selector(selectNone:) keyEquivalent:@"A"];
+  selectNoneMenuItem_.target = trackTableView_;
+  addToLibraryMenuItem_ = [fileMenu addItemWithTitle:@"Add to Library" action:@selector(addToLibrary:) keyEquivalent:@"o"];
+  addToLibraryMenuItem_.target = self;
   cutMenuItem_ = [editMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
   cutMenuItem_.target = self;
   copyMenuItem_ = [editMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
@@ -188,21 +199,37 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   pasteMenuItem_.target = self;
 }
 
+- (void)addToLibrary:(id)sender { 
+  // Create the File Open Dialog class.
+  NSOpenPanel *openPanel = [NSOpenPanel openPanel];
+  [openPanel setCanChooseFiles:YES];
+  [openPanel setCanChooseDirectories:YES];
+  vector<string> paths;
+  if ([openPanel runModal] == NSOKButton) {
+    for (NSURL *p in [openPanel URLs]) { 
+      paths.push_back([[p path] UTF8String]);
+    }
+  }
+  localLibrary_->Scan(paths, false);
+}
+
 - (void)delete:(id)sender { 
+  if (library_ != localLibrary_)
+    return;
   @synchronized(self) { 
     NSIndexSet *indices = [trackTableView_ selectedRowIndexes];
     NSUInteger i = [indices lastIndex];
     while (i != NSNotFound) {
-      if (i < 0 || i >= tracks_->size())
+      if (i >= tracks_.size())
         continue;
       needsReload_ = YES;
-      shared_ptr<Track> t = tracks_->at(i);
-      tracks_->erase(tracks_->begin() + i);
-      library_->Delete(t->path());
-      int n = allTracks_->size();
+      Track t = tracks_.at(i);
+      tracks_.erase(tracks_.begin() + i);
+      localLibrary_->Delete(t.path());
+      int n = allTracks_.size();
       for (int j = 0; j < n; j++) {
-        if (allTracks_->at(j).get() == t.get()) {
-          allTracks_->erase(allTracks_->begin() + j); 
+        if (allTracks_.at(j).path() == t.path()) {
+          allTracks_.erase(allTracks_.begin() + j); 
           break;
         }
       }
@@ -215,7 +242,6 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   NSPasteboard *pboard = [NSPasteboard generalPasteboard];
   NSArray *items = [pboard readObjectsForClasses:[NSArray arrayWithObjects:[NSURL class], nil]
     options:nil]; 
-  NSLog(@"paste: %@", items);
   vector<string> paths;
   for (NSURL *u in items) {
     if (![u isFileURL]) {
@@ -224,7 +250,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     NSString *p = [u path];
     paths.push_back(p.UTF8String);
   }
-  library_->Scan(paths, false);
+  localLibrary_->Scan(paths, false);
 }
 
 - (void)copy:(id)sender { 
@@ -236,19 +262,23 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     [pb clearContents];
     [pb declareTypes:[NSArray arrayWithObject:NSURLPboardType] owner:nil];
     while (i != NSNotFound) {
-      if (i < 0 || i >= tracks_->size())
+      if (i >= tracks_.size())
         continue;
-      shared_ptr<Track> t = tracks_->at(i);
-      NSString *path = [NSString stringWithUTF8String:t->path().c_str()];
+      Track t = tracks_.at(i);
+      NSString *path = [NSString stringWithUTF8String:t.path().c_str()];
       NSURL *url = [NSURL fileURLWithPath:path];
       [urls addObject:url];
       i = [indices indexLessThanIndex:i];
+      requestClearSelection_ = YES;
     }
     [pb writeObjects:urls];
   }
 }
 
 - (void)cut:(id)sender { 
+  if (library_ != localLibrary_)
+    return;
+
   @synchronized(self) { 
     NSIndexSet *indices = [trackTableView_ selectedRowIndexes];
     NSUInteger i = [indices lastIndex];
@@ -257,20 +287,19 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     [pb clearContents];
     [pb declareTypes:[NSArray arrayWithObject:NSURLPboardType] owner:nil];
     while (i != NSNotFound) {
-      if (i < 0 || i >= tracks_->size())
+      if (i >= tracks_.size())
         continue;
       needsReload_ = YES;
-      shared_ptr<Track> t = tracks_->at(i);
-      NSString *path = [NSString stringWithUTF8String:t->path().c_str()];
+      Track t = tracks_.at(i);
+      NSString *path = [NSString stringWithUTF8String:t.path().c_str()];
       NSURL *url = [NSURL fileURLWithPath:path];
-      //[url writeToPasteboard:pb];
       [urls addObject:url];
-      tracks_->erase(tracks_->begin() + i);
-      library_->Delete(t->path());
-      int n = allTracks_->size();
+      tracks_.erase(tracks_.begin() + i);
+      localLibrary_->Delete(t.path());
+      int n = allTracks_.size();
       for (int j = 0; j < n; j++) {
-        if (allTracks_->at(j).get() == t.get()) {
-          allTracks_->erase(allTracks_->begin() + j); 
+        if (allTracks_.at(j).path() == t.path()) {
+          allTracks_.erase(allTracks_.begin() + j); 
           break;
         }
       }
@@ -295,9 +324,98 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [mainWindow_ setAutorecalculatesContentBorderThickness:YES forEdge:NSMaxYEdge];
   [mainWindow_ setAutorecalculatesContentBorderThickness:YES forEdge:NSMinYEdge];
   [mainWindow_ setContentBorderThickness:kBottomEdgeMargin forEdge:NSMinYEdge];
-  mainWindow_.title = @"MD1";
+  mainWindow_.title = @"MD0";
 }
 
+- (void)setupAudioSelect { 
+  int w = 160;
+  int x = ((NSView *)[mainWindow_ contentView]).bounds.size.width;
+  x -= w + 10;
+  audioOutputSelect_ = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(x, 4, w, 18)];
+  audioOutputSelect_.autoresizingMask = NSViewMinXMargin | NSViewMaxYMargin;
+  [audioOutputSelect_ setTarget:self];
+  [audioOutputSelect_ setAction:@selector(audioOutputSelected:)];
+  NSButtonCell *buttonCell = (NSButtonCell *)[audioOutputSelect_ cell];
+  [buttonCell setFont:[NSFont systemFontOfSize:11.0]];
+  [[mainWindow_ contentView] addSubview:audioOutputSelect_];
+  [self refreshAudioOutputList];
+}
+
+- (void)audioOutputSelected:(id)sender { 
+  NSLog(@"selected audio output");
+  NSInteger i = [sender indexOfSelectedItem];
+  if (i == 0) {
+    [self selectLocalAudio];
+  } else {
+    NSString *s = @"10.0.1.10";
+    uint16_t port = 5000;
+    [self selectRemoteAudioHost:s port:port];
+  }
+}
+   
+- (void)selectLocalAudio {
+  md0::movie::Movie::StartSDL();
+}
+
+- (void)setupLibrarySelect { 
+  int w = 160;
+  int x = ((NSView *)[mainWindow_ contentView]).bounds.size.width;
+  x -= w + 10;
+  librarySelect_ = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(5, 4, w, 18)];
+  librarySelect_.autoresizingMask = NSViewMaxXMargin | NSViewMaxYMargin;
+  NSButtonCell *buttonCell = (NSButtonCell *)[librarySelect_ cell];
+  [buttonCell setFont:[NSFont systemFontOfSize:11.0]];
+  [librarySelect_ setTarget:self];
+  [librarySelect_ setAction:@selector(librarySelected:)];
+  [[mainWindow_ contentView] addSubview:librarySelect_];
+  [self refreshLibraryList];
+}
+
+- (void)librarySelected:(id)sender { 
+  NSInteger index = [librarySelect_ indexOfSelectedItem];
+  if (index < 0) 
+    return;
+  string name([[librarySelect_ titleOfSelectedItem] UTF8String]);
+  @synchronized (self) {
+    if (library_ != localLibrary_)
+      delete library_;
+    if (index == 0) {
+      library_ = localLibrary_;
+    } else { 
+      for (set<Service>::iterator i = services_.begin(); i != services_.end(); i++) {
+        if (i->mdns_type() == "_md0._tcp." && i->name() == name) {
+          library_ = new RemoteLibrary(i->host(), i->port());
+          break;
+        }
+      }
+    }
+  }
+  needsLibraryRefresh_ = YES;
+}
+
+- (void)selectRemoteAudioHost:(NSString *)host port:(uint16_t)port {
+  md0::movie::Movie::StartRAOP([host UTF8String], port);
+}
+
+- (void)refreshAudioOutputList {
+  [audioOutputSelect_ removeAllItems];
+  [audioOutputSelect_ addItemWithTitle:@"Computer"];
+  set<Service>::iterator i;
+  for (i = services_.begin(); i != services_.end(); i++) {
+    if (i->mdns_type() == "_raop._tcp.") 
+      [audioOutputSelect_ addItemWithTitle:GetString(i->name())];
+  }
+}
+
+- (void)refreshLibraryList {
+  [librarySelect_ removeAllItems];
+  [librarySelect_ addItemWithTitle:@"Library"];
+  set<Service>::iterator i;
+  for (i = services_.begin(); i != services_.end(); i++) {
+    if (i->mdns_type() == "_md0._tcp.") 
+      [librarySelect_ addItemWithTitle:GetString(i->name())];
+  }
+}
 - (void)setupTrackTable {
   trackTableFont_ = [[NSFont systemFontOfSize:11.0] retain];
   trackTablePlayingFont_ = [[NSFont boldSystemFontOfSize:11.0] retain];
@@ -382,6 +500,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [trackTableView_ setDoubleAction:@selector(trackTableDoubleClicked:)];
   [trackTableView_ setTarget:self];
   [contentView_ addSubview:trackTableScrollView_];
+  [trackTableView_ registerForDraggedTypes:[NSArray arrayWithObjects:NSURLPboardType, NSFilenamesPboardType, nil]];
 }
 
 - (void)setupToolbar { 
@@ -425,10 +544,9 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [[nextButton_ cell] setImageScaling:0.8];
   [[playButton_ cell] setImageScaling:0.8];
   [[previousButton_ cell] setImageScaling:0.8];
-  NSLog(@"next scaling: %f", [[nextButton_ cell] imageScaling]);
 
   // Volume
-  volumeSlider_ = [[MD1Slider alloc] initWithFrame:NSMakeRect(0, 0, 100, 22)];
+  volumeSlider_ = [[Slider alloc] initWithFrame:NSMakeRect(0, 0, 100, 22)];
   [volumeSlider_ setContinuous:YES];
   [volumeSlider_ setTarget:self];
   [volumeSlider_ setAction:@selector(volumeClicked:)];
@@ -443,7 +561,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   NSView *progressControl = [[NSView alloc] 
     initWithFrame:NSMakeRect(0, 0, 5 + 60 + 5 + 300 + 5 + + 60 + 5, 22)];
   // Progress Bar
-  progressSlider_ = [[MD1Slider alloc] initWithFrame:NSMakeRect(5 + 60 + 5, 0, 300, 22)];
+  progressSlider_ = [[Slider alloc] initWithFrame:NSMakeRect(5 + 60 + 5, 0, 300, 22)];
   [progressSlider_ setContinuous:YES];
   [progressSlider_ setTarget:self];
   [progressSlider_ setAction:@selector(progressClicked:)];
@@ -496,7 +614,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   searchItem_ = [[NSToolbarItem alloc] initWithItemIdentifier:kSearchControl];
   [searchItem_ setView:searchField_];
 
-  toolbar_ = [[NSToolbar alloc] initWithIdentifier:@"md1toolbar"];
+  toolbar_ = [[NSToolbar alloc] initWithIdentifier:@"md0toolbar"];
   [toolbar_ setDelegate:self];
   [toolbar_ setDisplayMode:NSToolbarDisplayModeIconOnly];
   [toolbar_ insertItemWithItemIdentifier:kPlayButton atIndex:0];
@@ -504,7 +622,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification *)n {
-  MovieInit();
+  md0::movie::Movie::Init();
   trackEnded_ = NO;
   requestPrevious_ = NO;
   requestTogglePlay_ = NO;
@@ -512,12 +630,14 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   needsLibraryRefresh_ = NO;
 
   NSApplication *sharedApp = [NSApplication sharedApplication];
-  library_.reset(new Library());
-
-  library_->Open(LibraryPath().UTF8String);
-
-  tracks_.reset(new vector<shared_ptr<Track> >());
-  movie_.reset();
+  localLibrary_ = new LocalLibrary();
+  library_ = localLibrary_;
+  localLibrary_->Open(LibraryPath().UTF8String);
+  @synchronized(self) {
+    if (movie_) 
+      delete movie_;
+    movie_ = NULL;
+  }
   seekToRow_ = -1;
   needsReload_ = NO;
   lastLibraryRefresh_ = 0;
@@ -525,25 +645,37 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   vector<tuple<string, int> > hosts;
   tuple<string, int> host("0.0.0.0", kDefaultPort);
   hosts.push_back(host);
-  daemon_.reset(new Daemon(hosts, library_));
+  daemon_ = new Daemon(hosts, localLibrary_);
   daemon_->Start();
 
   struct utsname the_utsname;
   uname(&the_utsname);
   NSString *nodeName = [NSString stringWithUTF8String:the_utsname.nodename];
   netService_ = [[NSNetService alloc] 
-    initWithDomain:@""
+    initWithDomain:@"local."
     type:kMDNSServiceType
     name:nodeName 
     port:kDefaultPort];
+  [netService_ retain];
   [netService_ publish];
+  [netService_ scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
 
-  //std::vector<std::string> pathsToScan;
-  //library_->Scan(pathsToScan, false);
-  library_->Prune();
+  raopServiceBrowser_ = [[NSNetServiceBrowser alloc] init];
+  [raopServiceBrowser_ setDelegate:self];
+  [raopServiceBrowser_ searchForServicesOfType:kRAOPServiceType inDomain:@"local."];
+  [raopServiceBrowser_ retain];
+
+  mdServiceBrowser_ = [[NSNetServiceBrowser alloc] init];
+  [mdServiceBrowser_ setDelegate:self];
+  [mdServiceBrowser_ searchForServicesOfType:kMDNSServiceType inDomain:@"local."];
+  [mdServiceBrowser_ retain];
+
+  localLibrary_->Prune();
   [self setupWindow];
   [self setupToolbar];
   [self setupTrackTable];
+  [self setupAudioSelect];
+  [self setupLibrarySelect];
   [self setupMenu];
 
   sortFields_.clear();
@@ -566,6 +698,62 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   pollLibraryTimer_ = [NSTimer scheduledTimerWithTimeInterval:10.0 target:self selector:@selector(onPollLibraryTimer:) userInfo:nil repeats:YES];
   [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
 }
+
+- (void)netServiceBrowser:(NSNetServiceBrowser *)netServiceBrowser didFindDomain:(NSString *)domainName moreComing:(BOOL)moreDomainsComing {
+}
+
+- (NSDragOperation)tableView:(NSTableView *)aTableView validateDrop:(id < NSDraggingInfo >)info proposedRow:(NSInteger)row proposedDropOperation:(NSTableViewDropOperation)operation {  
+  NSLog(@"validate drop");
+  return operation;
+}
+
+- (BOOL)tableView:(NSTableView *)aTableView acceptDrop:(id <NSDraggingInfo>)info row:(NSInteger)row dropOperation:(NSTableViewDropOperation)operation {
+  NSPasteboard *pasteboard = [info draggingPasteboard];
+  NSArray *paths = [pasteboard propertyListForType:NSFilenamesPboardType];
+  BOOL ret = NO;
+  vector<string> paths0;
+    
+  for (NSString *path in paths)
+    paths0.push_back([path UTF8String]);
+  localLibrary_->Scan(paths0, false);
+  return paths0.size() ? YES : NO;
+}
+     
+- (void)netServiceBrowser:(NSNetServiceBrowser *)netServiceBrowser didFindService:(NSNetService *)netService moreComing:(BOOL)moreServicesComing {
+  [netService retain];
+  [netService setDelegate:self];
+  [netService resolveWithTimeout:10.0];
+}
+
+- (void)netServiceDidResolveAddress:(NSNetService *)netService {
+  string addr;
+
+  string name([[netService hostName] UTF8String]);
+  for (NSData *d in [netService addresses]) {
+    struct sockaddr *a = ((struct sockaddr *)[d bytes]);
+    if (a->sa_family != AF_INET) { // we only want ipv4
+      continue;
+    }
+    char buf[256];
+    buf[0] = 0;
+    if (inet_ntop(AF_INET, &((struct sockaddr_in *)a)->sin_addr, buf, 256)) {
+      addr = (const char *)buf;
+      break;
+    }
+  } 
+  if (addr.length() > 0) {
+    Service s(addr, [netService port], [[netService hostName] UTF8String], [[netService type] UTF8String]);
+    services_.insert(s);
+  }
+  [self refreshAudioOutputList];
+  [self refreshLibraryList];
+  [netService autorelease];
+}
+
+- (void)netService:(NSNetService *)sender didNotResolve:(NSDictionary *)errorDict {
+  NSLog(@"failed to resolve: %@ dict:%@", sender, errorDict);
+}
+
 
 - (void)tableView:(NSTableView *)tableView didClickTableColumn:(NSTableColumn *)tableColumn {
   NSString *ident = tableColumn.identifier;
@@ -663,17 +851,14 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
         parts0.push_back(s); 
     }
   }
-  shared_ptr<vector<shared_ptr<Track> > > filteredTracks(new vector<shared_ptr<Track > >);
-  for (vector<shared_ptr<Track> >::iterator i = allTracks_->begin();   
-      i < allTracks_->end(); 
-      i++) {
-    shared_ptr<Track> t = *i;  
-    if (parts0.size() == 0 || IsTrackMatchAllTerms(t.get(), parts0)) {
-      filteredTracks->push_back(t);
-    }
-  }
   @synchronized(self) {
-    tracks_ = filteredTracks;
+    tracks_.clear();
+    for (vector<Track>::iterator i = allTracks_.begin(); i < allTracks_.end(); i++) {
+      Track t(*i);
+      if (parts0.size() == 0 || IsTrackMatchAllTerms(&t, parts0)) {
+        tracks_.push_back(t);
+      }
+    }
     needsReload_ = YES;
   }
 }
@@ -705,22 +890,22 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   double pct = duration > 0 ? elapsed / duration : 0;
   durationText_.stringValue = FormatSeconds(duration);
   elapsedText_.stringValue = FormatSeconds(elapsed);
-  if (![progressSlider_ isMouseDown] && !movie_->isSeeking())
+  if (![progressSlider_ isMouseDown] && !movie_->IsSeeking())
     [progressSlider_ setDoubleValue:pct];
 }
 
 - (void)executeSort { 
   @synchronized(self) {
     TrackComparator cmp(sortFields_);
-    sort(allTracks_->begin(), allTracks_->end(), cmp);  
+    sort(allTracks_.begin(), allTracks_.end(), cmp);  
   }
 }
 
 - (void)onPollMovieTimer:(id)sender { 
-  if (track_) {
-    mainWindow_.title = GetWindowTitle(track_.get());
+  if (track_.path().length() > 0) {
+    mainWindow_.title = GetWindowTitle(track_);
   } else { 
-    mainWindow_.title = @"MD1";
+    mainWindow_.title = @"MD0";
   }
   if (trackEnded_) {
     [self playNextTrack];
@@ -759,7 +944,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   }
 
   if (movie_ != NULL) {
-    if (![progressSlider_ isMouseDown] && !movie_->isSeeking()) { 
+    if (![progressSlider_ isMouseDown] && !movie_->IsSeeking()) { 
       double duration = movie_->Duration();
       double elapsed = movie_->Elapsed();
       [self displayElapsed:elapsed duration:duration];
@@ -783,13 +968,14 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     struct timeval now;
     gettimeofday(&now, NULL);
     long double now0 = ((long double)now.tv_sec) + (((long double)now.tv_usec) / 1000000.0);
+
     if (needsLibraryRefresh_
         || (lastLibraryRefresh_ == 0)
         || ((lastLibraryRefresh_ < t) && ((now0 - lastLibraryRefresh_) > kLibraryRefreshInterval))) {
       predicateChanged_ = YES;
       sortChanged_ = YES;
-      NSLog(@"refreshing library");
-      allTracks_ = library_->GetAll();
+      allTracks_.clear();
+      library_->GetAll(&allTracks_);
       needsLibraryRefresh_ = NO;
       needsReload_ = YES;
       sortChanged_ = YES;
@@ -820,11 +1006,13 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 }
 
 - (void)onPollLibraryTimer:(id)sender { 
+  [raopServiceBrowser_ searchForServicesOfType:kRAOPServiceType inDomain:@"local."];
+  [mdServiceBrowser_ searchForServicesOfType:kMDNSServiceType inDomain:@"local."];
 }
 
 - (void)trackTableDoubleClicked:(id)sender { 
   int row = [trackTableView_ clickedRow];
-  if (row >= 0 && row < tracks_->size()) {
+  if (row >= 0 && row < tracks_.size()) {
     [self playTrackAtIndex:row];
   }
 }
@@ -833,15 +1021,17 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   @synchronized(self) {
     if (index < 0)
       return;
-    if (index >= tracks_->size())
+    if (index >= tracks_.size())
       return;
-    shared_ptr<Track> aTrack = tracks_->at(index);
-    NSLog(@"play: %s", aTrack->path().c_str());
-    if (movie_.get() != NULL) {
+    Track aTrack = tracks_.at(index);
+    NSLog(@"play: %s", aTrack.path().c_str());
+    if (movie_) {
       movie_->Stop();
     }
     track_ = aTrack;
-    movie_.reset(new Movie(aTrack->path().c_str()));
+    if (movie_)
+      delete movie_;
+    movie_ = new Movie(aTrack.path().c_str());
     movie_->Play();
     movie_->SetListener(HandleMovieEvent, self);
     needsReload_ = YES;
@@ -850,7 +1040,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 }
 
 - (void)handleMovie:(Movie *)movie event:(MovieEvent)event data:(void *)data {
-  if (movie != movie_.get())
+  if (movie != movie_)
     return;
   switch (event) { 
     case kAudioFrameProcessedMovieEvent:
@@ -867,7 +1057,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 }
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)aTableView {
-  return tracks_->size();
+  return tracks_.size();
 }
 
 /*
@@ -876,10 +1066,9 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 - (void)playNextTrack {
   int idx = 0;
   int found = -1;  
-  if (track_) { 
-    vector<shared_ptr<Track > > *ts = tracks_.get();
-    for (vector<shared_ptr<Track> >::iterator i = ts->begin(); i < ts->end(); i++) {
-       if (i->get()->path() == track_->path()) {
+  if (track_.path().length()) { 
+    for (vector<Track>::iterator i = tracks_.begin(); i < tracks_.end(); i++) {
+       if (i->path() == track_.path()) {
          found = idx;       
          break;
        }
@@ -893,10 +1082,9 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   int idx = 0;
   int found = -1;  
   int req = 0;
-  if (track_) { 
-    vector<shared_ptr<Track > > *ts = tracks_.get();
-    for (vector<shared_ptr<Track> >::iterator i = ts->begin(); i < ts->end(); i++) {
-       if (i->get()->path() == track_->path()) {
+  if (track_.path().length()) { 
+    for (vector<Track>::const_iterator i = tracks_.begin(); i < tracks_.end(); i++) {
+       if (i->path() == track_.path()) {
          found = idx;       
          break;
        }
@@ -908,28 +1096,28 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [self playTrackAtIndex:req];
 }
 - (id)tableView:(NSTableView *)aTableView objectValueForTableColumn:(NSTableColumn *)aTableColumn row:(NSInteger)rowIndex {
-  shared_ptr<Track> t = (*tracks_)[rowIndex];
+  Track t(tracks_.at(rowIndex));
   NSString *identifier = aTableColumn.identifier;
   id result = nil;
   NSString *s = nil;
-  bool isPlaying = (track_
+  bool isPlaying = (track_.path().length()
         && movie_
         && movie_->state() == kPlayingMovieState
-        && t->path() == track_->path());
+        && t.path() == track_.path());
   if (identifier == kArtist)
-    s = GetString(t->artist());
+    s = GetString(t.artist());
   else if (identifier == kAlbum)
-    s = GetString(t->album());
+    s = GetString(t.album());
   else if (identifier == kGenre)
-    s = GetString(t->genre());
+    s = GetString(t.genre());
   else if (identifier == kYear)
-    s = GetString(t->year());
+    s = GetString(t.year());
   else if (identifier == kTitle)
-    s = GetString(t->title());
+    s = GetString(t.title());
   else if (identifier == kTrackNumber)
-    s = GetString(t->track_number());
+    s = GetString(t.track_number());
   else if (identifier == kPath)
-    s = GetString(t->path());
+    s = GetString(t.path());
   else if (identifier == kStatus) {
     if (isPlaying) {
       result = playImage_;

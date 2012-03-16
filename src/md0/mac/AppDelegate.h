@@ -1,12 +1,19 @@
-#import <Cocoa/Cocoa.h>
-#import "library.h"
-#import "movie.h"
-#import "MD1Slider.h"
-#include <tr1/memory>
-#include <vector>
-#include <tr1/tuple>
-#include "daemon.h"
+#ifndef _APPDELEGATE_H_
+#define _APPDELEGATE_H_
 
+#import <Cocoa/Cocoa.h>
+#include <set>
+#include <tr1/memory>
+#include <tr1/tuple>
+#include <vector>
+#include "md0/lib/library.h"
+#include "md0/lib/movie.h"
+#include "md0/mac/Slider.h"
+#include "md0/mac/Service.h"
+#include "md0/lib/daemon.h"
+#include "md0/lib/local_library.h"
+
+using namespace md0;
 using namespace std;
 using namespace std::tr1;
 
@@ -18,7 +25,8 @@ typedef enum  {
 
 typedef tuple<NSString *, Direction> SortField;
 
-@interface AppDelegate : NSObject <NSApplicationDelegate, NSTableViewDataSource, NSTableViewDelegate, NSToolbarDelegate> {
+@interface AppDelegate : NSObject <NSApplicationDelegate, NSNetServiceBrowserDelegate, NSNetServiceDelegate, NSTableViewDataSource, NSTableViewDelegate, NSToolbarDelegate> {
+  set<md0::Service> services_;
   BOOL needsReload_; 
   BOOL sortChanged_;
   BOOL trackEnded_;
@@ -29,8 +37,10 @@ typedef tuple<NSString *, Direction> SortField;
   BOOL needsLibraryRefresh_;
   int seekToRow_;
   long double lastLibraryRefresh_;
-  shared_ptr<Daemon> daemon_;
+  Daemon *daemon_;
   NSNetService *netService_;
+  NSNetServiceBrowser *raopServiceBrowser_;
+  NSNetServiceBrowser *mdServiceBrowser_;
   vector<SortField> sortFields_;
   NSFont *trackTableFont_;
   NSFont *trackTablePlayingFont_;
@@ -41,20 +51,24 @@ typedef tuple<NSString *, Direction> SortField;
   NSButton *nextButton_;
   NSButton *playButton_;
   NSButton *previousButton_;
+  NSPopUpButton *audioOutputSelect_;
+  NSPopUpButton *librarySelect_;
+  NSMenuItem *addToLibraryMenuItem_;
   NSMenuItem *cutMenuItem_;
   NSMenuItem *pasteMenuItem_;
   NSMenuItem *copyMenuItem_;
   NSMenuItem *deleteMenuItem_;
   NSMenuItem *playMenuItem_;
+  NSMenuItem *selectAllMenuItem_;
+  NSMenuItem *selectNoneMenuItem_;
   NSMenuItem *stopMenuItem_;
   NSMenuItem *nextMenuItem_;
   NSMenuItem *prevMenuItem_;
-
   NSScrollView *trackTableScrollView_;
   NSSearchField *searchField_;
   NSToolbarItem *searchItem_;
-  MD1Slider *progressSlider_;
-  MD1Slider *volumeSlider_;
+  Slider *progressSlider_;
+  Slider *volumeSlider_;
   NSTableView *trackTableView_;
   NSTextField *durationText_;
   NSTextField *elapsedText_;
@@ -69,11 +83,12 @@ typedef tuple<NSString *, Direction> SortField;
   NSView *volumeControl_;
   NSToolbarItem *volumeItem_;
   NSWindow *mainWindow_;
-  shared_ptr<Library> library_;
-  shared_ptr<Movie> movie_;
-  shared_ptr<Track> track_;
-  shared_ptr<vector<shared_ptr<Track> > > allTracks_;  
-  shared_ptr<vector<shared_ptr<Track> > > tracks_;  
+  Library *library_;
+  LocalLibrary *localLibrary_;
+  md0::movie::Movie *movie_;
+  Track track_;
+  vector<Track> allTracks_;  
+  vector<Track> tracks_;  
   NSString *searchQuery_;
   bool predicateChanged_;
 
@@ -82,14 +97,20 @@ typedef tuple<NSString *, Direction> SortField;
 @property (retain) NSString *searchQuery;
 
 - (void)displayElapsed:(double)elapsed duration:(double)duration;
-- (void)handleMovie:(Movie *)m event:(MovieEvent)event data:(void *)data;
-- (void)playTrackAtIndex:(int)idx;
-- (void)playNextTrack;
 - (void)executeSearch;
-- (void)updateTableColumnHeaders;
-- (void)setupWindow;
-- (void)setupTrackTable;
-- (void)setupToolbar;
+- (void)handleMovie:(md0::movie::Movie *)m event:(md0::movie::MovieEvent)event data:(void *)data;
+- (void)playNextTrack;
 - (void)playPreviousTrack;
-
+- (void)playTrackAtIndex:(int)idx;
+- (void)setupAudioSelect;
+- (void)setupToolbar;
+- (void)setupTrackTable;
+- (void)setupWindow;
+- (void)updateTableColumnHeaders;
+- (void)refreshAudioOutputList;
+- (void)refreshLibraryList;
+- (void)selectLocalAudio;
+- (void)selectRemoteAudioHost:(NSString *)host port:(uint16_t)port;
 @end
+
+#endif

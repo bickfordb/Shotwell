@@ -1,19 +1,22 @@
 #ifndef _DAEMON_H_
 #define _DAEMON_H_
 
-#include "library.h"
+extern "C" {
 #include <event2/event.h>
 #include <event2/http.h>
 #include <pthread.h>
+#include <event2/buffer.h>
+}
 #include <string>
 #include <tr1/memory>
 #include <tr1/tuple>
 #include <vector>
 #include <pcrecpp.h>
-#include <event2/buffer.h>
+#include "md0/lib/local_library.h"
 
 using namespace std;
 using namespace std::tr1;
+using namespace md0;
 
 typedef string Address;
 typedef int Port;
@@ -63,7 +66,7 @@ class Request {
 
 class Daemon {
 private:
-  shared_ptr<Library> library_;
+  LocalLibrary *library_;
   vector<tuple<string, int> > listen_to_;
   pthread_t main_thread_;
   bool running_;
@@ -79,7 +82,7 @@ public:
   bool HandleTrackRequest(Request *r);
   void HandleRequest(Request *r);
   void RespondNotFound(Request *r);
-  Daemon(const vector<Host> &listen_to, shared_ptr<Library> library);
+  Daemon(const vector<Host> &listen_to, LocalLibrary* library);
   ~Daemon();
   void Start();
   void Stop();

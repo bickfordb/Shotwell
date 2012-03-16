@@ -1,9 +1,11 @@
+#ifndef _SLIDER_H_
+#define _SLIDER_H_
 
 #import <Cocoa/Cocoa.h>
 
 extern NSString *kSliderIsUpNotification;
 
-@interface MD1Slider : NSSlider {
+@interface Slider : NSSlider {
   BOOL isMouseDown_;  
 }
 
@@ -11,4 +13,4 @@ extern NSString *kSliderIsUpNotification;
 
 
 @end
-
+#endif

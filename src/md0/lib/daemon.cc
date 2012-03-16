@@ -11,7 +11,6 @@ static void OnRequest(evhttp_request *r, void *ctx);
 static void json_object_set_integer(json_t *o, const string &key, int val);
 static void json_object_set_string(json_t *o, const string &key, const string &val);
 
-
 static void OnRequest(evhttp_request *r, void *ctx) {
   Request r0(r); 
   ((Daemon *)ctx)->HandleRequest(&r0);
@@ -59,17 +58,17 @@ bool Daemon::HandleLibraryRequest(Request *r) {
   r->AddResponseHeader("Content-Type", "application/json");
   json_t *obj = json_object();
   json_t *tracks = json_array();
-  shared_ptr<vector<shared_ptr<Track> > > all_tracks = library_->GetAll();
-  for (vector<shared_ptr<Track > >::iterator i = all_tracks->begin(); i < all_tracks->end(); i++) {
-    shared_ptr<Track> t = *i;
+  vector<Track> all_tracks;
+  library_->GetAll(&all_tracks);
+  for (vector<Track>::iterator i = all_tracks.begin(); i < all_tracks.end(); i++) {
     json_t *tobj = json_object();
-    json_object_set_string(tobj, "artist", t->artist());
-    json_object_set_string(tobj, "album", t->album());
-    json_object_set_string(tobj, "genre", t->genre());
-    json_object_set_string(tobj, "title", t->title());
-    json_object_set_string(tobj, "year", t->year());
-    json_object_set_string(tobj, "track_number", t->track_number());
-    json_object_set_string(tobj, "path", t->path());
+    json_object_set_string(tobj, "artist", i->artist());
+    json_object_set_string(tobj, "album", i->album());
+    json_object_set_string(tobj, "genre", i->genre());
+    json_object_set_string(tobj, "title", i->title());
+    json_object_set_string(tobj, "year", i->year());
+    json_object_set_string(tobj, "track_number", i->track_number());
+    json_object_set_string(tobj, "path", i->path());
     json_array_append(tracks, tobj);
     json_decref(tobj);
   }
@@ -126,7 +125,7 @@ bool Daemon::HandleTrackRequest(Request *r) {
 }
 
 void Daemon::HandleRequest(Request *r) { 
-    r->AddResponseHeader("Server", "md1/0.0");
+    r->AddResponseHeader("Server", "md0/0.0");
     if (this->HandleHomeRequest(r))
       return;
     else if (this->HandleLibraryRequest(r))
@@ -137,7 +136,7 @@ void Daemon::HandleRequest(Request *r) {
       r->RespondNotFound();
 }
 
-Daemon::Daemon(const vector<Host> &listen_to, shared_ptr<Library> library) : 
+Daemon::Daemon(const vector<Host> &listen_to, LocalLibrary *library) : 
   library_(library),
   listen_to_(listen_to),
   root_pat_("^/$"),
@@ -154,7 +153,6 @@ Daemon::Daemon(const vector<Host> &listen_to, shared_ptr<Library> library) :
     evhttp_bind_socket(event_http_, addr.c_str(), port);
   }
   evhttp_set_gencb(event_http_, OnRequest, this);
-  library_ = library;
   root_pat_ = pcrecpp::RE("^/");
 }
 

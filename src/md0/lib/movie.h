@@ -9,9 +9,9 @@
 using namespace std;
 using namespace std::tr1;
 
-void MovieInit();
-int MovieStartRAOP(const string &host, int port);
-void MovieStartSDL();
+namespace md0 {
+namespace movie {
+
 
 typedef enum {
   kErrorMovieState = -1,
@@ -27,7 +27,7 @@ typedef enum  {
 } MovieEvent;
 
 class Movie;
-class ReaderThreadState;
+class Reader;
 typedef void (*MovieListener)(void *ctx, Movie *m, MovieEvent event, void *data);
 double GetVolume();
 void SetVolume(double);
@@ -38,10 +38,13 @@ private:
     pthread_mutex_t lock_;
     MovieListener listener_;
     void *listener_ctx_;
-    shared_ptr<ReaderThreadState> reader_thread_state_;
+    Reader *reader_;
     void Lock();
     void Unlock();
+    //static void StartRAOP(const string &host, int port);
+    //static void StartSDL();
 public:
+    static void Init(); 
     void SetListener(MovieListener listener, void *ctx); 
     void Signal(MovieEvent event, void *data);
     Movie(const std::string & filename);
@@ -54,6 +57,11 @@ public:
     void Seek(double seconds); 
     string filename() { return filename_; }
     bool IsSeeking();
+    static void StartSDL();
+    static void StartRAOP(const string &host, uint16_t port);
+
 };
+}
+}
 #endif
 

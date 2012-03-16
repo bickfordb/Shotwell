@@ -1,9 +1,9 @@
 
-#import "MD1Slider.h"
+#import "Slider.h"
 
 NSString *kSliderIsUpNotification = @"SliderIsUpNotification";
 
-@implementation MD1Slider
+@implementation Slider
 
 - (id)initWithFrame:(NSRect)frame { 
   self = [super initWithFrame:frame];

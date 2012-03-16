@@ -1,6 +1,4 @@
 
-#include "library.h"
-#include "log.h"
 #include <errno.h>
 #include <fts.h>
 #include <google/protobuf/io/coded_stream.h>
@@ -13,11 +11,15 @@
 #include <pcrecpp.h>
 #include <leveldb/slice.h>
 
+#include "md0/lib/local_library.h"
+#include "md0/lib/log.h"
+
 using namespace google::protobuf::io;
 using namespace std;
 using namespace std::tr1;
 
-typedef tuple<Library *, vector<string> > ScanArgs;
+namespace md0 { 
+typedef tuple<LocalLibrary *, vector<string> > ScanArgs;
 
 static void *ScanPaths(void *ctx);
 static void *RunPrune(void *ctx);
@@ -27,13 +29,13 @@ const char *kTrackPrefix = "t:";
 const char *kScanPathPrefix = "p:";
 
 static void *RunPrune(void *ctx) { 
-  ((Library *)ctx)->RunPruneThread(); 
+  ((LocalLibrary *)ctx)->RunPruneThread(); 
   return NULL;
 }
 
 static void *ScanPaths(void *ctx) { 
   ScanArgs *args = (ScanArgs *)ctx;
-  Library *library = get<0>(*args);
+  LocalLibrary *library = get<0>(*args);
   INFO("scanning");
   vector<string> scan_paths = get<1>(*args);
   delete args;
@@ -69,7 +71,6 @@ static void *ScanPaths(void *ctx) {
     Track t;
     if (library->Get(filename, &t) != 0) {
       ReadTag(filename, &t);
-      INFO("adding %s", t.path().c_str());
       library->Save(t);
     }
   }
@@ -79,24 +80,23 @@ static void *ScanPaths(void *ctx) {
   return NULL;
 }
 
-Library::Library() {
+LocalLibrary::LocalLibrary() {
   db_ = NULL;
   prune_thread_ = NULL;
   last_update_ = 0;
 }
 
-long double Library::last_update() { 
+long double LocalLibrary::last_update() { 
   return last_update_;
 }
 
-void Library::MarkUpdated() { 
+void LocalLibrary::MarkUpdated() { 
   struct timeval t;
   gettimeofday(&t, NULL);
   last_update_ = t.tv_sec + (t.tv_usec / 1000000.0);
-  INFO("last update set to: %Lf", last_update_);
 }
 
-void Library::RunPruneThread() {
+void LocalLibrary::RunPruneThread() {
   leveldb::Iterator *i = db_->NewIterator(leveldb::ReadOptions());
   i->SeekToFirst();
   while (i->Valid()) {
@@ -121,12 +121,12 @@ void Library::RunPruneThread() {
   }
 }
 
-void Library::Prune() { 
+void LocalLibrary::Prune() { 
   if (!prune_thread_)
     pthread_create(&prune_thread_, NULL, RunPrune, this);
 }
 
-Library::~Library() { 
+LocalLibrary::~LocalLibrary() { 
   pthread_cancel(prune_thread_);
   if (db_ != NULL) { 
     delete db_;
@@ -134,7 +134,7 @@ Library::~Library() {
   }
 }
 
-int Library::Open(const std::string &path) { 
+int LocalLibrary::Open(const std::string &path) { 
   leveldb::Options opts;
   opts.create_if_missing = true;
   opts.error_if_exists = false;
@@ -143,7 +143,7 @@ int Library::Open(const std::string &path) {
   return st.ok() ? 0 : -1;
 }
 
-int Library::Close() { 
+int LocalLibrary::Close() { 
   if (db_ != NULL) {
     delete db_;
     db_ = NULL;
@@ -151,7 +151,7 @@ int Library::Close() {
   return 0;
 }
 
-int Library::Get(const std::string &path, Track *t) {
+int LocalLibrary::Get(const std::string &path, Track *t) {
   std::string val;
   string key(kTrackPrefix);
   key += path;
@@ -167,7 +167,7 @@ int Library::Get(const std::string &path, Track *t) {
   }
 }
 
-int Library::Save(const Track &t) { 
+int LocalLibrary::Save(const Track &t) { 
   if (t.path().length() == 0)
     return -1;
   string key(kTrackPrefix); 
@@ -181,7 +181,7 @@ bool IsTrackKey(const string &key) {
   return key.find(kTrackPrefix, 0) == 0;
 }
 
-int Library::Clear() {
+int LocalLibrary::Clear() {
   leveldb::Iterator *i = db_->NewIterator(leveldb::ReadOptions());
   i->SeekToFirst();
   while (i->Valid()) { 
@@ -195,7 +195,7 @@ int Library::Clear() {
   return 0;
 }
 
-int Library::Delete(const string &path) {
+int LocalLibrary::Delete(const string &path) {
   string key(kTrackPrefix);
   key += path;
   leveldb::Slice s(key);
@@ -204,7 +204,7 @@ int Library::Delete(const string &path) {
   return 0;
 }
 
-int Library::Count() { 
+int LocalLibrary::Count() { 
   int total = 0;
   leveldb::Iterator *i = db_->NewIterator(leveldb::ReadOptions());
   i->SeekToFirst();
@@ -217,23 +217,21 @@ int Library::Count() {
   return total;
 }
 
-shared_ptr<vector<shared_ptr<Track> > > Library::GetAll() { 
-  shared_ptr<vector<shared_ptr<Track> > > result(new vector<shared_ptr<Track> >);  
+void LocalLibrary::GetAll(vector<Track> *result) { 
   leveldb::Iterator *i = db_->NewIterator(leveldb::ReadOptions());
   i->SeekToFirst();
   while (i->Valid()) {
     if (IsTrackKey(i->key().ToString())) {
       string val = i->value().ToString();
-      shared_ptr<Track> t(new Track());
-      if (t->ParsePartialFromString(val)) 
+      Track t;
+      if (t.ParsePartialFromString(val)) 
         result->push_back(t);
     }
     i->Next();
   }
-  return result;
 }
 
-void Library::Scan(vector<string> scan_paths, bool sync) { 
+void LocalLibrary::Scan(vector<string> scan_paths, bool sync) { 
   pthread_t thread_id;
   memset(&thread_id, 0, sizeof(thread_id));
   void *args = (void *)(new ScanArgs(this, scan_paths));
@@ -242,4 +240,4 @@ void Library::Scan(vector<string> scan_paths, bool sync) {
   else
     pthread_create(&thread_id, NULL, ScanPaths, args);
 }
-
+}

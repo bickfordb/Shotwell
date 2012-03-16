@@ -3,18 +3,19 @@ mll:
 	@echo "  run-mac  -- Run the mac application"
 	@echo "  gdb  -- Run the mac application in gdb"
 
-APPNAME = MD1
+APPNAME = MD0
 APP = build/$(APPNAME).app
 BUILD = build
-APPSRCS := src/mac/*.m src/mac/*.mm
-APPHDRS := src/mac/*.h
-LIBSRCS := src/lib/*.cc src/lib/*.c
-LIBHDRS = src/lib/*.h
+APPSRCS := src/md0/mac/*.m src/md0/mac/*.mm
+APPHDRS := src/md0/mac/*.h
+LIBSRCS := src/md0/lib/*.cc
+LIBHDRS = src/md0/lib/*.h
 
 #CXX = clan
 CXX = clang
 VENDOR_STAMP = $(BUILD)/vendor.stamp
-CXXFLAGS += -iquote src/lib
+#CXXFLAGS += -iquote src/md0/lib
+CXXFLAGS += -iquote src
 CXXFLAGS += -Werror
 CXXFLAGS += -ferror-limit=2
 CXXFLAGS += -Ibuild/vendor/include
@@ -56,19 +57,19 @@ LDFLAGS += -framework VideoDecodeAcceleration
 LDFLAGS += -framework QuartzCore
 LDFLAGS += -lprotobuf
 DST_RES := $(APP)/Contents/Resources
-SRC_RES := src/mac/res
+SRC_RES := src/md0/mac/res
 #RESOURCES := src/mac/res/Play_Play.png
 #RESOURCES := src/mac/res/Play_Play.png
 SRC_RESOURCES = $(wildcard $(SRC_RES)/*.png $(SRC_RES)/*.pdf)
 RESOURCETARGETS := $(foreach f, $(SRC_RESOURCES), $(addprefix $(DST_RES)/, $(notdir $(f)))) 
 
-GTEST = src/vendor/gtest-1.6.0
+GTEST = vendor/gtest-1.6.0
 TESTCFLAGS += -iquote src/vendor/gtest-1.6.0/include 
 TESTLDFLAGS += -Lsrc/vendor/gtest-1.6.0/lib -lgtest -lgtest_main
-TESTSRCS +=  src/test/*.cc
+TESTSRCS +=  src/md0/test/*.cc
 PROJ = $(CURDIR)
 PROTOC = $(PROJ)/build/vendor/bin/protoc
-PROTOSRCS = src/lib/track.pb.cc src/lib/track.pb.h
+PROTOSRCS = src/md0/lib/track.pb.cc src/md0/lib/track.pb.h
 
 $(APP):
 	mkdir -p $(APP)
@@ -87,12 +88,12 @@ $(APP)/Contents/MacOS:
 	mkdir -p $@
 mac: $(APP)/Contents/MacOS
 
-$(APP)/Contents/MacOS/MD1: $(APPSRCS) $(LIBSRCS) $(APPHDRS) $(LIBHDRS) $(VENDOR_STAMP)
+$(APP)/Contents/MacOS/MD0: $(APPSRCS) $(LIBSRCS) $(APPHDRS) $(LIBHDRS) $(VENDOR_STAMP)
 	mkdir -p $(APP)/Contents/MacOS
 	$(CXX) $(CXXFLAGS) $(APPSRCS) $(LIBSRCS) -o $@ $(LDFLAGS)
-mac: $(APP)/Contents/MacOS/MD1
+mac: $(APP)/Contents/MacOS/MD0
 
-$(APP)/Contents/Info.plist: src/mac/Info.plist $(APP)/Contents
+$(APP)/Contents/Info.plist: src/md0/mac/Info.plist $(APP)/Contents
 	cp $< $@
 mac: $(APP)/Contents/Info.plist
 
@@ -136,8 +137,8 @@ clean: clean-libtest
 $(VENDOR_STAMP):
 	./vendor.sh
 
-src/lib/track.pb.cc src/lib/track.pb.h: src/lib/track.proto $(VENDOR_STAMP)
-	cd src/lib && $(PROTOC) --cpp_out=. track.proto 
+src/md0/lib/track.pb.cc src/md0/lib/track.pb.h: src/md0/lib/track.proto $(VENDOR_STAMP)
+	cd src/md0/lib && $(PROTOC) --cpp_out=. track.proto 
 
 test-gdb: build/test-runner
 	gdb build/test-runner
@@ -148,7 +149,7 @@ fuzz:
 	echo $(SRC_RESOURCES)
 	echo $(RESOURCETARGETS)
 
-RAOPSRCS = src/tools/raoptest.cc
+RAOPSRCS = src/md0/tools/raoptest.cc
 
 raop: build/raop
 	echo run >build/gdb-commands
@@ -157,7 +158,7 @@ raop: build/raop
 build/raop: $(LIBSRCS) $(LIBHDRS) $(RAOPSRCS) $(VENDOR_STAMP) 
 	$(CXX) $(CXXFLAGS) $(RAOPSRCS) $(LIBSRCS) -o $@ $(LDFLAGS)
 
-ALACSRCS = src/test/alac.cc
+ALACSRCS = src/md0/test/alac.cc
 
 build/alac: $(LIBSRCS) $(LIBHDRS) $(ALACSRCS) $(VENDOR_STAMP) 
 	$(CXX) $(CXXFLAGS) $(ALACSRCS) $(LIBSRCS) -o $@ $(LDFLAGS)
@@ -167,20 +168,9 @@ alac: build/alac
 	gdb -f -x build/gdb-commands build/alac
 	
 TAGS:
-	ctags src/lib/* src/test/* src/mac/* $$(find build/vendor/include)
+	ctags src/md0/lib/* src/md0/test/* src/md0/mac/* $$(find build/vendor/include)
 	
 cscope:
-	#echo src/lib/* src/test/* src/mac/* $$(find build/vendor/include) >cscope.files
+	#echo src/md0/lib/* src/md0/test/* src/md0/mac/* $$(find build/vendor/include) >cscope.files
 	cscope -b $$(find -E src -type f -regex '.+[.](cc|h|c)') $$(find build/vendor/include -type f)
-
-raop_play:
-	cd src/pp/raop_play \
-		&& make
-	src/pp/raop_play/raop_play 10.0.1.10 test-data/y.pcm
-	#src/pp/raop_play/raop_play 10.0.1.10 test-data/y.pcm |head -n 100 >y.log
-
-raoptest: build/raop
-	#build/raop |head -n 100 >x.log
-	build/raop 
-
 
