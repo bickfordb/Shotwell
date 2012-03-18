@@ -1,14 +1,15 @@
 
-
 #include <limits.h>
-#include "gtest/gtest.h"
-#include "track.h"
-#include "av.h"
-#include "library.h"
+#include <gtest/gtest.h>
 #include <tr1/memory>
+#include "md0/lib/local_library.h"
+#include "md0/lib/track.h"
+#include "md0/lib/track.h"
+//#include <"av.h"
 
 using namespace std;
 using namespace std::tr1;
+using namespace md0;
 
 TEST(TrackTest, General) {
   Track *track = new Track();
@@ -33,7 +34,6 @@ TEST(TrackTest, General) {
 }
 
 TEST(TrackTest, Tag) {
-  AVInit();
   Track track;
   int ret = ReadTag("./test-data/x.mp3", &track);
   ASSERT_EQ(ret, 0);
@@ -42,19 +42,20 @@ TEST(TrackTest, Tag) {
 
 TEST(TrackTest, GetAll) { 
   system("rm -rf getall.db");
-  Library *library = new Library();
+  LocalLibrary *library = new LocalLibrary();
   ASSERT_EQ(library->Open("getall.db"), 0);
   Track t;
   t.set_path("/efg");
   library->Save(t);
-  shared_ptr<vector<shared_ptr<Track> > > tracks = library->GetAll();
-  ASSERT_EQ(tracks->size(), 0);
+  vector<Track> tracks;
+  library->GetAll(&tracks);
+  ASSERT_EQ(tracks.size(), 1);
   delete library;
   system("rm -rf getall.db");
 }
 
 TEST(TrackTest, Clear) { 
-  Library *library = new Library();
+  LocalLibrary *library = new LocalLibrary();
   Track t;
   t.set_path("/efg");
   system("rm -rf clear.db");
@@ -68,7 +69,7 @@ TEST(TrackTest, Clear) {
 }
 
 TEST(TrackTest, DB) { 
-  Library *library = new Library();
+  LocalLibrary *library = new LocalLibrary();
   system("rm -rf get-save.db");
   ASSERT_EQ(library->Open("get-save.db"), 0);
   Track t;
@@ -81,7 +82,7 @@ TEST(TrackTest, DB) {
 }
 
 TEST(TrackTest, Scan) {
-  Library *library = new Library();
+  LocalLibrary *library = new LocalLibrary();
   system("rm -rf scan.db");
   library->Open("scan.db");
   std::vector<std::string> ps;

@@ -102,15 +102,16 @@ typedef tuple<NSString *, Direction> SortField;
 - (void)playNextTrack;
 - (void)playPreviousTrack;
 - (void)playTrackAtIndex:(int)idx;
-- (void)setupAudioSelect;
-- (void)setupToolbar;
-- (void)setupTrackTable;
-- (void)setupWindow;
-- (void)updateTableColumnHeaders;
 - (void)refreshAudioOutputList;
 - (void)refreshLibraryList;
 - (void)selectLocalAudio;
 - (void)selectRemoteAudioHost:(NSString *)host port:(uint16_t)port;
+- (void)setupAudioSelect;
+- (void)setupDockIcon;
+- (void)setupToolbar;
+- (void)setupTrackTable;
+- (void)setupWindow;
+- (void)updateTableColumnHeaders;
 @end
 
 #endif

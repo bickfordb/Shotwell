@@ -143,30 +143,6 @@ src/md0/lib/track.pb.cc src/md0/lib/track.pb.h: src/md0/lib/track.proto $(VENDOR
 test-gdb: build/test-runner
 	gdb build/test-runner
 
-fuzz:
-	echo $(DST_RES)
-	echo $(SRC_RES)
-	echo $(SRC_RESOURCES)
-	echo $(RESOURCETARGETS)
-
-RAOPSRCS = src/md0/tools/raoptest.cc
-
-raop: build/raop
-	echo run >build/gdb-commands
-	gdb -f -x build/gdb-commands build/raop 
-
-build/raop: $(LIBSRCS) $(LIBHDRS) $(RAOPSRCS) $(VENDOR_STAMP) 
-	$(CXX) $(CXXFLAGS) $(RAOPSRCS) $(LIBSRCS) -o $@ $(LDFLAGS)
-
-ALACSRCS = src/md0/test/alac.cc
-
-build/alac: $(LIBSRCS) $(LIBHDRS) $(ALACSRCS) $(VENDOR_STAMP) 
-	$(CXX) $(CXXFLAGS) $(ALACSRCS) $(LIBSRCS) -o $@ $(LDFLAGS)
-
-alac: build/alac
-	echo run >build/gdb-commands
-	gdb -f -x build/gdb-commands build/alac
-	
 TAGS:
 	ctags src/md0/lib/* src/md0/test/* src/md0/mac/* $$(find build/vendor/include)
 	

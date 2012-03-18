@@ -30,6 +30,7 @@ static NSString *kProgressControl = @"ProgressControl";
 static NSString *kSearchControl = @"SearchControl";
 static NSString *kStatus = @"status";
 static NSString *kTitle = @"title";
+static NSString *kDefaultWindowTitle = @"MD0";
 static NSString *kTrackNumber = @"track_number";
 static NSString *kVolumeControl = @"VolumeControl";
 static NSString *kYear = @"year";
@@ -65,15 +66,15 @@ static NSString *GetString(const string &s) {
 static NSString *GetWindowTitle(const Track &t);
 static NSString *GetWindowTitle(const Track &t) { 
   if (t.title().length() && t.artist().length() && t.album().length())
-    return [NSString stringWithFormat:@"%@ - %@ - %@ - MD0", 
+    return [NSString stringWithFormat:@"%@ - %@ - %@ ", 
       GetString(t.title()),
       GetString(t.artist()),
       GetString(t.album()),
       nil];
   else if (t.title().length())
-    return [NSString stringWithFormat:@"%@ - MD0", GetString(t.title()), nil];
+    return [NSString stringWithFormat:@"%@", GetString(t.title()), nil];
   else
-    return [NSString stringWithFormat:@"%@ - MD0", GetString(t.path()), nil];
+    return [NSString stringWithFormat:@"%@", GetString(t.path()), nil];
 }
 
 static bool Contains(const string &haystack, const string &needle) {
@@ -324,19 +325,21 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [mainWindow_ setAutorecalculatesContentBorderThickness:YES forEdge:NSMaxYEdge];
   [mainWindow_ setAutorecalculatesContentBorderThickness:YES forEdge:NSMinYEdge];
   [mainWindow_ setContentBorderThickness:kBottomEdgeMargin forEdge:NSMinYEdge];
-  mainWindow_.title = @"MD0";
+  mainWindow_.title = kDefaultWindowTitle;
 }
 
 - (void)setupAudioSelect { 
   int w = 160;
   int x = ((NSView *)[mainWindow_ contentView]).bounds.size.width;
   x -= w + 10;
-  audioOutputSelect_ = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(x, 4, w, 18)];
+  audioOutputSelect_ = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(x, 3, w, 18)];
   audioOutputSelect_.autoresizingMask = NSViewMinXMargin | NSViewMaxYMargin;
   [audioOutputSelect_ setTarget:self];
   [audioOutputSelect_ setAction:@selector(audioOutputSelected:)];
   NSButtonCell *buttonCell = (NSButtonCell *)[audioOutputSelect_ cell];
   [buttonCell setFont:[NSFont systemFontOfSize:11.0]];
+  [buttonCell setControlSize:NSSmallControlSize];
+
   [[mainWindow_ contentView] addSubview:audioOutputSelect_];
   [self refreshAudioOutputList];
 }
@@ -361,10 +364,11 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   int w = 160;
   int x = ((NSView *)[mainWindow_ contentView]).bounds.size.width;
   x -= w + 10;
-  librarySelect_ = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(5, 4, w, 18)];
+  librarySelect_ = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(5, 3, w, 18)];
   librarySelect_.autoresizingMask = NSViewMaxXMargin | NSViewMaxYMargin;
   NSButtonCell *buttonCell = (NSButtonCell *)[librarySelect_ cell];
   [buttonCell setFont:[NSFont systemFontOfSize:11.0]];
+  [buttonCell setControlSize:NSSmallControlSize];
   [librarySelect_ setTarget:self];
   [librarySelect_ setAction:@selector(librarySelected:)];
   [[mainWindow_ contentView] addSubview:librarySelect_];
@@ -399,7 +403,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 
 - (void)refreshAudioOutputList {
   [audioOutputSelect_ removeAllItems];
-  [audioOutputSelect_ addItemWithTitle:@"Computer"];
+  [audioOutputSelect_ addItemWithTitle:@"Local Speakers"];
   set<Service>::iterator i;
   for (i = services_.begin(); i != services_.end(); i++) {
     if (i->mdns_type() == "_raop._tcp.") 
@@ -621,6 +625,10 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [mainWindow_ setToolbar:toolbar_];
 }
 
+- (void)setupDockIcon {
+  [NSApp setApplicationIconImage:[NSImage imageNamed:@"md0dock"]];
+}
+
 - (void)applicationDidFinishLaunching:(NSNotification *)n {
   md0::movie::Movie::Init();
   trackEnded_ = NO;
@@ -628,6 +636,8 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   requestTogglePlay_ = NO;
   requestNext_ = NO;
   needsLibraryRefresh_ = NO;
+
+  [self setupDockIcon];
 
   NSApplication *sharedApp = [NSApplication sharedApplication];
   localLibrary_ = new LocalLibrary();
