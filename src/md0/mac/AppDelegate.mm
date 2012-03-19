@@ -20,6 +20,7 @@ static NSSize kStartupSize = {1100, 600};
 static NSString *kAlbum = @"album";
 static NSString *kArtist = @"artist";
 static NSString *kGenre = @"genre";
+static NSString *kDuration = @"duration";
 static NSString *kMDNSServiceType = @"_md0._tcp.";
 static NSString *kRAOPServiceType = @"_raop._tcp.";
 static NSString *kNextButton = @"NextButton";
@@ -44,7 +45,7 @@ static bool Contains(string &haystack, string &needle);
 static bool IsTrackMatchAllTerms(Track *t, vector<string> &terms);
 static void HandleMovieEvent(void *ctx, MovieEvent e, void *data);
 
-static NSString * LibraryDir() { 
+static NSString *LibraryDir() { 
   NSArray *paths = NSSearchPathForDirectoriesInDomains(
       NSApplicationSupportDirectory,
       NSUserDomainMask,
@@ -90,6 +91,11 @@ static inline int natural_compare(const string &l, const string &r) {
   else
     return strnatcasecmp(l.c_str(), r.c_str());
 }
+
+static NSString *GetTimeString(int64_t duration)  {
+  return FormatSeconds(duration / 1000000.0);
+}
+
 
 struct TrackComparator {
 private:
@@ -433,14 +439,15 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [trackTableView_ setGridStyleMask:NSTableViewSolidVerticalGridLineMask];
   [trackTableView_ setAllowsMultipleSelection:YES];
 
-  NSTableColumn * statusColumn = [[[NSTableColumn alloc] initWithIdentifier:kStatus] autorelease];
-  NSTableColumn * artistColumn = [[[NSTableColumn alloc] initWithIdentifier:kArtist] autorelease];
-  NSTableColumn * albumColumn = [[[NSTableColumn alloc] initWithIdentifier:kAlbum] autorelease];
-  NSTableColumn * titleColumn = [[[NSTableColumn alloc] initWithIdentifier:kTitle] autorelease];
-  NSTableColumn * trackNumberColumn = [[[NSTableColumn alloc] initWithIdentifier:kTrackNumber] autorelease];
-  NSTableColumn * genreColumn = [[[NSTableColumn alloc] initWithIdentifier:kGenre] autorelease];
-  NSTableColumn * yearColumn = [[[NSTableColumn alloc] initWithIdentifier:kYear] autorelease];
-  NSTableColumn * pathColumn = [[[NSTableColumn alloc] initWithIdentifier:kPath] autorelease];
+  NSTableColumn *statusColumn = [[[NSTableColumn alloc] initWithIdentifier:kStatus] autorelease];
+  NSTableColumn *artistColumn = [[[NSTableColumn alloc] initWithIdentifier:kArtist] autorelease];
+  NSTableColumn *albumColumn = [[[NSTableColumn alloc] initWithIdentifier:kAlbum] autorelease];
+  NSTableColumn *titleColumn = [[[NSTableColumn alloc] initWithIdentifier:kTitle] autorelease];
+  NSTableColumn *trackNumberColumn = [[[NSTableColumn alloc] initWithIdentifier:kTrackNumber] autorelease];
+  NSTableColumn *genreColumn = [[[NSTableColumn alloc] initWithIdentifier:kGenre] autorelease];
+  NSTableColumn *durationColumn = [[[NSTableColumn alloc] initWithIdentifier:kDuration] autorelease];
+  NSTableColumn *yearColumn = [[[NSTableColumn alloc] initWithIdentifier:kYear] autorelease];
+  NSTableColumn *pathColumn = [[[NSTableColumn alloc] initWithIdentifier:kPath] autorelease];
    
   emptyImage_ = [[NSImage alloc] initWithSize:NSMakeSize(22, 22)];
   playImage_ = [[NSImage imageNamed:@"dot"] retain];
@@ -450,12 +457,13 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [statusColumn setDataCell:[[NSImageCell alloc] initImageCell:emptyImage_]];
   [statusColumn setWidth:30];
   [statusColumn setMaxWidth:30];
-  [artistColumn setWidth:252];
-  [albumColumn setWidth:252];
+  [artistColumn setWidth:180];
+  [albumColumn setWidth:180];
   [titleColumn setWidth:252];
   [trackNumberColumn setWidth:50];
-  [genreColumn setWidth:252];
-  [yearColumn setWidth:252];
+  [genreColumn setWidth:150];
+  [yearColumn setWidth:50];
+  [durationColumn setWidth:50];
   [pathColumn setWidth:1000];
 
   [[statusColumn headerCell] setStringValue:@""];
@@ -470,6 +478,8 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [[yearColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
   [[genreColumn headerCell] setStringValue:@"Genre"];
   [[genreColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
+  [[durationColumn headerCell] setStringValue:@"Duration"];
+  [[durationColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
   [[trackNumberColumn headerCell] setStringValue:@"#"];
   [[trackNumberColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
   [[pathColumn headerCell] setStringValue:@"Path"];
@@ -479,6 +489,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [[albumColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
   [[titleColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
   [[genreColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
+  [[durationColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
   [[yearColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
   [[pathColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
   [[trackNumberColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
@@ -489,6 +500,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [trackTableView_ addTableColumn:artistColumn];
   [trackTableView_ addTableColumn:albumColumn];
   [trackTableView_ addTableColumn:yearColumn];
+  [trackTableView_ addTableColumn:durationColumn];
   [trackTableView_ addTableColumn:genreColumn];
   [trackTableView_ addTableColumn:pathColumn];
   [trackTableView_ setDelegate:self];
@@ -496,7 +508,6 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [trackTableView_ reloadData];
   // embed the table view in the scroll view, and add the scroll view
   // to our window.
-  [trackTableScrollView_ setDocumentView:trackTableView_];
   [trackTableScrollView_ setHasVerticalScroller:YES];
   [trackTableScrollView_ setHasHorizontalScroller:YES];
   trackTableScrollView_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
@@ -504,6 +515,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [trackTableView_ setDoubleAction:@selector(trackTableDoubleClicked:)];
   [trackTableView_ setTarget:self];
   [contentView_ addSubview:trackTableScrollView_];
+  [trackTableScrollView_ setDocumentView:trackTableView_];
   [trackTableView_ registerForDraggedTypes:[NSArray arrayWithObjects:NSURLPboardType, NSFilenamesPboardType, nil]];
 }
 
@@ -1044,8 +1056,8 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     movie_ = new Movie(aTrack.path().c_str());
     movie_->Play();
     movie_->SetListener(HandleMovieEvent, self);
-    needsReload_ = YES;
     seekToRow_ = index;
+    needsReload_ = YES;
   }
 }
 
@@ -1112,7 +1124,6 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   NSString *s = nil;
   bool isPlaying = (track_.path().length()
         && movie_
-        && movie_->state() == kPlayingMovieState
         && t.path() == track_.path());
   if (identifier == kArtist)
     s = GetString(t.artist());
@@ -1120,6 +1131,8 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     s = GetString(t.album());
   else if (identifier == kGenre)
     s = GetString(t.genre());
+  else if (identifier == kDuration)
+    s = GetTimeString(t.duration());
   else if (identifier == kYear)
     s = GetString(t.year());
   else if (identifier == kTitle)

@@ -16,6 +16,7 @@
 
 using namespace std;
 
+namespace {
 string ToUTF8(const char *src);
 string ToUTF8(const char *src) {
   UErrorCode err = U_ZERO_ERROR;
@@ -30,53 +31,84 @@ string ToUTF8(const char *src) {
   us.toUTF8(sbs);
   return dst;
 }
+}
 
-int ReadTag(const string &path, Track *t) {
+namespace md0 {
+
+void Track::Init() {
+  AVInit(); 
+}
+
+int Track::ReadTag(const string &path) {
   int ret = 0;
   AVFormatContext *c = NULL;
   struct stat st;
   AVDictionary *d = NULL;
   AVDictionaryEntry *tag = NULL;
   int err;
-
+  int audio_stream_idx = -1;
 
   if (path.length() <= 0) {
     return -1;
   }
-  t->set_path(ToUTF8(path.c_str()));
+  set_path(ToUTF8(path.c_str()));
 
   memset(&st, 0, sizeof(st));
   if (stat(path.c_str(), &st) < 0) {
-    ret = -1;
+    ret = -2;
     goto done;
   }
   AVInit();
-  if (avformat_open_input(&c, path.c_str(), NULL, NULL) != 0) {
-    ret = -1;
+  if (avformat_open_input(&c, path.c_str(), NULL, NULL) < 0) {
+    ret = -3;
     goto done;
   }
-  if (avformat_find_stream_info(c, NULL) != 0) {
-    ret = -1;
+  if (avformat_find_stream_info(c, NULL) < 0) {
+    ret = -4;
     goto done;
   }
+
+  for (int i = 0; i < c->nb_streams; i++) {
+    if (c->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
+      audio_stream_idx = i;
+      break;
+    }
+  }
+
+  if (audio_stream_idx >= 0) {
+    int64_t d = ((c->streams[audio_stream_idx]->duration * c->streams[audio_stream_idx]->time_base.num) / c->streams[audio_stream_idx]->time_base.den) * 1000000;
+
+    set_duration(d);
+  }
+
+  set_is_video(false);
+  for (int i = 0; i < c->nb_streams; i++) {
+    if (c->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+      set_is_video(true);
+      break;
+    }
+  } 
+
   while((tag = av_dict_get(c->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
     string value(ToUTF8(tag->value));
     string key(tag->key);
     if (key == "artist")
-      t->set_artist(value);
+      set_artist(value);
     else if (key == "album")
-      t->set_album(value);
+      set_album(value);
     else if (key == "year")
-      t->set_year(value);
+      set_year(value);
     else if (key == "title")
-      t->set_title(value);
+      set_title(value);
     else if (key == "genre")
-      t->set_genre(value);
+      set_genre(value);
     else if (key == "date")
-      t->set_year(value);
+      set_year(value);
     else if (key == "track")
-      t->set_track_number(value);
+      set_track_number(value);
   }
+
+
 done:
   if (c)
     avformat_close_input(&c);
@@ -84,5 +116,5 @@ done:
     avformat_free_context(c);
   return ret;
 }
-
+}
 

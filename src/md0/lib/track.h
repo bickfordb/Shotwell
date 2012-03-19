@@ -5,6 +5,12 @@
 #include "track.pb.h"
 #include <string>
 using namespace std;
-int ReadTag(const string &p, Track *t);
-
+namespace md0 {
+class Track : public ::md0::protobuf::Track { 
+ public:
+  /* Do global initialization */
+  static void Init();
+  int ReadTag(const string &path);
+};
+}
 #endif

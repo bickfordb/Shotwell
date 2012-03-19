@@ -13,6 +13,9 @@
 #include <google/protobuf/wire_format.h>
 // @@protoc_insertion_point(includes)
 
+namespace md0 {
+namespace protobuf {
+
 namespace {
 
 const ::google::protobuf::Descriptor* Track_descriptor_ = NULL;
@@ -29,7 +32,7 @@ void protobuf_AssignDesc_track_2eproto() {
       "track.proto");
   GOOGLE_CHECK(file != NULL);
   Track_descriptor_ = file->message_type(0);
-  static const int Track_offsets_[9] = {
+  static const int Track_offsets_[14] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, path_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, artist_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, album_),
@@ -39,6 +42,11 @@ void protobuf_AssignDesc_track_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, genre_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, created_at_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, updated_at_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, duration_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, last_played_at_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, rating_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, num_plays_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, is_video_),
   };
   Track_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -81,11 +89,14 @@ void protobuf_AddDesc_track_2eproto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-    "\n\013track.proto\"\236\001\n\005Track\022\014\n\004path\030\001 \001(\t\022\016\n"
-    "\006artist\030\002 \001(\t\022\r\n\005album\030\003 \001(\t\022\r\n\005title\030\004 "
-    "\001(\t\022\014\n\004year\030\005 \001(\t\022\024\n\014track_number\030\006 \001(\t\022"
-    "\r\n\005genre\030\007 \001(\t\022\022\n\ncreated_at\030\010 \001(\003\022\022\n\nup"
-    "dated_at\030\t \001(\003", 174);
+    "\n\013track.proto\022\014md0.protobuf\"\375\001\n\005Track\022\014\n"
+    "\004path\030\001 \001(\t\022\016\n\006artist\030\002 \001(\t\022\r\n\005album\030\003 \001"
+    "(\t\022\r\n\005title\030\004 \001(\t\022\014\n\004year\030\005 \001(\t\022\024\n\014track"
+    "_number\030\006 \001(\t\022\r\n\005genre\030\007 \001(\t\022\022\n\ncreated_"
+    "at\030\010 \001(\003\022\022\n\nupdated_at\030\t \001(\003\022\020\n\010duration"
+    "\030\n \001(\003\022\026\n\016last_played_at\030\013 \001(\003\022\016\n\006rating"
+    "\030\014 \001(\r\022\021\n\tnum_plays\030\r \001(\r\022\020\n\010is_video\030\016 "
+    "\001(\010", 283);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "track.proto", &protobuf_RegisterTypes);
   Track::default_instance_ = new Track();
@@ -113,6 +124,11 @@ const int Track::kTrackNumberFieldNumber;
 const int Track::kGenreFieldNumber;
 const int Track::kCreatedAtFieldNumber;
 const int Track::kUpdatedAtFieldNumber;
+const int Track::kDurationFieldNumber;
+const int Track::kLastPlayedAtFieldNumber;
+const int Track::kRatingFieldNumber;
+const int Track::kNumPlaysFieldNumber;
+const int Track::kIsVideoFieldNumber;
 #endif  // !_MSC_VER
 
 Track::Track()
@@ -140,6 +156,11 @@ void Track::SharedCtor() {
   genre_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   created_at_ = GOOGLE_LONGLONG(0);
   updated_at_ = GOOGLE_LONGLONG(0);
+  duration_ = GOOGLE_LONGLONG(0);
+  last_played_at_ = GOOGLE_LONGLONG(0);
+  rating_ = 0u;
+  num_plays_ = 0u;
+  is_video_ = false;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -234,6 +255,11 @@ void Track::Clear() {
   }
   if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     updated_at_ = GOOGLE_LONGLONG(0);
+    duration_ = GOOGLE_LONGLONG(0);
+    last_played_at_ = GOOGLE_LONGLONG(0);
+    rating_ = 0u;
+    num_plays_ = 0u;
+    is_video_ = false;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -391,6 +417,86 @@ bool Track::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(80)) goto parse_duration;
+        break;
+      }
+      
+      // optional int64 duration = 10;
+      case 10: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_duration:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::int64, ::google::protobuf::internal::WireFormatLite::TYPE_INT64>(
+                 input, &duration_)));
+          set_has_duration();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(88)) goto parse_last_played_at;
+        break;
+      }
+      
+      // optional int64 last_played_at = 11;
+      case 11: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_last_played_at:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::int64, ::google::protobuf::internal::WireFormatLite::TYPE_INT64>(
+                 input, &last_played_at_)));
+          set_has_last_played_at();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(96)) goto parse_rating;
+        break;
+      }
+      
+      // optional uint32 rating = 12;
+      case 12: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_rating:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &rating_)));
+          set_has_rating();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(104)) goto parse_num_plays;
+        break;
+      }
+      
+      // optional uint32 num_plays = 13;
+      case 13: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_num_plays:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &num_plays_)));
+          set_has_num_plays();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(112)) goto parse_is_video;
+        break;
+      }
+      
+      // optional bool is_video = 14;
+      case 14: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_is_video:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &is_video_)));
+          set_has_is_video();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -486,6 +592,31 @@ void Track::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteInt64(9, this->updated_at(), output);
   }
   
+  // optional int64 duration = 10;
+  if (has_duration()) {
+    ::google::protobuf::internal::WireFormatLite::WriteInt64(10, this->duration(), output);
+  }
+  
+  // optional int64 last_played_at = 11;
+  if (has_last_played_at()) {
+    ::google::protobuf::internal::WireFormatLite::WriteInt64(11, this->last_played_at(), output);
+  }
+  
+  // optional uint32 rating = 12;
+  if (has_rating()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(12, this->rating(), output);
+  }
+  
+  // optional uint32 num_plays = 13;
+  if (has_num_plays()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(13, this->num_plays(), output);
+  }
+  
+  // optional bool is_video = 14;
+  if (has_is_video()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(14, this->is_video(), output);
+  }
+  
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -574,6 +705,31 @@ void Track::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(9, this->updated_at(), target);
   }
   
+  // optional int64 duration = 10;
+  if (has_duration()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(10, this->duration(), target);
+  }
+  
+  // optional int64 last_played_at = 11;
+  if (has_last_played_at()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(11, this->last_played_at(), target);
+  }
+  
+  // optional uint32 rating = 12;
+  if (has_rating()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(12, this->rating(), target);
+  }
+  
+  // optional uint32 num_plays = 13;
+  if (has_num_plays()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(13, this->num_plays(), target);
+  }
+  
+  // optional bool is_video = 14;
+  if (has_is_video()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(14, this->is_video(), target);
+  }
+  
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -650,6 +806,39 @@ int Track::ByteSize() const {
           this->updated_at());
     }
     
+    // optional int64 duration = 10;
+    if (has_duration()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::Int64Size(
+          this->duration());
+    }
+    
+    // optional int64 last_played_at = 11;
+    if (has_last_played_at()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::Int64Size(
+          this->last_played_at());
+    }
+    
+    // optional uint32 rating = 12;
+    if (has_rating()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->rating());
+    }
+    
+    // optional uint32 num_plays = 13;
+    if (has_num_plays()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->num_plays());
+    }
+    
+    // optional bool is_video = 14;
+    if (has_is_video()) {
+      total_size += 1 + 1;
+    }
+    
   }
   if (!unknown_fields().empty()) {
     total_size +=
@@ -706,6 +895,21 @@ void Track::MergeFrom(const Track& from) {
     if (from.has_updated_at()) {
       set_updated_at(from.updated_at());
     }
+    if (from.has_duration()) {
+      set_duration(from.duration());
+    }
+    if (from.has_last_played_at()) {
+      set_last_played_at(from.last_played_at());
+    }
+    if (from.has_rating()) {
+      set_rating(from.rating());
+    }
+    if (from.has_num_plays()) {
+      set_num_plays(from.num_plays());
+    }
+    if (from.has_is_video()) {
+      set_is_video(from.is_video());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -738,6 +942,11 @@ void Track::Swap(Track* other) {
     std::swap(genre_, other->genre_);
     std::swap(created_at_, other->created_at_);
     std::swap(updated_at_, other->updated_at_);
+    std::swap(duration_, other->duration_);
+    std::swap(last_played_at_, other->last_played_at_);
+    std::swap(rating_, other->rating_);
+    std::swap(num_plays_, other->num_plays_);
+    std::swap(is_video_, other->is_video_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -754,5 +963,8 @@ void Track::Swap(Track* other) {
 
 
 // @@protoc_insertion_point(namespace_scope)
+
+}  // namespace protobuf
+}  // namespace md0
 
 // @@protoc_insertion_point(global_scope)

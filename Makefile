@@ -63,9 +63,7 @@ SRC_RES := src/md0/mac/res
 SRC_RESOURCES = $(wildcard $(SRC_RES)/*.png $(SRC_RES)/*.pdf)
 RESOURCETARGETS := $(foreach f, $(SRC_RESOURCES), $(addprefix $(DST_RES)/, $(notdir $(f)))) 
 
-GTEST = vendor/gtest-1.6.0
-TESTCFLAGS += -iquote src/vendor/gtest-1.6.0/include 
-TESTLDFLAGS += -Lsrc/vendor/gtest-1.6.0/lib -lgtest -lgtest_main
+TESTLDFLAGS += -lgtest -lgtest_main
 TESTSRCS +=  src/md0/test/*.cc
 PROJ = $(CURDIR)
 PROTOC = $(PROJ)/build/vendor/bin/protoc

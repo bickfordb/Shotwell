@@ -34,8 +34,9 @@ TEST(TrackTest, General) {
 }
 
 TEST(TrackTest, Tag) {
+  Track::Init();
   Track track;
-  int ret = ReadTag("./test-data/x.mp3", &track);
+  int ret = track.ReadTag("./test-data/x.mp3");
   ASSERT_EQ(ret, 0);
   ASSERT_EQ(track.artist(), "The Dodos");
 }
@@ -88,7 +89,7 @@ TEST(TrackTest, Scan) {
   std::vector<std::string> ps;
   ps.push_back("test-data");
   library->Scan(ps, true);
-  ASSERT_EQ(library->Count(), 1);
+  ASSERT_EQ(library->Count(), 2);
   delete library;
   system("rm -rf scan.db");
 }

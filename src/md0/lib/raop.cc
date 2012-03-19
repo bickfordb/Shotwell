@@ -437,11 +437,13 @@ bool Client::Flush() {
   req.headers["CSeq"] = Format("%d", ++cseq_);
   req.headers["Session"] = session_id_;
   req.headers["User-Agent"] = user_agent_;
+  req.headers["Range"] = "ntp=0-";
   req.headers["RTP-Info"] = Format("seq=%d;rtptime=%d", 0, 0);
   req.headers["Client-Instance"] = cid_;
   if (!RunRequest(req, &resp)) {
     return false;
   }
+  usleep(2000000);
   return resp.status == 200;
 }
 

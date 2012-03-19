@@ -70,7 +70,7 @@ static void *ScanPaths(void *ctx) {
       continue;
     Track t;
     if (library->Get(filename, &t) != 0) {
-      ReadTag(filename, &t);
+      t.ReadTag(filename);
       library->Save(t);
     }
   }

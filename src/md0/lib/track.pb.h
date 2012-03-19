@@ -25,6 +25,9 @@
 #include <google/protobuf/generated_message_reflection.h>
 // @@protoc_insertion_point(includes)
 
+namespace md0 {
+namespace protobuf {
+
 // Internal implementation detail -- do not call these.
 void  protobuf_AddDesc_track_2eproto();
 void protobuf_AssignDesc_track_2eproto();
@@ -179,7 +182,42 @@ class Track : public ::google::protobuf::Message {
   inline ::google::protobuf::int64 updated_at() const;
   inline void set_updated_at(::google::protobuf::int64 value);
   
-  // @@protoc_insertion_point(class_scope:Track)
+  // optional int64 duration = 10;
+  inline bool has_duration() const;
+  inline void clear_duration();
+  static const int kDurationFieldNumber = 10;
+  inline ::google::protobuf::int64 duration() const;
+  inline void set_duration(::google::protobuf::int64 value);
+  
+  // optional int64 last_played_at = 11;
+  inline bool has_last_played_at() const;
+  inline void clear_last_played_at();
+  static const int kLastPlayedAtFieldNumber = 11;
+  inline ::google::protobuf::int64 last_played_at() const;
+  inline void set_last_played_at(::google::protobuf::int64 value);
+  
+  // optional uint32 rating = 12;
+  inline bool has_rating() const;
+  inline void clear_rating();
+  static const int kRatingFieldNumber = 12;
+  inline ::google::protobuf::uint32 rating() const;
+  inline void set_rating(::google::protobuf::uint32 value);
+  
+  // optional uint32 num_plays = 13;
+  inline bool has_num_plays() const;
+  inline void clear_num_plays();
+  static const int kNumPlaysFieldNumber = 13;
+  inline ::google::protobuf::uint32 num_plays() const;
+  inline void set_num_plays(::google::protobuf::uint32 value);
+  
+  // optional bool is_video = 14;
+  inline bool has_is_video() const;
+  inline void clear_is_video();
+  static const int kIsVideoFieldNumber = 14;
+  inline bool is_video() const;
+  inline void set_is_video(bool value);
+  
+  // @@protoc_insertion_point(class_scope:md0.protobuf.Track)
  private:
   inline void set_has_path();
   inline void clear_has_path();
@@ -199,6 +237,16 @@ class Track : public ::google::protobuf::Message {
   inline void clear_has_created_at();
   inline void set_has_updated_at();
   inline void clear_has_updated_at();
+  inline void set_has_duration();
+  inline void clear_has_duration();
+  inline void set_has_last_played_at();
+  inline void clear_has_last_played_at();
+  inline void set_has_rating();
+  inline void clear_has_rating();
+  inline void set_has_num_plays();
+  inline void clear_has_num_plays();
+  inline void set_has_is_video();
+  inline void clear_has_is_video();
   
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
   
@@ -211,9 +259,14 @@ class Track : public ::google::protobuf::Message {
   ::std::string* genre_;
   ::google::protobuf::int64 created_at_;
   ::google::protobuf::int64 updated_at_;
+  ::google::protobuf::int64 duration_;
+  ::google::protobuf::int64 last_played_at_;
+  ::google::protobuf::uint32 rating_;
+  ::google::protobuf::uint32 num_plays_;
+  bool is_video_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(14 + 31) / 32];
   
   friend void  protobuf_AddDesc_track_2eproto();
   friend void protobuf_AssignDesc_track_2eproto();
@@ -679,8 +732,121 @@ inline void Track::set_updated_at(::google::protobuf::int64 value) {
   updated_at_ = value;
 }
 
+// optional int64 duration = 10;
+inline bool Track::has_duration() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void Track::set_has_duration() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void Track::clear_has_duration() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void Track::clear_duration() {
+  duration_ = GOOGLE_LONGLONG(0);
+  clear_has_duration();
+}
+inline ::google::protobuf::int64 Track::duration() const {
+  return duration_;
+}
+inline void Track::set_duration(::google::protobuf::int64 value) {
+  set_has_duration();
+  duration_ = value;
+}
+
+// optional int64 last_played_at = 11;
+inline bool Track::has_last_played_at() const {
+  return (_has_bits_[0] & 0x00000400u) != 0;
+}
+inline void Track::set_has_last_played_at() {
+  _has_bits_[0] |= 0x00000400u;
+}
+inline void Track::clear_has_last_played_at() {
+  _has_bits_[0] &= ~0x00000400u;
+}
+inline void Track::clear_last_played_at() {
+  last_played_at_ = GOOGLE_LONGLONG(0);
+  clear_has_last_played_at();
+}
+inline ::google::protobuf::int64 Track::last_played_at() const {
+  return last_played_at_;
+}
+inline void Track::set_last_played_at(::google::protobuf::int64 value) {
+  set_has_last_played_at();
+  last_played_at_ = value;
+}
+
+// optional uint32 rating = 12;
+inline bool Track::has_rating() const {
+  return (_has_bits_[0] & 0x00000800u) != 0;
+}
+inline void Track::set_has_rating() {
+  _has_bits_[0] |= 0x00000800u;
+}
+inline void Track::clear_has_rating() {
+  _has_bits_[0] &= ~0x00000800u;
+}
+inline void Track::clear_rating() {
+  rating_ = 0u;
+  clear_has_rating();
+}
+inline ::google::protobuf::uint32 Track::rating() const {
+  return rating_;
+}
+inline void Track::set_rating(::google::protobuf::uint32 value) {
+  set_has_rating();
+  rating_ = value;
+}
+
+// optional uint32 num_plays = 13;
+inline bool Track::has_num_plays() const {
+  return (_has_bits_[0] & 0x00001000u) != 0;
+}
+inline void Track::set_has_num_plays() {
+  _has_bits_[0] |= 0x00001000u;
+}
+inline void Track::clear_has_num_plays() {
+  _has_bits_[0] &= ~0x00001000u;
+}
+inline void Track::clear_num_plays() {
+  num_plays_ = 0u;
+  clear_has_num_plays();
+}
+inline ::google::protobuf::uint32 Track::num_plays() const {
+  return num_plays_;
+}
+inline void Track::set_num_plays(::google::protobuf::uint32 value) {
+  set_has_num_plays();
+  num_plays_ = value;
+}
+
+// optional bool is_video = 14;
+inline bool Track::has_is_video() const {
+  return (_has_bits_[0] & 0x00002000u) != 0;
+}
+inline void Track::set_has_is_video() {
+  _has_bits_[0] |= 0x00002000u;
+}
+inline void Track::clear_has_is_video() {
+  _has_bits_[0] &= ~0x00002000u;
+}
+inline void Track::clear_is_video() {
+  is_video_ = false;
+  clear_has_is_video();
+}
+inline bool Track::is_video() const {
+  return is_video_;
+}
+inline void Track::set_is_video(bool value) {
+  set_has_is_video();
+  is_video_ = value;
+}
+
 
 // @@protoc_insertion_point(namespace_scope)
+
+}  // namespace protobuf
+}  // namespace md0
 
 #ifndef SWIG
 namespace google {
