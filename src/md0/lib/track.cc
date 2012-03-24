@@ -39,7 +39,7 @@ void Track::Init() {
   AVInit(); 
 }
 
-int Track::ReadTag(const string &path) {
+int Track::ReadTag(const string &url) {
   int ret = 0;
   AVFormatContext *c = NULL;
   struct stat st;
@@ -48,18 +48,18 @@ int Track::ReadTag(const string &path) {
   int err;
   int audio_stream_idx = -1;
 
-  if (path.length() <= 0) {
+  if (url.length() <= 0) {
     return -1;
   }
-  set_path(ToUTF8(path.c_str()));
+  set_url(ToUTF8(url.c_str()));
 
   memset(&st, 0, sizeof(st));
-  if (stat(path.c_str(), &st) < 0) {
+  if (stat(url.c_str(), &st) < 0) {
     ret = -2;
     goto done;
   }
   AVInit();
-  if (avformat_open_input(&c, path.c_str(), NULL, NULL) < 0) {
+  if (avformat_open_input(&c, url.c_str(), NULL, NULL) < 0) {
     ret = -3;
     goto done;
   }

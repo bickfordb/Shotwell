@@ -6,7 +6,8 @@ mll:
 APPNAME = MD0
 APP = build/$(APPNAME).app
 BUILD = build
-APPSRCS := src/md0/mac/*.m src/md0/mac/*.mm
+APPSRCS := src/md0/mac/*.m src/md0/mac/*.mm  
+APPEXTSRCS := build/vendor/share/jscocoa/*.m
 APPHDRS := src/md0/mac/*.h
 LIBSRCS := src/md0/lib/*.cc
 LIBHDRS = src/md0/lib/*.h
@@ -15,6 +16,7 @@ LIBHDRS = src/md0/lib/*.h
 CXX = clang
 VENDOR_STAMP = $(BUILD)/vendor.stamp
 #CXXFLAGS += -iquote src/md0/lib
+APPCXXFLAGS += -iquote build/vendor/share/jscocoa 
 CXXFLAGS += -iquote src
 CXXFLAGS += -Werror
 CXXFLAGS += -ferror-limit=2
@@ -51,23 +53,25 @@ LDFLAGS += -framework CoreAudio
 LDFLAGS += -framework CoreServices 
 LDFLAGS += -framework CoreFoundation 
 LDFLAGS += -framework Foundation 
+LDFLAGS += -framework JavaScriptCore 
 LDFLAGS += -framework IOKit 
 LDFLAGS += -framework OpenGL 
 LDFLAGS += -framework VideoDecodeAcceleration 
 LDFLAGS += -framework QuartzCore
+LDFLAGS += -framework WebKit 
 LDFLAGS += -lprotobuf
+LDFLAGS += -lffi
 DST_RES := $(APP)/Contents/Resources
 SRC_RES := src/md0/mac/res
-#RESOURCES := src/mac/res/Play_Play.png
-#RESOURCES := src/mac/res/Play_Play.png
-SRC_RESOURCES = $(wildcard $(SRC_RES)/*.png $(SRC_RES)/*.pdf)
+SRC_RESOURCES = $(wildcard $(SRC_RES)/*.png $(SRC_RES)/*.pdf $(SRC_RES)/*.js)
 RESOURCETARGETS := $(foreach f, $(SRC_RESOURCES), $(addprefix $(DST_RES)/, $(notdir $(f)))) 
 
 TESTLDFLAGS += -lgtest -lgtest_main
 TESTSRCS +=  src/md0/test/*.cc
 PROJ = $(CURDIR)
 PROTOC = $(PROJ)/build/vendor/bin/protoc
-PROTOSRCS = src/md0/lib/track.pb.cc src/md0/lib/track.pb.h
+PROTOSRCS = src/md0/lib/track.pb.cc src/md0/lib/plugin.pb.cc
+
 
 $(APP):
 	mkdir -p $(APP)
@@ -86,9 +90,9 @@ $(APP)/Contents/MacOS:
 	mkdir -p $@
 mac: $(APP)/Contents/MacOS
 
-$(APP)/Contents/MacOS/MD0: $(APPSRCS) $(LIBSRCS) $(APPHDRS) $(LIBHDRS) $(VENDOR_STAMP)
+$(APP)/Contents/MacOS/MD0: $(APPSRCS) $(LIBSRCS) $(APPHDRS) $(LIBHDRS) $(VENDOR_STAMP) $(PROTOSRCS)
 	mkdir -p $(APP)/Contents/MacOS
-	$(CXX) $(CXXFLAGS) $(APPSRCS) $(LIBSRCS) -o $@ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(APPCXXFLAGS) $(APPSRCS) $(APPEXTSRCS) $(LIBSRCS) -o $@ $(LDFLAGS)
 mac: $(APP)/Contents/MacOS/MD0
 
 $(APP)/Contents/Info.plist: src/md0/mac/Info.plist $(APP)/Contents
@@ -99,6 +103,7 @@ run-mac: mac
 	$(APP)/Contents/MacOS/$(APPNAME)
 
 gdb: mac
+	echo $(APPPCH)
 	echo run >build/gdb-commands
 	gdb -f -x build/gdb-commands $(APP)/Contents/MacOS/$(APPNAME) 
 
@@ -126,17 +131,25 @@ test: build/test-runner
 
 clean:
 
+.PHONY: clean
+
 clean-libtest:
 	rm -f build/libtest 
 
 clean: clean-libtest
 
+clean-pch:
+	rm -f src/md0/**/*.h.pch
+.PHONY: clean-pch
+
+clean: clean-pch
+
 # build vendor libraries
 $(VENDOR_STAMP):
 	./vendor.sh
 
-src/md0/lib/track.pb.cc src/md0/lib/track.pb.h: src/md0/lib/track.proto $(VENDOR_STAMP)
-	cd src/md0/lib && $(PROTOC) --cpp_out=. track.proto 
+src/md0/lib/%.pb.cc: src/md0/lib/%.proto
+	cd src/md0/lib && $(PROTOC) --cpp_out=. $$(basename $+)
 
 test-gdb: build/test-runner
 	gdb build/test-runner
@@ -145,6 +158,5 @@ TAGS:
 	ctags src/md0/lib/* src/md0/test/* src/md0/mac/* $$(find build/vendor/include)
 	
 cscope:
-	#echo src/md0/lib/* src/md0/test/* src/md0/mac/* $$(find build/vendor/include) >cscope.files
-	cscope -b $$(find -E src -type f -regex '.+[.](cc|h|c)') $$(find build/vendor/include -type f)
+	cscope -b $$(find -E src -type f -regex '.+[.](cc|mm|h|c)') $$(find build/vendor/include -type f)
 

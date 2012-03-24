@@ -16,21 +16,28 @@ class LocalLibrary : public md0::Library {
     pthread_t prune_thread_;
     long double last_update_;
     void MarkUpdated();
+    uint32_t NextID();
+    // 0 -> missing
+    uint32_t GetURLIndex(const string &url);
+    void PutURLIndex(const string &url, uint32_t id);
+    static string GetIDKey(uint32_t id);
+    static string GetURLKey(const string &url);
+    static void *ScanPathsCallback(void *);
   public: 
     long double last_update();
     LocalLibrary(); 
     ~LocalLibrary();
     void GetAll(vector<Track> *tracks);
-    int Save(const Track &t);
+    int Save(Track *t);
     int Open(const string &path);
     int Close();
-    int Get(const string &path, Track *t);
+    bool Get(uint32_t id, Track *t);
     int Clear();
     void Scan(vector<string> scan_paths, bool sync);
     void Prune();
     void RunPruneThread();
     int Count();
-    int Delete(const string &);
+    void Delete(const Track &);
 };
 }
 

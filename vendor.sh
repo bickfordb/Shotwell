@@ -187,4 +187,30 @@ then
   touch ${BUILDROOT}/icu.stamp
 fi
 
+if [ ! -e "${BUILDROOT}/jscocoa.stamp" ]
+then
+  rm -rf ${SCRATCH}
+  mkdir -p ${SCRATCH}
+  cd ${SCRATCH}
+  tar xzvf ${VENDOR}/jscocoa-32a49dc6b3020.tar.gz
+  rm -rf ${INSTALL_PREFIX}/share/jscocoa
+  install -d ${INSTALL_PREFIX}/share/jscocoa
+  cd jscocoa-32a49dc6b3020/JSCocoa
+  install *.h *.m ${INSTALL_PREFIX}/share/jscocoa
+  touch ${BUILDROOT}/jscocoa.stamp
+fi
+
+##if [ ! -e "${BUILDROOT}/node.stamp" ]
+##then
+##  rm -rf ${SCRATCH}
+##  mkdir -p ${SCRATCH}
+##  cd ${SCRATCH}
+##  tar xzvf ${VENDOR}/node-v0.6.13.tar.gz
+##  cd node-v0.6.13
+##  ./configure --prefix=${INSTALL_PREFIX}
+##  make
+##  make install
+##  touch ${BUILDROOT}/node.stamp
+##fi
+
 touch ${BUILDROOT}/vendor.stamp

@@ -21,19 +21,21 @@ using namespace std::tr1;
 namespace md0 { 
 typedef tuple<LocalLibrary *, vector<string> > ScanArgs;
 
-static void *ScanPaths(void *ctx);
 static void *RunPrune(void *ctx);
 bool IsTrackKey(const string &key);
 
 const char *kTrackPrefix = "t:";
-const char *kScanPathPrefix = "p:";
+const char *kURLIndexPrefix = "u:";
+const uint32_t kNotFound = 0;
+const size_t kIDLength = 4;
+
 
 static void *RunPrune(void *ctx) { 
   ((LocalLibrary *)ctx)->RunPruneThread(); 
   return NULL;
 }
 
-static void *ScanPaths(void *ctx) { 
+void *LocalLibrary::ScanPathsCallback(void *ctx) { 
   ScanArgs *args = (ScanArgs *)ctx;
   LocalLibrary *library = get<0>(*args);
   INFO("scanning");
@@ -69,9 +71,9 @@ static void *ScanPaths(void *ctx) {
     if (!media_pat.FullMatch(filename))
       continue;
     Track t;
-    if (library->Get(filename, &t) != 0) {
+    if (!library->GetURLIndex(filename)) {
       t.ReadTag(filename);
-      library->Save(t);
+      library->Save(&t);
     }
   }
   if (fts_close(tree)) {
@@ -84,6 +86,18 @@ LocalLibrary::LocalLibrary() {
   db_ = NULL;
   prune_thread_ = NULL;
   last_update_ = 0;
+}
+
+string LocalLibrary::GetURLKey(const string &url) { 
+  string ret(kURLIndexPrefix);
+  ret += url;
+  return ret;
+}
+
+string LocalLibrary::GetIDKey(uint32_t id) { 
+  string ret(kTrackPrefix);
+  ret.append((const char *)&id, kIDLength);
+  return ret;
 }
 
 long double LocalLibrary::last_update() { 
@@ -109,10 +123,11 @@ void LocalLibrary::RunPruneThread() {
         db_->Delete(leveldb::WriteOptions(), i->key());
         MarkUpdated(); 
       } else { 
-        string path = t.path();
+        string path = t.url();
         if (stat(path.c_str(), &the_status) < 0 && errno == ENOENT) {
           INFO("Removing %s", path.c_str());
           db_->Delete(leveldb::WriteOptions(), i->key());
+          db_->Delete(leveldb::WriteOptions(), GetURLKey(t.url()));
           MarkUpdated(); 
         }
       }
@@ -140,6 +155,9 @@ int LocalLibrary::Open(const std::string &path) {
   opts.error_if_exists = false;
   leveldb::Status st = leveldb::DB::Open(opts, path.c_str(), &db_);
   MarkUpdated();
+  
+
+
   return st.ok() ? 0 : -1;
 }
 
@@ -151,28 +169,43 @@ int LocalLibrary::Close() {
   return 0;
 }
 
-int LocalLibrary::Get(const std::string &path, Track *t) {
-  std::string val;
-  string key(kTrackPrefix);
-  key += path;
+uint32_t LocalLibrary::GetURLIndex(const string &url) {
+  string val;
+  uint32_t ret = kNotFound;
+  string key(GetURLKey(url));
   leveldb::Status st = db_->Get(leveldb::ReadOptions(), key, &val);
-  if (!st.ok()) 
-    return -2;
-  if (st.IsNotFound()) 
-    return -1;
-  if (t->ParsePartialFromString(val)) { 
-    return 0;
-  } else { 
-    return -3;
+  if (st.ok() && !st.IsNotFound())  {
+    memcpy(&ret, val.c_str(), sizeof(ret));
   }
+  return ret;
 }
 
-int LocalLibrary::Save(const Track &t) { 
-  if (t.path().length() == 0)
+bool LocalLibrary::Get(uint32_t id, Track *t) { 
+  bool ret = false;
+  if (!id) 
+    return ret;
+  string key(GetIDKey(id));
+  string val;
+  leveldb::Status st = db_->Get(leveldb::ReadOptions(), key, &val);
+  if (!st.IsNotFound() && st.ok()) {
+    t->ParsePartialFromString(val);
+    ret = true;
+  }
+  return ret;
+}
+
+void LocalLibrary::PutURLIndex(const string &url, uint32_t id) {
+  string val((const char *)&id, kIDLength);
+  db_->Put(leveldb::WriteOptions(), url, val);
+}
+
+int LocalLibrary::Save(Track *t) { 
+  if (t->url().length() == 0)
     return -1;
-  string key(kTrackPrefix); 
-  key += t.path();
-  leveldb::Status st = db_->Put(leveldb::WriteOptions(), key, t.SerializePartialAsString());
+  if (!t->has_id()) 
+    t->set_id(NextID());
+  leveldb::Status st = db_->Put(leveldb::WriteOptions(), GetIDKey(t->id()), t->SerializePartialAsString());
+  PutURLIndex(t->url(), t->id());
   MarkUpdated();
   return st.ok() ? 0 : -1;
 }
@@ -187,7 +220,14 @@ int LocalLibrary::Clear() {
   while (i->Valid()) { 
     string key = i->key().ToString();
     if (IsTrackKey(key)) {
-      db_->Delete(leveldb::WriteOptions(), i->key());
+      uint32_t id = 0;
+      memcpy(&id, key.c_str(), kIDLength);
+      string val = i->value().ToString();
+      db_->Delete(leveldb::WriteOptions(), key);
+      Track t;
+      if (t.ParsePartialFromString(val)) { 
+        db_->Delete(leveldb::WriteOptions(), GetURLKey(t.url()));
+      }
       MarkUpdated();
     }
     i->Next();
@@ -195,13 +235,14 @@ int LocalLibrary::Clear() {
   return 0;
 }
 
-int LocalLibrary::Delete(const string &path) {
-  string key(kTrackPrefix);
-  key += path;
+void LocalLibrary::Delete(const Track &t) {
+  string key(GetIDKey(t.id()));
   leveldb::Slice s(key);
   db_->Delete(leveldb::WriteOptions(), s);
+  string key2(kURLIndexPrefix);
+  key2.append(t.url());
+  db_->Delete(leveldb::WriteOptions(), key2);
   MarkUpdated();
-  return 0;
 }
 
 int LocalLibrary::Count() { 
@@ -236,8 +277,23 @@ void LocalLibrary::Scan(vector<string> scan_paths, bool sync) {
   memset(&thread_id, 0, sizeof(thread_id));
   void *args = (void *)(new ScanArgs(this, scan_paths));
   if (sync)
-    ScanPaths(args);
+    ScanPathsCallback(args);
   else
-    pthread_create(&thread_id, NULL, ScanPaths, args);
+    pthread_create(&thread_id, NULL, ScanPathsCallback, args);
+}
+
+uint32_t LocalLibrary::NextID() { 
+  string key("autoinc");
+  string val;
+  uint32_t ret = 1;
+  // alternatively this could be implemented by scanning all the existing keys
+  leveldb::Status st = db_->Get(leveldb::ReadOptions(), key, &val);
+  if (st.ok() && !st.IsNotFound()) {
+    memcpy(&ret, val.c_str(), sizeof(ret));
+    ret++;
+  }
+  string new_val((const char *)&ret, sizeof(ret));
+  db_->Put(leveldb::WriteOptions(), key, new_val);
+  return ret;
 }
 }

@@ -16,8 +16,6 @@
 
 #include "md0/lib/audio_sink.h"
 #include "md0/lib/aes.h"
-#include "md0/lib/buffer.h"
-#include "md0/lib/frame.h"
 
 using namespace std;
 

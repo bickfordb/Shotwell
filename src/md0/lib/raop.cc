@@ -14,8 +14,6 @@
 
 #include "aes.h"
 #include "base64.h"
-#include "buffer.h"
-#include "frame.h"
 #include "log.h"
 #include "raop.h"
 #include "util.h"

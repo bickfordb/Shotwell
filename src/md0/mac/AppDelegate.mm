@@ -6,9 +6,12 @@
 
 #include "md0/mac/AppDelegate.h"
 #include "md0/mac/Slider.h"
+#include "md0/mac/Plugin.h"
 #include "md0/lib/movie.h"
 #include "md0/lib/strnatcmp.h"
 #include "md0/lib/remote_library.h"
+
+#import <WebKit/WebKit.h>
 
 using namespace std;
 using namespace std::tr1;
@@ -24,7 +27,7 @@ static NSString *kDuration = @"duration";
 static NSString *kMDNSServiceType = @"_md0._tcp.";
 static NSString *kRAOPServiceType = @"_raop._tcp.";
 static NSString *kNextButton = @"NextButton";
-static NSString *kPath = @"path";
+static NSString *kURL = @"url";
 static NSString *kPlayButton = @"PlayButton";
 static NSString *kPreviousButton = @"PreviousButton";
 static NSString *kProgressControl = @"ProgressControl";
@@ -75,7 +78,7 @@ static NSString *GetWindowTitle(const Track &t) {
   else if (t.title().length())
     return [NSString stringWithFormat:@"%@", GetString(t.title()), nil];
   else
-    return [NSString stringWithFormat:@"%@", GetString(t.path()), nil];
+    return [NSString stringWithFormat:@"%@", GetString(t.url()), nil];
 }
 
 static bool Contains(const string &haystack, const string &needle) {
@@ -95,7 +98,6 @@ static inline int natural_compare(const string &l, const string &r) {
 static NSString *GetTimeString(int64_t duration)  {
   return FormatSeconds(duration / 1000000.0);
 }
-
 
 struct TrackComparator {
 private:
@@ -119,8 +121,8 @@ public:
         cmp = natural_compare(l.genre(), r.genre());
       } else if (key == kYear) {
         cmp = natural_compare(l.year(), r.year());
-      } else if (key == kPath) {
-        cmp = natural_compare(l.path(), r.path());
+      } else if (key == kURL) {
+        cmp = natural_compare(l.url(), r.url());
       } else if (key == kTrackNumber) {
         cmp = natural_compare(l.track_number(), r.track_number());
       }
@@ -144,7 +146,7 @@ static bool IsTrackMatchAllTerms(Track *t, vector<string> &terms) {
         || Contains(t->year(), token)
         || Contains(t->genre(), token)
         || Contains(t->title(), token)
-        || Contains(t->path(), token))) {
+        || Contains(t->url(), token))) {
       return false;
     }
   }
@@ -175,6 +177,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [mainWindow_ dealloc];
   [super dealloc];
 }
+
 
 - (void)setupMenu {
   NSMenu *mainMenu = [[NSApplication sharedApplication] mainMenu];
@@ -232,10 +235,10 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
       needsReload_ = YES;
       Track t = tracks_.at(i);
       tracks_.erase(tracks_.begin() + i);
-      localLibrary_->Delete(t.path());
+      localLibrary_->Delete(t);
       int n = allTracks_.size();
       for (int j = 0; j < n; j++) {
-        if (allTracks_.at(j).path() == t.path()) {
+        if (allTracks_.at(j).id() == t.id()) {
           allTracks_.erase(allTracks_.begin() + j); 
           break;
         }
@@ -272,7 +275,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
       if (i >= tracks_.size())
         continue;
       Track t = tracks_.at(i);
-      NSString *path = [NSString stringWithUTF8String:t.path().c_str()];
+      NSString *path = [NSString stringWithUTF8String:t.url().c_str()];
       NSURL *url = [NSURL fileURLWithPath:path];
       [urls addObject:url];
       i = [indices indexLessThanIndex:i];
@@ -298,14 +301,14 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
         continue;
       needsReload_ = YES;
       Track t = tracks_.at(i);
-      NSString *path = [NSString stringWithUTF8String:t.path().c_str()];
+      NSString *path = [NSString stringWithUTF8String:t.url().c_str()];
       NSURL *url = [NSURL fileURLWithPath:path];
       [urls addObject:url];
       tracks_.erase(tracks_.begin() + i);
-      localLibrary_->Delete(t.path());
+      localLibrary_->Delete(t);
       int n = allTracks_.size();
       for (int j = 0; j < n; j++) {
-        if (allTracks_.at(j).path() == t.path()) {
+        if (allTracks_.at(j).id() == t.id()) {
           allTracks_.erase(allTracks_.begin() + j); 
           break;
         }
@@ -318,7 +321,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 }
 - (void)setupWindow {
   mainWindow_ = [[NSWindow alloc] 
-    initWithContentRect:NSMakeRect(150, 150, kStartupSize.width, kStartupSize.height)
+    initWithContentRect:CGRectMake(150, 150, kStartupSize.width, kStartupSize.height)
     styleMask:NSClosableWindowMask | NSTitledWindowMask | NSResizableWindowMask | NSMiniaturizableWindowMask 
     backing:NSBackingStoreBuffered
     defer:YES];
@@ -332,13 +335,21 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [mainWindow_ setAutorecalculatesContentBorderThickness:YES forEdge:NSMinYEdge];
   [mainWindow_ setContentBorderThickness:kBottomEdgeMargin forEdge:NSMinYEdge];
   mainWindow_.title = kDefaultWindowTitle;
+  NSRect splitRect = contentView_.frame;
+  splitRect.origin.y += kBottomEdgeMargin;
+  splitRect.size.height -= kBottomEdgeMargin;
+  contentVerticalSplit_ = [[NSSplitView alloc] initWithFrame:splitRect];
+  contentVerticalSplit_.autoresizesSubviews = YES;
+  contentVerticalSplit_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+  contentVerticalSplit_.vertical = YES;
+  [contentView_ addSubview:contentVerticalSplit_];
 }
 
 - (void)setupAudioSelect { 
   int w = 160;
   int x = ((NSView *)[mainWindow_ contentView]).bounds.size.width;
   x -= w + 10;
-  audioOutputSelect_ = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(x, 3, w, 18)];
+  audioOutputSelect_ = [[NSPopUpButton alloc] initWithFrame:CGRectMake(x, 3, w, 18)];
   audioOutputSelect_.autoresizingMask = NSViewMinXMargin | NSViewMaxYMargin;
   [audioOutputSelect_ setTarget:self];
   [audioOutputSelect_ setAction:@selector(audioOutputSelected:)];
@@ -370,7 +381,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   int w = 160;
   int x = ((NSView *)[mainWindow_ contentView]).bounds.size.width;
   x -= w + 10;
-  librarySelect_ = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(5, 3, w, 18)];
+  librarySelect_ = [[NSPopUpButton alloc] initWithFrame:CGRectMake(5, 3, w, 18)];
   librarySelect_.autoresizingMask = NSViewMaxXMargin | NSViewMaxYMargin;
   NSButtonCell *buttonCell = (NSButtonCell *)[librarySelect_ cell];
   [buttonCell setFont:[NSFont systemFontOfSize:11.0]];
@@ -430,11 +441,11 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   trackTableFont_ = [[NSFont systemFontOfSize:11.0] retain];
   trackTablePlayingFont_ = [[NSFont boldSystemFontOfSize:11.0] retain];
 
-  trackTableScrollView_ = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, kBottomEdgeMargin, 
+  trackTableScrollView_ = [[NSScrollView alloc] initWithFrame:CGRectMake(0, kBottomEdgeMargin, 
     contentView_.frame.size.width, contentView_.frame.size.height - kBottomEdgeMargin)];
   trackTableScrollView_.autoresizesSubviews = YES;
   trackTableScrollView_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-  trackTableView_ = [[NSTableView alloc] initWithFrame:NSMakeRect(0, 0, 364, 200)];
+  trackTableView_ = [[NSTableView alloc] initWithFrame:CGRectMake(0, 0, 364, 200)];
   [trackTableView_ setUsesAlternatingRowBackgroundColors:YES];
   [trackTableView_ setGridStyleMask:NSTableViewSolidVerticalGridLineMask];
   [trackTableView_ setAllowsMultipleSelection:YES];
@@ -447,7 +458,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   NSTableColumn *genreColumn = [[[NSTableColumn alloc] initWithIdentifier:kGenre] autorelease];
   NSTableColumn *durationColumn = [[[NSTableColumn alloc] initWithIdentifier:kDuration] autorelease];
   NSTableColumn *yearColumn = [[[NSTableColumn alloc] initWithIdentifier:kYear] autorelease];
-  NSTableColumn *pathColumn = [[[NSTableColumn alloc] initWithIdentifier:kPath] autorelease];
+  NSTableColumn *pathColumn = [[[NSTableColumn alloc] initWithIdentifier:kURL] autorelease];
    
   emptyImage_ = [[NSImage alloc] initWithSize:NSMakeSize(22, 22)];
   playImage_ = [[NSImage imageNamed:@"dot"] retain];
@@ -482,7 +493,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [[durationColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
   [[trackNumberColumn headerCell] setStringValue:@"#"];
   [[trackNumberColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
-  [[pathColumn headerCell] setStringValue:@"Path"];
+  [[pathColumn headerCell] setStringValue:@"URL"];
   [[pathColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
 
   [[artistColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
@@ -514,17 +525,16 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 
   [trackTableView_ setDoubleAction:@selector(trackTableDoubleClicked:)];
   [trackTableView_ setTarget:self];
-  [contentView_ addSubview:trackTableScrollView_];
+  [contentVerticalSplit_ addSubview:trackTableScrollView_];
   [trackTableScrollView_ setDocumentView:trackTableView_];
   [trackTableView_ registerForDraggedTypes:[NSArray arrayWithObjects:NSURLPboardType, NSFilenamesPboardType, nil]];
 }
 
 - (void)setupToolbar { 
   // Setup the toolbar items and the toolbar.
-  playButton_ = [[NSButton alloc] initWithFrame:NSMakeRect(0, 0, 40, 22)];
+  playButton_ = [[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)];
   [playButton_ setTarget:self];
   [playButton_ setTitle:@""];
-  //[[playButton_ cell] setControlSize:NSMiniControlSize];
   [playButton_ setImage:startImage_];
   [playButton_ setBezelStyle:NSTexturedRoundedBezelStyle];
 
@@ -533,9 +543,8 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [playButtonItem_ setEnabled:YES];
   [playButtonItem_ setView:playButton_];
  
-  nextButton_ = [[NSButton alloc] initWithFrame:NSMakeRect(0, 0, 40, 22)];
+  nextButton_ = [[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)];
   [nextButton_ setTarget:self];
-  //[[nextButton_ cell] setControlSize:NSMiniControlSize];
   [nextButton_ setTitle:@""];
   [nextButton_ setImage:[NSImage imageNamed:@"right"]];
   [nextButton_ setAction:@selector(nextClicked:)];
@@ -546,8 +555,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 
   
   // Previous button
-  previousButton_ = [[NSButton alloc] initWithFrame:NSMakeRect(0, 0, 40, 22)];
-  //[[previousButton_ cell] setControlSize: NSMiniControlSize];
+  previousButton_ = [[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)];
   [previousButton_ setTarget:self];
   [previousButton_ setTitle:@""];
   [previousButton_ setBezelStyle:NSTexturedRoundedBezelStyle];
@@ -562,7 +570,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [[previousButton_ cell] setImageScaling:0.8];
 
   // Volume
-  volumeSlider_ = [[Slider alloc] initWithFrame:NSMakeRect(0, 0, 100, 22)];
+  volumeSlider_ = [[Slider alloc] initWithFrame:CGRectMake(0, 0, 100, 22)];
   [volumeSlider_ setContinuous:YES];
   [volumeSlider_ setTarget:self];
   [volumeSlider_ setAction:@selector(volumeClicked:)];
@@ -575,9 +583,9 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [volumeItem_ setView:volumeSlider_];
 
   NSView *progressControl = [[NSView alloc] 
-    initWithFrame:NSMakeRect(0, 0, 5 + 60 + 5 + 300 + 5 + + 60 + 5, 22)];
+    initWithFrame:CGRectMake(0, 0, 5 + 60 + 5 + 300 + 5 + + 60 + 5, 22)];
   // Progress Bar
-  progressSlider_ = [[Slider alloc] initWithFrame:NSMakeRect(5 + 60 + 5, 0, 300, 22)];
+  progressSlider_ = [[Slider alloc] initWithFrame:CGRectMake(5 + 60 + 5, 0, 300, 22)];
   [progressSlider_ setContinuous:YES];
   [progressSlider_ setTarget:self];
   [progressSlider_ setAction:@selector(progressClicked:)];
@@ -587,7 +595,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [progressSlider_ setMinValue:0.0];
   [progressSlider_ setDoubleValue:0.0];
 
-  elapsedText_ = [[NSTextField alloc] initWithFrame:NSMakeRect(5, 3, 60, 15)];
+  elapsedText_ = [[NSTextField alloc] initWithFrame:CGRectMake(5, 3, 60, 15)];
   elapsedText_.font = [NSFont systemFontOfSize:9.0];
   elapsedText_.stringValue = @"";
   elapsedText_.autoresizingMask = NSViewMaxXMargin;
@@ -597,7 +605,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [elapsedText_ setBordered:NO];
   [progressControl addSubview:elapsedText_];
 
-  durationText_ = [[NSTextField alloc] initWithFrame:NSMakeRect(5 + 60 + 5 + 300 + 5, 3, 60, 15)];
+  durationText_ = [[NSTextField alloc] initWithFrame:CGRectMake(5 + 60 + 5 + 300 + 5, 3, 60, 15)];
   durationText_.font = [NSFont systemFontOfSize:9.0];
   durationText_.stringValue = @"";
   durationText_.autoresizingMask = NSViewMinXMargin;
@@ -619,7 +627,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   [progressSliderItem_ setMaxSize:NSMakeSize(1000, 22)];
   [progressSliderItem_ setMinSize:NSMakeSize(400, 22)];
 
-  searchField_ = [[NSSearchField alloc] initWithFrame:NSMakeRect(0, 0, 100, 22)];
+  searchField_ = [[NSSearchField alloc] initWithFrame:CGRectMake(0, 0, 100, 22)];
   searchField_.font = [NSFont systemFontOfSize:12.0];
   searchField_.autoresizingMask = NSViewMinXMargin;
   searchField_.target = self;
@@ -705,7 +713,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   tuple<NSString *, Direction> albumSort(kAlbum, Ascending);
   tuple<NSString *, Direction> trackSort(kTrackNumber, Ascending);
   tuple<NSString *, Direction> titleSort(kTitle, Ascending);
-  tuple<NSString *, Direction> pathSort(kPath, Ascending);
+  tuple<NSString *, Direction> pathSort(kURL, Ascending);
   sortFields_.push_back(artistSort);
   sortFields_.push_back(albumSort);
   sortFields_.push_back(trackSort);
@@ -716,15 +724,64 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   predicateChanged_ = YES;
   sortChanged_ = YES;
 
+
+  
+
   pollMovieTimer_ = [NSTimer scheduledTimerWithTimeInterval:.15 target:self selector:@selector(onPollMovieTimer:) userInfo:nil repeats:YES];
   pollLibraryTimer_ = [NSTimer scheduledTimerWithTimeInterval:10.0 target:self selector:@selector(onPollLibraryTimer:) userInfo:nil repeats:YES];
+  [self setupPlugins];
   [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
+}
+
+
+- (void)setupPlugins {
+  NSBundle *bundle = [NSBundle mainBundle];
+  NSArray *paths = [bundle URLsForResourcesWithExtension:@"js" subdirectory:nil];
+  plugins_ = [[NSMutableArray array] retain];
+  for (NSURL *url in paths) { 
+    
+    Plugin p;
+    string b;
+    FILE *f = fopen([[url path] UTF8String], "r");
+    while (!feof(f)) {
+      char s[1024]; 
+      int sz = fread(s, 1, 1024, f);
+      if (sz > 0) 
+        b.append(s, sz);
+    }
+    if (b.length() > 0) { 
+      //p.set_script(b);
+      //lplugins_.push_back(p);
+      WebView *wv = [[WebView alloc] 
+        initWithFrame:CGRectMake(0, 0, 100, 100) frameName:nil groupName:nil];
+      wv.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+      [wv autorelease];
+      if (!wv) {
+        NSLog(@"failed to create web view");
+      } else { 
+        string html = "<html><h1>hi</h1><script>";
+        html += b;
+        html += "</script>";
+        [[wv mainFrame] 
+          loadHTMLString:[NSString stringWithUTF8String:html.c_str()]
+          baseURL:[NSURL URLWithString:@"http://127.0.0.1"]];
+        [contentVerticalSplit_ addSubview:wv]; 
+        [plugins_ addObject:wv];
+      }
+    }
+  }
+  /*
+  for (vector<Plugin>::iterator i = plugins_.begin(); i < plugins_.end(); i++) {
+    i->Start();
+  }*/
 }
 
 - (void)netServiceBrowser:(NSNetServiceBrowser *)netServiceBrowser didFindDomain:(NSString *)domainName moreComing:(BOOL)moreDomainsComing {
 }
 
+
 - (NSDragOperation)tableView:(NSTableView *)aTableView validateDrop:(id < NSDraggingInfo >)info proposedRow:(NSInteger)row proposedDropOperation:(NSTableViewDropOperation)operation {  
+
   NSLog(@"validate drop");
   return operation;
 }
@@ -924,7 +981,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 }
 
 - (void)onPollMovieTimer:(id)sender { 
-  if (track_.path().length() > 0) {
+  if (movie_) {
     mainWindow_.title = GetWindowTitle(track_);
   } else { 
     mainWindow_.title = @"MD0";
@@ -1046,14 +1103,13 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     if (index >= tracks_.size())
       return;
     Track aTrack = tracks_.at(index);
-    NSLog(@"play: %s", aTrack.path().c_str());
     if (movie_) {
       movie_->Stop();
     }
     track_ = aTrack;
     if (movie_)
       delete movie_;
-    movie_ = new Movie(aTrack.path().c_str());
+    movie_ = new Movie(aTrack.url().c_str());
     movie_->Play();
     movie_->SetListener(HandleMovieEvent, self);
     seekToRow_ = index;
@@ -1088,9 +1144,9 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 - (void)playNextTrack {
   int idx = 0;
   int found = -1;  
-  if (track_.path().length()) { 
+  if (movie_) { 
     for (vector<Track>::iterator i = tracks_.begin(); i < tracks_.end(); i++) {
-       if (i->path() == track_.path()) {
+       if (i->id() == track_.id()) {
          found = idx;       
          break;
        }
@@ -1104,9 +1160,9 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   int idx = 0;
   int found = -1;  
   int req = 0;
-  if (track_.path().length()) { 
+  if (movie_) { 
     for (vector<Track>::const_iterator i = tracks_.begin(); i < tracks_.end(); i++) {
-       if (i->path() == track_.path()) {
+       if (i->id() == track_.id()) {
          found = idx;       
          break;
        }
@@ -1122,9 +1178,9 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
   NSString *identifier = aTableColumn.identifier;
   id result = nil;
   NSString *s = nil;
-  bool isPlaying = (track_.path().length()
-        && movie_
-        && t.path() == track_.path());
+  bool isPlaying = (
+        movie_
+        && t.id() == track_.id());
   if (identifier == kArtist)
     s = GetString(t.artist());
   else if (identifier == kAlbum)
@@ -1139,8 +1195,8 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
     s = GetString(t.title());
   else if (identifier == kTrackNumber)
     s = GetString(t.track_number());
-  else if (identifier == kPath)
-    s = GetString(t.path());
+  else if (identifier == kURL)
+    s = GetString(t.url());
   else if (identifier == kStatus) {
     if (isPlaying) {
       result = playImage_;
@@ -1174,6 +1230,7 @@ void HandleMovieEvent(void *ctx, Movie *m, MovieEvent e, void *data) {
 - (BOOL)tableView:(NSTableView *)aTableView shouldEditTableColumn:(NSTableColumn *)aTableColumn row:(NSInteger)rowIndex {
   return NO;
 }
+
 
 
 @end

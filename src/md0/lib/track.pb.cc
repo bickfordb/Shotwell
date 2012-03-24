@@ -32,8 +32,9 @@ void protobuf_AssignDesc_track_2eproto() {
       "track.proto");
   GOOGLE_CHECK(file != NULL);
   Track_descriptor_ = file->message_type(0);
-  static const int Track_offsets_[14] = {
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, path_),
+  static const int Track_offsets_[15] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, id_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, url_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, artist_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, album_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Track, title_),
@@ -89,14 +90,14 @@ void protobuf_AddDesc_track_2eproto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-    "\n\013track.proto\022\014md0.protobuf\"\375\001\n\005Track\022\014\n"
-    "\004path\030\001 \001(\t\022\016\n\006artist\030\002 \001(\t\022\r\n\005album\030\003 \001"
-    "(\t\022\r\n\005title\030\004 \001(\t\022\014\n\004year\030\005 \001(\t\022\024\n\014track"
-    "_number\030\006 \001(\t\022\r\n\005genre\030\007 \001(\t\022\022\n\ncreated_"
-    "at\030\010 \001(\003\022\022\n\nupdated_at\030\t \001(\003\022\020\n\010duration"
-    "\030\n \001(\003\022\026\n\016last_played_at\030\013 \001(\003\022\016\n\006rating"
-    "\030\014 \001(\r\022\021\n\tnum_plays\030\r \001(\r\022\020\n\010is_video\030\016 "
-    "\001(\010", 283);
+    "\n\013track.proto\022\014md0.protobuf\"\210\002\n\005Track\022\n\n"
+    "\002id\030\001 \002(\r\022\013\n\003url\030\002 \001(\t\022\016\n\006artist\030\003 \001(\t\022\r"
+    "\n\005album\030\004 \001(\t\022\r\n\005title\030\005 \001(\t\022\014\n\004year\030\006 \001"
+    "(\t\022\024\n\014track_number\030\007 \001(\t\022\r\n\005genre\030\010 \001(\t\022"
+    "\022\n\ncreated_at\030\t \001(\003\022\022\n\nupdated_at\030\n \001(\003\022"
+    "\020\n\010duration\030\013 \001(\003\022\026\n\016last_played_at\030\014 \001("
+    "\003\022\016\n\006rating\030\r \001(\r\022\021\n\tnum_plays\030\016 \001(\r\022\020\n\010"
+    "is_video\030\017 \001(\010", 294);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "track.proto", &protobuf_RegisterTypes);
   Track::default_instance_ = new Track();
@@ -115,7 +116,8 @@ struct StaticDescriptorInitializer_track_2eproto {
 // ===================================================================
 
 #ifndef _MSC_VER
-const int Track::kPathFieldNumber;
+const int Track::kIdFieldNumber;
+const int Track::kUrlFieldNumber;
 const int Track::kArtistFieldNumber;
 const int Track::kAlbumFieldNumber;
 const int Track::kTitleFieldNumber;
@@ -147,7 +149,8 @@ Track::Track(const Track& from)
 
 void Track::SharedCtor() {
   _cached_size_ = 0;
-  path_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  id_ = 0u;
+  url_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   artist_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   album_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   title_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
@@ -169,8 +172,8 @@ Track::~Track() {
 }
 
 void Track::SharedDtor() {
-  if (path_ != &::google::protobuf::internal::kEmptyString) {
-    delete path_;
+  if (url_ != &::google::protobuf::internal::kEmptyString) {
+    delete url_;
   }
   if (artist_ != &::google::protobuf::internal::kEmptyString) {
     delete artist_;
@@ -216,9 +219,10 @@ Track* Track::New() const {
 
 void Track::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    if (has_path()) {
-      if (path_ != &::google::protobuf::internal::kEmptyString) {
-        path_->clear();
+    id_ = 0u;
+    if (has_url()) {
+      if (url_ != &::google::protobuf::internal::kEmptyString) {
+        url_->clear();
       }
     }
     if (has_artist()) {
@@ -251,9 +255,9 @@ void Track::Clear() {
         genre_->clear();
       }
     }
-    created_at_ = GOOGLE_LONGLONG(0);
   }
   if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    created_at_ = GOOGLE_LONGLONG(0);
     updated_at_ = GOOGLE_LONGLONG(0);
     duration_ = GOOGLE_LONGLONG(0);
     last_played_at_ = GOOGLE_LONGLONG(0);
@@ -271,24 +275,40 @@ bool Track::MergePartialFromCodedStream(
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // optional string path = 1;
+      // required uint32 id = 1;
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &id_)));
+          set_has_id();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_url;
+        break;
+      }
+      
+      // optional string url = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_url:
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_path()));
+                input, this->mutable_url()));
           ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-            this->path().data(), this->path().length(),
+            this->url().data(), this->url().length(),
             ::google::protobuf::internal::WireFormat::PARSE);
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(18)) goto parse_artist;
+        if (input->ExpectTag(26)) goto parse_artist;
         break;
       }
       
-      // optional string artist = 2;
-      case 2: {
+      // optional string artist = 3;
+      case 3: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_artist:
@@ -300,12 +320,12 @@ bool Track::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(26)) goto parse_album;
+        if (input->ExpectTag(34)) goto parse_album;
         break;
       }
       
-      // optional string album = 3;
-      case 3: {
+      // optional string album = 4;
+      case 4: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_album:
@@ -317,12 +337,12 @@ bool Track::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(34)) goto parse_title;
+        if (input->ExpectTag(42)) goto parse_title;
         break;
       }
       
-      // optional string title = 4;
-      case 4: {
+      // optional string title = 5;
+      case 5: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_title:
@@ -334,12 +354,12 @@ bool Track::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(42)) goto parse_year;
+        if (input->ExpectTag(50)) goto parse_year;
         break;
       }
       
-      // optional string year = 5;
-      case 5: {
+      // optional string year = 6;
+      case 6: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_year:
@@ -351,12 +371,12 @@ bool Track::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(50)) goto parse_track_number;
+        if (input->ExpectTag(58)) goto parse_track_number;
         break;
       }
       
-      // optional string track_number = 6;
-      case 6: {
+      // optional string track_number = 7;
+      case 7: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_track_number:
@@ -368,12 +388,12 @@ bool Track::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(58)) goto parse_genre;
+        if (input->ExpectTag(66)) goto parse_genre;
         break;
       }
       
-      // optional string genre = 7;
-      case 7: {
+      // optional string genre = 8;
+      case 8: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_genre:
@@ -385,12 +405,12 @@ bool Track::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(64)) goto parse_created_at;
+        if (input->ExpectTag(72)) goto parse_created_at;
         break;
       }
       
-      // optional int64 created_at = 8;
-      case 8: {
+      // optional int64 created_at = 9;
+      case 9: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_created_at:
@@ -401,12 +421,12 @@ bool Track::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(72)) goto parse_updated_at;
+        if (input->ExpectTag(80)) goto parse_updated_at;
         break;
       }
       
-      // optional int64 updated_at = 9;
-      case 9: {
+      // optional int64 updated_at = 10;
+      case 10: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_updated_at:
@@ -417,12 +437,12 @@ bool Track::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(80)) goto parse_duration;
+        if (input->ExpectTag(88)) goto parse_duration;
         break;
       }
       
-      // optional int64 duration = 10;
-      case 10: {
+      // optional int64 duration = 11;
+      case 11: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_duration:
@@ -433,12 +453,12 @@ bool Track::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(88)) goto parse_last_played_at;
+        if (input->ExpectTag(96)) goto parse_last_played_at;
         break;
       }
       
-      // optional int64 last_played_at = 11;
-      case 11: {
+      // optional int64 last_played_at = 12;
+      case 12: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_last_played_at:
@@ -449,12 +469,12 @@ bool Track::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(96)) goto parse_rating;
+        if (input->ExpectTag(104)) goto parse_rating;
         break;
       }
       
-      // optional uint32 rating = 12;
-      case 12: {
+      // optional uint32 rating = 13;
+      case 13: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_rating:
@@ -465,12 +485,12 @@ bool Track::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(104)) goto parse_num_plays;
+        if (input->ExpectTag(112)) goto parse_num_plays;
         break;
       }
       
-      // optional uint32 num_plays = 13;
-      case 13: {
+      // optional uint32 num_plays = 14;
+      case 14: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_num_plays:
@@ -481,12 +501,12 @@ bool Track::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(112)) goto parse_is_video;
+        if (input->ExpectTag(120)) goto parse_is_video;
         break;
       }
       
-      // optional bool is_video = 14;
-      case 14: {
+      // optional bool is_video = 15;
+      case 15: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_is_video:
@@ -519,102 +539,107 @@ bool Track::MergePartialFromCodedStream(
 
 void Track::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // optional string path = 1;
-  if (has_path()) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->path().data(), this->path().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE);
-    ::google::protobuf::internal::WireFormatLite::WriteString(
-      1, this->path(), output);
+  // required uint32 id = 1;
+  if (has_id()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(1, this->id(), output);
   }
   
-  // optional string artist = 2;
+  // optional string url = 2;
+  if (has_url()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->url().data(), this->url().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      2, this->url(), output);
+  }
+  
+  // optional string artist = 3;
   if (has_artist()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->artist().data(), this->artist().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      2, this->artist(), output);
+      3, this->artist(), output);
   }
   
-  // optional string album = 3;
+  // optional string album = 4;
   if (has_album()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->album().data(), this->album().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      3, this->album(), output);
+      4, this->album(), output);
   }
   
-  // optional string title = 4;
+  // optional string title = 5;
   if (has_title()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->title().data(), this->title().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      4, this->title(), output);
+      5, this->title(), output);
   }
   
-  // optional string year = 5;
+  // optional string year = 6;
   if (has_year()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->year().data(), this->year().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      5, this->year(), output);
+      6, this->year(), output);
   }
   
-  // optional string track_number = 6;
+  // optional string track_number = 7;
   if (has_track_number()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->track_number().data(), this->track_number().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      6, this->track_number(), output);
+      7, this->track_number(), output);
   }
   
-  // optional string genre = 7;
+  // optional string genre = 8;
   if (has_genre()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->genre().data(), this->genre().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      7, this->genre(), output);
+      8, this->genre(), output);
   }
   
-  // optional int64 created_at = 8;
+  // optional int64 created_at = 9;
   if (has_created_at()) {
-    ::google::protobuf::internal::WireFormatLite::WriteInt64(8, this->created_at(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteInt64(9, this->created_at(), output);
   }
   
-  // optional int64 updated_at = 9;
+  // optional int64 updated_at = 10;
   if (has_updated_at()) {
-    ::google::protobuf::internal::WireFormatLite::WriteInt64(9, this->updated_at(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteInt64(10, this->updated_at(), output);
   }
   
-  // optional int64 duration = 10;
+  // optional int64 duration = 11;
   if (has_duration()) {
-    ::google::protobuf::internal::WireFormatLite::WriteInt64(10, this->duration(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteInt64(11, this->duration(), output);
   }
   
-  // optional int64 last_played_at = 11;
+  // optional int64 last_played_at = 12;
   if (has_last_played_at()) {
-    ::google::protobuf::internal::WireFormatLite::WriteInt64(11, this->last_played_at(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteInt64(12, this->last_played_at(), output);
   }
   
-  // optional uint32 rating = 12;
+  // optional uint32 rating = 13;
   if (has_rating()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(12, this->rating(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(13, this->rating(), output);
   }
   
-  // optional uint32 num_plays = 13;
+  // optional uint32 num_plays = 14;
   if (has_num_plays()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(13, this->num_plays(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(14, this->num_plays(), output);
   }
   
-  // optional bool is_video = 14;
+  // optional bool is_video = 15;
   if (has_is_video()) {
-    ::google::protobuf::internal::WireFormatLite::WriteBool(14, this->is_video(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteBool(15, this->is_video(), output);
   }
   
   if (!unknown_fields().empty()) {
@@ -625,109 +650,114 @@ void Track::SerializeWithCachedSizes(
 
 ::google::protobuf::uint8* Track::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
-  // optional string path = 1;
-  if (has_path()) {
+  // required uint32 id = 1;
+  if (has_id()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(1, this->id(), target);
+  }
+  
+  // optional string url = 2;
+  if (has_url()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->path().data(), this->path().length(),
+      this->url().data(), this->url().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        1, this->path(), target);
+        2, this->url(), target);
   }
   
-  // optional string artist = 2;
+  // optional string artist = 3;
   if (has_artist()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->artist().data(), this->artist().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        2, this->artist(), target);
+        3, this->artist(), target);
   }
   
-  // optional string album = 3;
+  // optional string album = 4;
   if (has_album()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->album().data(), this->album().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        3, this->album(), target);
+        4, this->album(), target);
   }
   
-  // optional string title = 4;
+  // optional string title = 5;
   if (has_title()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->title().data(), this->title().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        4, this->title(), target);
+        5, this->title(), target);
   }
   
-  // optional string year = 5;
+  // optional string year = 6;
   if (has_year()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->year().data(), this->year().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        5, this->year(), target);
+        6, this->year(), target);
   }
   
-  // optional string track_number = 6;
+  // optional string track_number = 7;
   if (has_track_number()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->track_number().data(), this->track_number().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        6, this->track_number(), target);
+        7, this->track_number(), target);
   }
   
-  // optional string genre = 7;
+  // optional string genre = 8;
   if (has_genre()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->genre().data(), this->genre().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        7, this->genre(), target);
+        8, this->genre(), target);
   }
   
-  // optional int64 created_at = 8;
+  // optional int64 created_at = 9;
   if (has_created_at()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(8, this->created_at(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(9, this->created_at(), target);
   }
   
-  // optional int64 updated_at = 9;
+  // optional int64 updated_at = 10;
   if (has_updated_at()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(9, this->updated_at(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(10, this->updated_at(), target);
   }
   
-  // optional int64 duration = 10;
+  // optional int64 duration = 11;
   if (has_duration()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(10, this->duration(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(11, this->duration(), target);
   }
   
-  // optional int64 last_played_at = 11;
+  // optional int64 last_played_at = 12;
   if (has_last_played_at()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(11, this->last_played_at(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(12, this->last_played_at(), target);
   }
   
-  // optional uint32 rating = 12;
+  // optional uint32 rating = 13;
   if (has_rating()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(12, this->rating(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(13, this->rating(), target);
   }
   
-  // optional uint32 num_plays = 13;
+  // optional uint32 num_plays = 14;
   if (has_num_plays()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(13, this->num_plays(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(14, this->num_plays(), target);
   }
   
-  // optional bool is_video = 14;
+  // optional bool is_video = 15;
   if (has_is_video()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(14, this->is_video(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(15, this->is_video(), target);
   }
   
   if (!unknown_fields().empty()) {
@@ -741,100 +771,107 @@ int Track::ByteSize() const {
   int total_size = 0;
   
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // optional string path = 1;
-    if (has_path()) {
+    // required uint32 id = 1;
+    if (has_id()) {
       total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::StringSize(
-          this->path());
+        ::google::protobuf::internal::WireFormatLite::UInt32Size(
+          this->id());
     }
     
-    // optional string artist = 2;
+    // optional string url = 2;
+    if (has_url()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->url());
+    }
+    
+    // optional string artist = 3;
     if (has_artist()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->artist());
     }
     
-    // optional string album = 3;
+    // optional string album = 4;
     if (has_album()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->album());
     }
     
-    // optional string title = 4;
+    // optional string title = 5;
     if (has_title()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->title());
     }
     
-    // optional string year = 5;
+    // optional string year = 6;
     if (has_year()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->year());
     }
     
-    // optional string track_number = 6;
+    // optional string track_number = 7;
     if (has_track_number()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->track_number());
     }
     
-    // optional string genre = 7;
+    // optional string genre = 8;
     if (has_genre()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->genre());
     }
     
-    // optional int64 created_at = 8;
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    // optional int64 created_at = 9;
     if (has_created_at()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::Int64Size(
           this->created_at());
     }
     
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
-    // optional int64 updated_at = 9;
+    // optional int64 updated_at = 10;
     if (has_updated_at()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::Int64Size(
           this->updated_at());
     }
     
-    // optional int64 duration = 10;
+    // optional int64 duration = 11;
     if (has_duration()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::Int64Size(
           this->duration());
     }
     
-    // optional int64 last_played_at = 11;
+    // optional int64 last_played_at = 12;
     if (has_last_played_at()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::Int64Size(
           this->last_played_at());
     }
     
-    // optional uint32 rating = 12;
+    // optional uint32 rating = 13;
     if (has_rating()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
           this->rating());
     }
     
-    // optional uint32 num_plays = 13;
+    // optional uint32 num_plays = 14;
     if (has_num_plays()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::UInt32Size(
           this->num_plays());
     }
     
-    // optional bool is_video = 14;
+    // optional bool is_video = 15;
     if (has_is_video()) {
       total_size += 1 + 1;
     }
@@ -866,8 +903,11 @@ void Track::MergeFrom(const ::google::protobuf::Message& from) {
 void Track::MergeFrom(const Track& from) {
   GOOGLE_CHECK_NE(&from, this);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    if (from.has_path()) {
-      set_path(from.path());
+    if (from.has_id()) {
+      set_id(from.id());
+    }
+    if (from.has_url()) {
+      set_url(from.url());
     }
     if (from.has_artist()) {
       set_artist(from.artist());
@@ -887,11 +927,11 @@ void Track::MergeFrom(const Track& from) {
     if (from.has_genre()) {
       set_genre(from.genre());
     }
+  }
+  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_created_at()) {
       set_created_at(from.created_at());
     }
-  }
-  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_updated_at()) {
       set_updated_at(from.updated_at());
     }
@@ -927,13 +967,15 @@ void Track::CopyFrom(const Track& from) {
 }
 
 bool Track::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
   
   return true;
 }
 
 void Track::Swap(Track* other) {
   if (other != this) {
-    std::swap(path_, other->path_);
+    std::swap(id_, other->id_);
+    std::swap(url_, other->url_);
     std::swap(artist_, other->artist_);
     std::swap(album_, other->album_);
     std::swap(title_, other->title_);

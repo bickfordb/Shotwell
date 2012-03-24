@@ -82,19 +82,19 @@ void RemoteLibrary::OnFetchResponse(struct evhttp_request *req) {
     if (!t) 
       continue;
     Track a_track;
+    a_track.set_id((uint32_t)json_integer_value(json_object_get(t, "id")));
     a_track.set_artist(json_string_value(json_object_get(t, "artist")));
+    a_track.set_album(json_string_value(json_object_get(t, "album")));
+    a_track.set_genre(json_string_value(json_object_get(t, "genre")));
+    a_track.set_year(json_string_value(json_object_get(t, "year")));
+    a_track.set_duration(json_integer_value(json_object_get(t, "duration")));
     a_track.set_album(json_string_value(json_object_get(t, "album")));
     a_track.set_title(json_string_value(json_object_get(t, "title")));
     a_track.set_track_number(json_string_value(json_object_get(t, "track_number")));
-    const char *p = json_string_value(json_object_get(t, "path"));
-    char *encoded_path = evhttp_uriencode(p, strlen(p), 1);
-    string url = Format("http://%s:%d/tracks%s",
+    a_track.set_url(Format("http://%s:%d/tracks/%u",
       host_.c_str(),
       port_,
-      encoded_path ? encoded_path : "");
-    if (encoded_path)
-      free(encoded_path);  
-    a_track.set_path(url);
+      a_track.id()));
     tracks_.push_back(a_track);
   }
   Unlock();

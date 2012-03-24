@@ -62,13 +62,14 @@ bool Daemon::HandleLibraryRequest(Request *r) {
   library_->GetAll(&all_tracks);
   for (vector<Track>::iterator i = all_tracks.begin(); i < all_tracks.end(); i++) {
     json_t *tobj = json_object();
+    json_object_set_integer(tobj, "id", (json_int_t)i->id());
     json_object_set_string(tobj, "artist", i->artist());
     json_object_set_string(tobj, "album", i->album());
     json_object_set_string(tobj, "genre", i->genre());
+    json_object_set_integer(tobj, "duration", i->duration());
     json_object_set_string(tobj, "title", i->title());
     json_object_set_string(tobj, "year", i->year());
     json_object_set_string(tobj, "track_number", i->track_number());
-    json_object_set_string(tobj, "path", i->path());
     json_array_append(tracks, tobj);
     json_decref(tobj);
   }
@@ -90,13 +91,16 @@ bool Daemon::HandleTrackRequest(Request *r) {
   INFO("load: %s", track_path.c_str());
   // make sure it's a real track
   Track t;
-  if (library_->Get(track_path, &t) != 0) {
+  uint32_t track_id = strtoul(track_path.c_str(), NULL, 10);
+  if (!library_->Get(track_id, &t)
+      || t.url()[0] != '/'
+      ) {
     DEBUG("no track");
     r->RespondNotFound();
     return true;
   }
   
-  int fd = open(track_path.c_str(), O_RDONLY);
+  int fd = open(t.url().c_str(), O_RDONLY);
   if (fd < 0) {
     DEBUG("missing fd");
     r->RespondNotFound();
@@ -110,7 +114,7 @@ bool Daemon::HandleTrackRequest(Request *r) {
     return true;
   }
   string guess_content_type("application/octet-stream");
-  if (strcasestr(track_path.c_str(), ".mp3")) 
+  if (strcasestr(t.url().c_str(), ".mp3")) 
     guess_content_type = "audio/mpeg";
   // fill me in
   r->AddResponseHeader("Content-Type", guess_content_type);
@@ -140,7 +144,7 @@ Daemon::Daemon(const vector<Host> &listen_to, LocalLibrary *library) :
   library_(library),
   listen_to_(listen_to),
   root_pat_("^/$"),
-  track_pat_("^/tracks(/.+)$"),
+  track_pat_("^/tracks/([^/]+)$"),
   library_pat_("^/library$")
 {
   main_thread_ = NULL;

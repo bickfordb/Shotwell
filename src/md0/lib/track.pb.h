@@ -91,21 +91,28 @@ class Track : public ::google::protobuf::Message {
   
   // accessors -------------------------------------------------------
   
-  // optional string path = 1;
-  inline bool has_path() const;
-  inline void clear_path();
-  static const int kPathFieldNumber = 1;
-  inline const ::std::string& path() const;
-  inline void set_path(const ::std::string& value);
-  inline void set_path(const char* value);
-  inline void set_path(const char* value, size_t size);
-  inline ::std::string* mutable_path();
-  inline ::std::string* release_path();
+  // required uint32 id = 1;
+  inline bool has_id() const;
+  inline void clear_id();
+  static const int kIdFieldNumber = 1;
+  inline ::google::protobuf::uint32 id() const;
+  inline void set_id(::google::protobuf::uint32 value);
   
-  // optional string artist = 2;
+  // optional string url = 2;
+  inline bool has_url() const;
+  inline void clear_url();
+  static const int kUrlFieldNumber = 2;
+  inline const ::std::string& url() const;
+  inline void set_url(const ::std::string& value);
+  inline void set_url(const char* value);
+  inline void set_url(const char* value, size_t size);
+  inline ::std::string* mutable_url();
+  inline ::std::string* release_url();
+  
+  // optional string artist = 3;
   inline bool has_artist() const;
   inline void clear_artist();
-  static const int kArtistFieldNumber = 2;
+  static const int kArtistFieldNumber = 3;
   inline const ::std::string& artist() const;
   inline void set_artist(const ::std::string& value);
   inline void set_artist(const char* value);
@@ -113,10 +120,10 @@ class Track : public ::google::protobuf::Message {
   inline ::std::string* mutable_artist();
   inline ::std::string* release_artist();
   
-  // optional string album = 3;
+  // optional string album = 4;
   inline bool has_album() const;
   inline void clear_album();
-  static const int kAlbumFieldNumber = 3;
+  static const int kAlbumFieldNumber = 4;
   inline const ::std::string& album() const;
   inline void set_album(const ::std::string& value);
   inline void set_album(const char* value);
@@ -124,10 +131,10 @@ class Track : public ::google::protobuf::Message {
   inline ::std::string* mutable_album();
   inline ::std::string* release_album();
   
-  // optional string title = 4;
+  // optional string title = 5;
   inline bool has_title() const;
   inline void clear_title();
-  static const int kTitleFieldNumber = 4;
+  static const int kTitleFieldNumber = 5;
   inline const ::std::string& title() const;
   inline void set_title(const ::std::string& value);
   inline void set_title(const char* value);
@@ -135,10 +142,10 @@ class Track : public ::google::protobuf::Message {
   inline ::std::string* mutable_title();
   inline ::std::string* release_title();
   
-  // optional string year = 5;
+  // optional string year = 6;
   inline bool has_year() const;
   inline void clear_year();
-  static const int kYearFieldNumber = 5;
+  static const int kYearFieldNumber = 6;
   inline const ::std::string& year() const;
   inline void set_year(const ::std::string& value);
   inline void set_year(const char* value);
@@ -146,10 +153,10 @@ class Track : public ::google::protobuf::Message {
   inline ::std::string* mutable_year();
   inline ::std::string* release_year();
   
-  // optional string track_number = 6;
+  // optional string track_number = 7;
   inline bool has_track_number() const;
   inline void clear_track_number();
-  static const int kTrackNumberFieldNumber = 6;
+  static const int kTrackNumberFieldNumber = 7;
   inline const ::std::string& track_number() const;
   inline void set_track_number(const ::std::string& value);
   inline void set_track_number(const char* value);
@@ -157,10 +164,10 @@ class Track : public ::google::protobuf::Message {
   inline ::std::string* mutable_track_number();
   inline ::std::string* release_track_number();
   
-  // optional string genre = 7;
+  // optional string genre = 8;
   inline bool has_genre() const;
   inline void clear_genre();
-  static const int kGenreFieldNumber = 7;
+  static const int kGenreFieldNumber = 8;
   inline const ::std::string& genre() const;
   inline void set_genre(const ::std::string& value);
   inline void set_genre(const char* value);
@@ -168,59 +175,61 @@ class Track : public ::google::protobuf::Message {
   inline ::std::string* mutable_genre();
   inline ::std::string* release_genre();
   
-  // optional int64 created_at = 8;
+  // optional int64 created_at = 9;
   inline bool has_created_at() const;
   inline void clear_created_at();
-  static const int kCreatedAtFieldNumber = 8;
+  static const int kCreatedAtFieldNumber = 9;
   inline ::google::protobuf::int64 created_at() const;
   inline void set_created_at(::google::protobuf::int64 value);
   
-  // optional int64 updated_at = 9;
+  // optional int64 updated_at = 10;
   inline bool has_updated_at() const;
   inline void clear_updated_at();
-  static const int kUpdatedAtFieldNumber = 9;
+  static const int kUpdatedAtFieldNumber = 10;
   inline ::google::protobuf::int64 updated_at() const;
   inline void set_updated_at(::google::protobuf::int64 value);
   
-  // optional int64 duration = 10;
+  // optional int64 duration = 11;
   inline bool has_duration() const;
   inline void clear_duration();
-  static const int kDurationFieldNumber = 10;
+  static const int kDurationFieldNumber = 11;
   inline ::google::protobuf::int64 duration() const;
   inline void set_duration(::google::protobuf::int64 value);
   
-  // optional int64 last_played_at = 11;
+  // optional int64 last_played_at = 12;
   inline bool has_last_played_at() const;
   inline void clear_last_played_at();
-  static const int kLastPlayedAtFieldNumber = 11;
+  static const int kLastPlayedAtFieldNumber = 12;
   inline ::google::protobuf::int64 last_played_at() const;
   inline void set_last_played_at(::google::protobuf::int64 value);
   
-  // optional uint32 rating = 12;
+  // optional uint32 rating = 13;
   inline bool has_rating() const;
   inline void clear_rating();
-  static const int kRatingFieldNumber = 12;
+  static const int kRatingFieldNumber = 13;
   inline ::google::protobuf::uint32 rating() const;
   inline void set_rating(::google::protobuf::uint32 value);
   
-  // optional uint32 num_plays = 13;
+  // optional uint32 num_plays = 14;
   inline bool has_num_plays() const;
   inline void clear_num_plays();
-  static const int kNumPlaysFieldNumber = 13;
+  static const int kNumPlaysFieldNumber = 14;
   inline ::google::protobuf::uint32 num_plays() const;
   inline void set_num_plays(::google::protobuf::uint32 value);
   
-  // optional bool is_video = 14;
+  // optional bool is_video = 15;
   inline bool has_is_video() const;
   inline void clear_is_video();
-  static const int kIsVideoFieldNumber = 14;
+  static const int kIsVideoFieldNumber = 15;
   inline bool is_video() const;
   inline void set_is_video(bool value);
   
   // @@protoc_insertion_point(class_scope:md0.protobuf.Track)
  private:
-  inline void set_has_path();
-  inline void clear_has_path();
+  inline void set_has_id();
+  inline void clear_has_id();
+  inline void set_has_url();
+  inline void clear_has_url();
   inline void set_has_artist();
   inline void clear_has_artist();
   inline void set_has_album();
@@ -250,23 +259,24 @@ class Track : public ::google::protobuf::Message {
   
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
   
-  ::std::string* path_;
+  ::std::string* url_;
   ::std::string* artist_;
   ::std::string* album_;
   ::std::string* title_;
   ::std::string* year_;
   ::std::string* track_number_;
+  ::google::protobuf::uint32 id_;
+  ::google::protobuf::uint32 rating_;
   ::std::string* genre_;
   ::google::protobuf::int64 created_at_;
   ::google::protobuf::int64 updated_at_;
   ::google::protobuf::int64 duration_;
   ::google::protobuf::int64 last_played_at_;
-  ::google::protobuf::uint32 rating_;
   ::google::protobuf::uint32 num_plays_;
   bool is_video_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(14 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(15 + 31) / 32];
   
   friend void  protobuf_AddDesc_track_2eproto();
   friend void protobuf_AssignDesc_track_2eproto();
@@ -282,73 +292,95 @@ class Track : public ::google::protobuf::Message {
 
 // Track
 
-// optional string path = 1;
-inline bool Track::has_path() const {
+// required uint32 id = 1;
+inline bool Track::has_id() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void Track::set_has_path() {
+inline void Track::set_has_id() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void Track::clear_has_path() {
+inline void Track::clear_has_id() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void Track::clear_path() {
-  if (path_ != &::google::protobuf::internal::kEmptyString) {
-    path_->clear();
+inline void Track::clear_id() {
+  id_ = 0u;
+  clear_has_id();
+}
+inline ::google::protobuf::uint32 Track::id() const {
+  return id_;
+}
+inline void Track::set_id(::google::protobuf::uint32 value) {
+  set_has_id();
+  id_ = value;
+}
+
+// optional string url = 2;
+inline bool Track::has_url() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void Track::set_has_url() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void Track::clear_has_url() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void Track::clear_url() {
+  if (url_ != &::google::protobuf::internal::kEmptyString) {
+    url_->clear();
   }
-  clear_has_path();
+  clear_has_url();
 }
-inline const ::std::string& Track::path() const {
-  return *path_;
+inline const ::std::string& Track::url() const {
+  return *url_;
 }
-inline void Track::set_path(const ::std::string& value) {
-  set_has_path();
-  if (path_ == &::google::protobuf::internal::kEmptyString) {
-    path_ = new ::std::string;
+inline void Track::set_url(const ::std::string& value) {
+  set_has_url();
+  if (url_ == &::google::protobuf::internal::kEmptyString) {
+    url_ = new ::std::string;
   }
-  path_->assign(value);
+  url_->assign(value);
 }
-inline void Track::set_path(const char* value) {
-  set_has_path();
-  if (path_ == &::google::protobuf::internal::kEmptyString) {
-    path_ = new ::std::string;
+inline void Track::set_url(const char* value) {
+  set_has_url();
+  if (url_ == &::google::protobuf::internal::kEmptyString) {
+    url_ = new ::std::string;
   }
-  path_->assign(value);
+  url_->assign(value);
 }
-inline void Track::set_path(const char* value, size_t size) {
-  set_has_path();
-  if (path_ == &::google::protobuf::internal::kEmptyString) {
-    path_ = new ::std::string;
+inline void Track::set_url(const char* value, size_t size) {
+  set_has_url();
+  if (url_ == &::google::protobuf::internal::kEmptyString) {
+    url_ = new ::std::string;
   }
-  path_->assign(reinterpret_cast<const char*>(value), size);
+  url_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* Track::mutable_path() {
-  set_has_path();
-  if (path_ == &::google::protobuf::internal::kEmptyString) {
-    path_ = new ::std::string;
+inline ::std::string* Track::mutable_url() {
+  set_has_url();
+  if (url_ == &::google::protobuf::internal::kEmptyString) {
+    url_ = new ::std::string;
   }
-  return path_;
+  return url_;
 }
-inline ::std::string* Track::release_path() {
-  clear_has_path();
-  if (path_ == &::google::protobuf::internal::kEmptyString) {
+inline ::std::string* Track::release_url() {
+  clear_has_url();
+  if (url_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
   } else {
-    ::std::string* temp = path_;
-    path_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    ::std::string* temp = url_;
+    url_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
     return temp;
   }
 }
 
-// optional string artist = 2;
+// optional string artist = 3;
 inline bool Track::has_artist() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
+  return (_has_bits_[0] & 0x00000004u) != 0;
 }
 inline void Track::set_has_artist() {
-  _has_bits_[0] |= 0x00000002u;
+  _has_bits_[0] |= 0x00000004u;
 }
 inline void Track::clear_has_artist() {
-  _has_bits_[0] &= ~0x00000002u;
+  _has_bits_[0] &= ~0x00000004u;
 }
 inline void Track::clear_artist() {
   if (artist_ != &::google::protobuf::internal::kEmptyString) {
@@ -398,15 +430,15 @@ inline ::std::string* Track::release_artist() {
   }
 }
 
-// optional string album = 3;
+// optional string album = 4;
 inline bool Track::has_album() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
 inline void Track::set_has_album() {
-  _has_bits_[0] |= 0x00000004u;
+  _has_bits_[0] |= 0x00000008u;
 }
 inline void Track::clear_has_album() {
-  _has_bits_[0] &= ~0x00000004u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void Track::clear_album() {
   if (album_ != &::google::protobuf::internal::kEmptyString) {
@@ -456,15 +488,15 @@ inline ::std::string* Track::release_album() {
   }
 }
 
-// optional string title = 4;
+// optional string title = 5;
 inline bool Track::has_title() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void Track::set_has_title() {
-  _has_bits_[0] |= 0x00000008u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void Track::clear_has_title() {
-  _has_bits_[0] &= ~0x00000008u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void Track::clear_title() {
   if (title_ != &::google::protobuf::internal::kEmptyString) {
@@ -514,15 +546,15 @@ inline ::std::string* Track::release_title() {
   }
 }
 
-// optional string year = 5;
+// optional string year = 6;
 inline bool Track::has_year() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
 inline void Track::set_has_year() {
-  _has_bits_[0] |= 0x00000010u;
+  _has_bits_[0] |= 0x00000020u;
 }
 inline void Track::clear_has_year() {
-  _has_bits_[0] &= ~0x00000010u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void Track::clear_year() {
   if (year_ != &::google::protobuf::internal::kEmptyString) {
@@ -572,15 +604,15 @@ inline ::std::string* Track::release_year() {
   }
 }
 
-// optional string track_number = 6;
+// optional string track_number = 7;
 inline bool Track::has_track_number() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
+  return (_has_bits_[0] & 0x00000040u) != 0;
 }
 inline void Track::set_has_track_number() {
-  _has_bits_[0] |= 0x00000020u;
+  _has_bits_[0] |= 0x00000040u;
 }
 inline void Track::clear_has_track_number() {
-  _has_bits_[0] &= ~0x00000020u;
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline void Track::clear_track_number() {
   if (track_number_ != &::google::protobuf::internal::kEmptyString) {
@@ -630,15 +662,15 @@ inline ::std::string* Track::release_track_number() {
   }
 }
 
-// optional string genre = 7;
+// optional string genre = 8;
 inline bool Track::has_genre() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
+  return (_has_bits_[0] & 0x00000080u) != 0;
 }
 inline void Track::set_has_genre() {
-  _has_bits_[0] |= 0x00000040u;
+  _has_bits_[0] |= 0x00000080u;
 }
 inline void Track::clear_has_genre() {
-  _has_bits_[0] &= ~0x00000040u;
+  _has_bits_[0] &= ~0x00000080u;
 }
 inline void Track::clear_genre() {
   if (genre_ != &::google::protobuf::internal::kEmptyString) {
@@ -688,15 +720,15 @@ inline ::std::string* Track::release_genre() {
   }
 }
 
-// optional int64 created_at = 8;
+// optional int64 created_at = 9;
 inline bool Track::has_created_at() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
 inline void Track::set_has_created_at() {
-  _has_bits_[0] |= 0x00000080u;
+  _has_bits_[0] |= 0x00000100u;
 }
 inline void Track::clear_has_created_at() {
-  _has_bits_[0] &= ~0x00000080u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void Track::clear_created_at() {
   created_at_ = GOOGLE_LONGLONG(0);
@@ -710,15 +742,15 @@ inline void Track::set_created_at(::google::protobuf::int64 value) {
   created_at_ = value;
 }
 
-// optional int64 updated_at = 9;
+// optional int64 updated_at = 10;
 inline bool Track::has_updated_at() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000200u) != 0;
 }
 inline void Track::set_has_updated_at() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000200u;
 }
 inline void Track::clear_has_updated_at() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000200u;
 }
 inline void Track::clear_updated_at() {
   updated_at_ = GOOGLE_LONGLONG(0);
@@ -732,15 +764,15 @@ inline void Track::set_updated_at(::google::protobuf::int64 value) {
   updated_at_ = value;
 }
 
-// optional int64 duration = 10;
+// optional int64 duration = 11;
 inline bool Track::has_duration() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000400u) != 0;
 }
 inline void Track::set_has_duration() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000400u;
 }
 inline void Track::clear_has_duration() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000400u;
 }
 inline void Track::clear_duration() {
   duration_ = GOOGLE_LONGLONG(0);
@@ -754,15 +786,15 @@ inline void Track::set_duration(::google::protobuf::int64 value) {
   duration_ = value;
 }
 
-// optional int64 last_played_at = 11;
+// optional int64 last_played_at = 12;
 inline bool Track::has_last_played_at() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+  return (_has_bits_[0] & 0x00000800u) != 0;
 }
 inline void Track::set_has_last_played_at() {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000800u;
 }
 inline void Track::clear_has_last_played_at() {
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000800u;
 }
 inline void Track::clear_last_played_at() {
   last_played_at_ = GOOGLE_LONGLONG(0);
@@ -776,15 +808,15 @@ inline void Track::set_last_played_at(::google::protobuf::int64 value) {
   last_played_at_ = value;
 }
 
-// optional uint32 rating = 12;
+// optional uint32 rating = 13;
 inline bool Track::has_rating() const {
-  return (_has_bits_[0] & 0x00000800u) != 0;
+  return (_has_bits_[0] & 0x00001000u) != 0;
 }
 inline void Track::set_has_rating() {
-  _has_bits_[0] |= 0x00000800u;
+  _has_bits_[0] |= 0x00001000u;
 }
 inline void Track::clear_has_rating() {
-  _has_bits_[0] &= ~0x00000800u;
+  _has_bits_[0] &= ~0x00001000u;
 }
 inline void Track::clear_rating() {
   rating_ = 0u;
@@ -798,15 +830,15 @@ inline void Track::set_rating(::google::protobuf::uint32 value) {
   rating_ = value;
 }
 
-// optional uint32 num_plays = 13;
+// optional uint32 num_plays = 14;
 inline bool Track::has_num_plays() const {
-  return (_has_bits_[0] & 0x00001000u) != 0;
+  return (_has_bits_[0] & 0x00002000u) != 0;
 }
 inline void Track::set_has_num_plays() {
-  _has_bits_[0] |= 0x00001000u;
+  _has_bits_[0] |= 0x00002000u;
 }
 inline void Track::clear_has_num_plays() {
-  _has_bits_[0] &= ~0x00001000u;
+  _has_bits_[0] &= ~0x00002000u;
 }
 inline void Track::clear_num_plays() {
   num_plays_ = 0u;
@@ -820,15 +852,15 @@ inline void Track::set_num_plays(::google::protobuf::uint32 value) {
   num_plays_ = value;
 }
 
-// optional bool is_video = 14;
+// optional bool is_video = 15;
 inline bool Track::has_is_video() const {
-  return (_has_bits_[0] & 0x00002000u) != 0;
+  return (_has_bits_[0] & 0x00004000u) != 0;
 }
 inline void Track::set_has_is_video() {
-  _has_bits_[0] |= 0x00002000u;
+  _has_bits_[0] |= 0x00004000u;
 }
 inline void Track::clear_has_is_video() {
-  _has_bits_[0] &= ~0x00002000u;
+  _has_bits_[0] &= ~0x00004000u;
 }
 inline void Track::clear_is_video() {
   is_video_ = false;

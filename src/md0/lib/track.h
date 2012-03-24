@@ -10,7 +10,7 @@ class Track : public ::md0::protobuf::Track {
  public:
   /* Do global initialization */
   static void Init();
-  int ReadTag(const string &path);
+  int ReadTag(const string &url);
 };
 }
 #endif

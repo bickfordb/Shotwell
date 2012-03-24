@@ -1,19 +1,20 @@
 package md0.protobuf;
 
 message Track { 
-  optional string path = 1;
-  optional string artist = 2;
-  optional string album = 3;
-  optional string title = 4;
-  optional string year = 5;
-  optional string track_number = 6;
-  optional string genre = 7;
-  optional int64 created_at = 8;
-  optional int64 updated_at = 9;
-  optional int64 duration = 10;
-  optional int64 last_played_at = 11;
-  optional uint32 rating = 12;
-  optional uint32 num_plays = 13;
-  optional bool is_video = 14;
+  required uint32 id = 1;
+  optional string url = 2;
+  optional string artist = 3;
+  optional string album = 4;
+  optional string title = 5;
+  optional string year = 6;
+  optional string track_number = 7;
+  optional string genre = 8;
+  optional int64 created_at = 9;
+  optional int64 updated_at = 10;
+  optional int64 duration = 11;
+  optional int64 last_played_at = 12;
+  optional uint32 rating = 13;
+  optional uint32 num_plays = 14;
+  optional bool is_video = 15;
 }
 

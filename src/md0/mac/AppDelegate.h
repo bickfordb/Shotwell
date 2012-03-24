@@ -12,6 +12,7 @@
 #include "md0/mac/Service.h"
 #include "md0/lib/daemon.h"
 #include "md0/lib/local_library.h"
+#include "md0/mac/Plugin.h"
 
 using namespace md0;
 using namespace std;
@@ -27,6 +28,8 @@ typedef tuple<NSString *, Direction> SortField;
 
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSNetServiceBrowserDelegate, NSNetServiceDelegate, NSTableViewDataSource, NSTableViewDelegate, NSToolbarDelegate> {
   set<md0::Service> services_;
+  //vector<md0::Plugin> plugins_;
+  NSMutableArray *plugins_;
   BOOL needsReload_; 
   BOOL sortChanged_;
   BOOL trackEnded_;
@@ -39,6 +42,7 @@ typedef tuple<NSString *, Direction> SortField;
   long double lastLibraryRefresh_;
   Daemon *daemon_;
   NSNetService *netService_;
+  NSSplitView *contentVerticalSplit_;
   NSNetServiceBrowser *raopServiceBrowser_;
   NSNetServiceBrowser *mdServiceBrowser_;
   vector<SortField> sortFields_;
@@ -111,6 +115,7 @@ typedef tuple<NSString *, Direction> SortField;
 - (void)setupToolbar;
 - (void)setupTrackTable;
 - (void)setupWindow;
+- (void)setupPlugins;
 - (void)updateTableColumnHeaders;
 @end
 
