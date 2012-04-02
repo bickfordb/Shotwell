@@ -26,3 +26,10 @@ class Plugin {
 
 * I have been unable to decide whether to use dom windows or naked interpreter instances
 
+
+On the choice of Javascript running inside of a WebKit instance vs. Javascript running inside of CocoaJS/plain JavaScriptCore interpreter:
+
+I've a hard time collecting parse errors/syntax errors to work.
+
+
+

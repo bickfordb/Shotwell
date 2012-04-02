@@ -52,21 +52,6 @@ then
     touch ${BUILDROOT}/openssl.stamp
 fi  
 
-if [ ! -e "${BUILDROOT}/sdl.stamp" ];
-then
-    echo "building sdl"
-    rm -rf ${SCRATCH}
-    mkdir -p ${SCRATCH}
-    cd ${SCRATCH}
-    tar xzvf ${VENDOR}/SDL-1.2.15.tar.gz
-    cd SDL-1.2.15
-    ./configure --prefix=${INSTALL_PREFIX} --disable-shared
-    make clean
-    make
-    make install
-    touch ${BUILDROOT}/sdl.stamp
-fi  
-
 if [ ! -e "${BUILDROOT}/libav.stamp" ];
 then
     echo "building libav"
@@ -98,21 +83,6 @@ then
    install lib/.libs/libgtest_main.a ${INSTALL_PREFIX}/lib
    cp -r include/* ${INSTALL_PREFIX}/include
    touch ${BUILDROOT}/gtest.stamp
-fi  
-
-if [ ! -e "${BUILDROOT}/protobuf.stamp" ];
-then
-    echo "building protocol buffers"
-    rm -rf ${SCRATCH}
-    mkdir -p ${SCRATCH}
-    cd ${SCRATCH}
-    tar xzvf ${VENDOR}/protobuf-2.4.1.tar.gz
-    cd protobuf-2.4.1
-    ./configure --prefix=${INSTALL_PREFIX} --disable-shared
-    make clean
-    make
-    make install
-    touch ${BUILDROOT}/protobuf.stamp
 fi  
 
 if [ ! -e "${BUILDROOT}/pcre.stamp" ];
@@ -199,18 +169,4 @@ then
   install *.h *.m ${INSTALL_PREFIX}/share/jscocoa
   touch ${BUILDROOT}/jscocoa.stamp
 fi
-
-##if [ ! -e "${BUILDROOT}/node.stamp" ]
-##then
-##  rm -rf ${SCRATCH}
-##  mkdir -p ${SCRATCH}
-##  cd ${SCRATCH}
-##  tar xzvf ${VENDOR}/node-v0.6.13.tar.gz
-##  cd node-v0.6.13
-##  ./configure --prefix=${INSTALL_PREFIX}
-##  make
-##  make install
-##  touch ${BUILDROOT}/node.stamp
-##fi
-
 touch ${BUILDROOT}/vendor.stamp
