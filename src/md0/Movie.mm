@@ -61,11 +61,11 @@ NSString * const DidChangeRateMovie = @"DidChangeRateMovie";
 }
 
 - (int64_t)duration { 
-  return source_.duration; 
+  return source_ ? source_.duration : 0; 
 }
 
 - (int64_t)elapsed { 
-  return source_.elapsed;
+  return source_ ? source_.elapsed : 0;
 }
 
 - (void)stop { 

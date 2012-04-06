@@ -392,6 +392,7 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
      }
      }
      }*/
+  NSLog(@"library selected");
   needsLibraryRefresh_ = YES;
 }
 
@@ -868,35 +869,44 @@ request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id)lis
 - (void)toolbarWillRemoveItem:(NSNotification *)notification {
 }
 
-- (void)executeSearch { 
-  NSArray *parts = [searchQuery_ componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-  NSLog(@"search for %@", parts);
-  /*
-     vector<string> parts0;
-     if (parts) {
-     for (NSString *p in parts) {
-     string s = p.UTF8String; 
-     if (s.length() > 0)
-     parts0.push_back(s); 
-     }
-     }
-     @synchronized(self) {
-     tracks_.clear();
-     for (vector<Track>::iterator i = allTracks_.begin(); i < allTracks_.end(); i++) {
-     Track t(*i);
-     if (parts0.size() == 0 || IsTrackMatchAllTerms(&t, parts0)) {
-     tracks_.push_back(t);
-     }
-     }
-     }
-   */
+- (NSPredicate *)parseSearch { 
+  NSPredicate *ret = nil;
+  if (searchQuery_ ) {
+    NSArray *tokens = [searchQuery_ 
+      componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    for (NSString *token in tokens)  {
+      if (token.length == 0)
+        continue;
+      NSPredicate *predicate = [NSPredicate 
+        predicateWithFormat:
+          @"(artist CONTAINS[cd] %@)"
+          " OR (album CONTAINS[cd] %@)"
+          " OR (title CONTAINS[cd] %@)"
+          " OR (url CONTAINS[cd] %@)"
+          " OR (year CONTAINS[cd] %@)"
+          " OR (genre CONTAINS[cd] %@)",
+        token, token, token, token, token, nil];
+      if (!ret)
+        ret = predicate;
+      else
+        ret = [NSCompoundPredicate andPredicateWithSubpredicates:[NSArray 
+          arrayWithObjects:predicate, ret, nil]];
+    }
+  }
+  return ret;
+}
 
-  @synchronized(tracks_)  {
-    @synchronized(allTracks_) {
-      [tracks_ removeAllObjects];
-      for (NSDictionary *t in allTracks_) {
-        [tracks_ addObject:t];
-      }
+- (void)executeSearch { 
+  NSPredicate *predicate = [self parseSearch];
+
+  @synchronized(allTracks_) {
+    [tracks_ removeAllObjects];
+    @synchronized(tracks_) {
+      for (id t in allTracks_) {
+        if (!predicate || [predicate evaluateWithObject:t]) {
+          [tracks_ addObject:t];
+        }
+      } 
     }
   }
   needsReload_ = YES;
@@ -990,7 +1000,8 @@ request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id)lis
 
   if (movie_ != NULL) {
     if (!progressSlider_.isMouseDown && !movie_.isSeeking) {
-      [self displayElapsed:movie_.elapsed duration:movie_.duration];
+      [self displayElapsed:movie_ ? movie_.elapsed : 0 
+        duration:movie_ ? movie_.duration : 0];
     } 
     if (movie_.state == kPlayingAudioSourceState)  {
       playButton_.image = stopImage_;
@@ -1009,6 +1020,8 @@ request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id)lis
     needsLibraryRefresh_ = YES;
   } else if ((library_.lastUpdatedAt > lastLibraryRefresh_)
       && (lastLibraryRefresh_ < (Now() - kLibraryRefreshInterval))) {
+    NSLog(@"library last update is newer (%lld, %lld)", library_.lastUpdatedAt, lastLibraryRefresh_);
+
     needsLibraryRefresh_ = YES;
   }
   if (needsLibraryRefresh_) {
@@ -1039,7 +1052,6 @@ request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id)lis
   } 
 
   if (needsReload_) { 
-    NSLog(@"reloading table");
     [trackTableView_ reloadData]; 
     needsReload_ = NO; 
   }
@@ -1104,7 +1116,6 @@ request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id)lis
 }
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)aTableView { 
-  NSLog(@"number of rows: %d", (int)tracks_.count);
   return tracks_.count;
 }
 

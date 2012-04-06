@@ -57,8 +57,10 @@ static AVPacket flushPacket;
     // Don't retain:
     opened_ = false;
     audioStreamIndex_ = - 1;
-    elapsed_ = -1;
-    duration_ = -1;
+    elapsed_ = 0;
+    duration_ = 0;
+    timeBase_.den = 0;
+    timeBase_.num = 0;
     seekTo_ = -1;
     formatContext_ = NULL;
     stop_ = false;
@@ -102,8 +104,8 @@ static AVPacket flushPacket;
     ERROR("couldnt locate audio stream index");
     return false;
   }  
-  duration_ = formatContext_->streams[audioStreamIndex_]->duration;
   timeBase_ = formatContext_->streams[audioStreamIndex_]->time_base;
+  duration_ = formatContext_->streams[audioStreamIndex_]->duration;
   elapsed_ = 0;
   AVCodecContext *audioCodecContext = self.audioCodecContext;
   AVCodec *codec = avcodec_find_decoder(audioCodecContext->codec_id); 
