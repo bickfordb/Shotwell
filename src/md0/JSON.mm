@@ -113,13 +113,11 @@ id FromJSONBytes(const char *s) {
 
 @implementation NSDictionary (JSON) 
 - (json_t *)getJSON { 
-  NSLog(@"encode dictionary");
   json_t *ret = json_object();
   [self enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
     if (![key isKindOfClass:[NSString class]]) {
       return;
     }
-    NSLog(@"set key");
     json_t *v = [((NSObject *)obj) getJSON];
     NSString *key0 = (NSString *)key;
     json_object_set(ret, key0.UTF8String, v); 

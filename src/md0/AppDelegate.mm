@@ -129,7 +129,7 @@ NSComparisonResult NaturalComparison(id left, id right) {
   else if ([l length] && ![r length])
     ret = -1;
   else
-    ret = [l compare:r];
+    ret = [l naturalCompareCaseInsensitive:r];
   return ret;
 }
 
@@ -885,7 +885,7 @@ request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id)lis
           " OR (url CONTAINS[cd] %@)"
           " OR (year CONTAINS[cd] %@)"
           " OR (genre CONTAINS[cd] %@)",
-        token, token, token, token, token, nil];
+        token, token, token, token, token, token, nil];
       if (!ret)
         ret = predicate;
       else

@@ -95,11 +95,20 @@ static OSStatus GetAudioCallback(void *context,
 }
 
 - (double)volume {
-  return 0.0;
+  AudioUnitParameterValue v = 0;
+  AudioUnitGetParameter(outputAudioUnit_, 
+      kHALOutputParam_Volume,
+      kAudioUnitScope_Output, 
+      0, 
+      &v);
+  return (double)v;
 }
 
 - (void)setVolume:(double)pct { 
-  
+  OSStatus status = AudioUnitSetParameter(outputAudioUnit_, 
+      kHALOutputParam_Volume, kAudioUnitScope_Output, 0, (AudioUnitParameterValue)pct, 0);
+  if (status != 0) 
+    ERROR("failed to set volume (%d)", status);
 }
 
 - (void)stop { 

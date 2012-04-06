@@ -57,12 +57,14 @@ int ReadTag(NSString *url, NSMutableDictionary *aTrack) {
   int audioStreamIndex = -1;
 
   NSDictionary *tagKeyToTrackKey = [NSDictionary dictionaryWithObjectsAndKeys:
-    @"artist", kArtist,
-    @"album", kAlbum,
-    @"year", kYear,
-    @"title", kTitle,
-    @"date", kYear,
-    @"track", kTrackNumber,
+    kTrackNumber, @"track",
+    kArtist, @"artist",
+    kAlbum, @"album",
+    kYear, @"year",
+    kTitle, @"title",
+    kYear, @"date",
+    kGenre, @"genre",
+    kTrackNumber, @"track",
     nil];
   memset(&st, 0, sizeof(st));
   if (stat(url.UTF8String, &st) < 0) {
@@ -97,12 +99,17 @@ int ReadTag(NSString *url, NSMutableDictionary *aTrack) {
     }
   } 
 
-
   while((tag = av_dict_get(c->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
     NSString *tagKey = [NSString stringWithUTF8String:tag->key];
     NSString *trackKey = [tagKeyToTrackKey objectForKey:tagKey];
-    if (trackKey) 
-      [aTrack setObject:ToUTF8(tag->value) forKey:trackKey];
+    if (trackKey) {
+      NSString *value = ToUTF8(tag->value);
+      if (value && value.length > 0) {
+        [aTrack setObject:value forKey:trackKey];
+      }
+    } else { 
+      NSLog(@"missing key for %@", tagKey);
+    }
   }
 done:
   if (c)

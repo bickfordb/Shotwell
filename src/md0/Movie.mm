@@ -70,9 +70,7 @@ NSString * const DidChangeRateMovie = @"DidChangeRateMovie";
 
 - (void)stop { 
   [source_ stop];
-  self.source = nil;
   [sink_ stop];
-  self.sink = nil;
 }
 
 - (void)start { 
