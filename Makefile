@@ -1,4 +1,4 @@
-mll:
+all:
 	@echo Targets:
 	@echo "  run  -- Run the app application"
 	@echo "  gdb  -- Run the app application in gdb"
@@ -16,13 +16,14 @@ CXXFLAGS += -iquote src
 CXXFLAGS += -Werror
 CXXFLAGS += -ferror-limit=2
 CXXFLAGS += -Ibuild/vendor/include
+CXXFLAGS += -ggdb 
+CXXFLAGS += -O0 
 LDFLAGS += -Lbuild/vendor/lib
 LDFLAGS += -lleveldb
 LDFLAGS += -ljansson
 LDFLAGS += -levent
 LDFLAGS += -lstdc++
 LDFLAGS += -lpcrecpp
-LDFLAGS += -lSDL
 LDFLAGS += -lpcre
 LDFLAGS += -lpthread
 LDFLAGS += -licuuc
@@ -30,8 +31,6 @@ LDFLAGS += -licudata
 LDFLAGS += -lpcrecpp 
 LDFLAGS += -lavcodec
 LDFLAGS += -lavdevice
-CXXFLAGS += -ggdb 
-CXXFLAGS += -O0 
 LDFLAGS += -lavfilter
 LDFLAGS += -lavformat
 LDFLAGS += -lavutil
@@ -56,45 +55,38 @@ LDFLAGS += -framework QuartzCore
 LDFLAGS += -framework WebKit 
 LDFLAGS += -lffi
 DST_RES := $(APP)/Contents/Resources
-SRC_RES := src/md0/app/res
+SRC_RES := src/md0/res
 SRC_RESOURCES = $(wildcard $(SRC_RES)/*.png $(SRC_RES)/*.pdf $(SRC_RES)/*.js)
 RESOURCETARGETS := $(foreach f, $(SRC_RESOURCES), $(addprefix $(DST_RES)/, $(notdir $(f)))) 
 
 PROJ = $(CURDIR)
 
-$(APP):
-	mkdir -p $(APP)
-	mkdir -p $(APP)/Contents
-	mkdir -p $(APP)/Contents/MacOS
+APPDIRS = $(APP) $(APP)/Contents/MacOS $(APP/Contents) $(APP)/Contents/Resources
 
-$(APP)/Contents:  
+$(APPDIRS): 
 	mkdir -p $@
-app: $(APP)/Contents
 
-$(APP)/Contents/Resources:  
-	mkdir -p $@
-app: $(APP)/Contents/Resources
-
-$(APP)/Contents/MacOS:  
-	mkdir -p $@
-app: $(APP)/Contents/MacOS
-
-$(APP)/Contents/MacOS/MD0: $(SRCS) $(HDRS) $(VENDOR_STAMP)
-	mkdir -p $(APP)/Contents/MacOS
+$(APP)/Contents/MacOS/MD0: $(SRCS) $(HDRS) $(VENDOR_STAMP) $(APPDIRS)
 	$(CXX) $(CXXFLAGS) $(APPCXXFLAGS) $(SRCS) -o $@ $(LDFLAGS)
 app: $(APP)/Contents/MacOS/MD0
 
-$(APP)/Contents/Info.plist: src/md0/app/Info.plist $(APP)/Contents
+$(APP)/Contents/Info.plist: src/md0/Info.plist $(APP)/Contents
 	cp $< $@
 app: $(APP)/Contents/Info.plist
 
-run: app
+all: app
+
+run: all
 	$(APP)/Contents/MacOS/$(APPNAME)
 
-gdb: app
-	echo $(APPPCH)
-	echo run >build/gdb-commands
+gdb: all
+	echo break malloc_error_break >build/gdb-commands
+	echo run >>build/gdb-commands
 	gdb -f -x build/gdb-commands $(APP)/Contents/MacOS/$(APPNAME) 
+
+gdb-memory: all
+	echo run >build/gdb-commands
+	MallocScribbling=1 MallocGuardEdges=1 NSDebugEnabled=YES MallocStackLoggingNoCompact=YES gdb -f -x build/gdb-commands $(APP)/Contents/MacOS/$(APPNAME) 
 
 $(DST_RES)/en.lproj:
 	mkdir -p $@
