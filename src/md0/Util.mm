@@ -11,3 +11,19 @@ int64_t Now() {
   return ret;
 }
 
+NSArray *GetSubDirectories(NSArray *dirs) {
+  NSMutableArray *ret = [NSMutableArray array];
+  for (NSString *aDir in dirs) {
+    NSArray *subpaths = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:aDir error:nil];
+    for (NSString *subpath in subpaths) {
+      subpath = [aDir stringByAppendingPathComponent:subpath];
+      BOOL isDir = NO;
+      [[NSFileManager defaultManager] fileExistsAtPath:subpath isDirectory:&isDir];
+      if (isDir) {
+        [ret addObject:subpath];
+      }
+    }
+  }
+  return ret;
+}
+

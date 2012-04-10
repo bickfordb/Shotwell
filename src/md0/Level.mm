@@ -1,4 +1,8 @@
-#import "Level.h"
+#import "md0/Level.h"
+#import "md0/JSON.h"
+#include <string>
+
+using namespace std;
 
 @implementation Level 
 @synthesize db = db_;
@@ -22,6 +26,9 @@
 @end
 
 @implementation LevelTable 
+- (const char *)keyPrefix {
+  return "";
+}
 
 - (id)initWithLevel:(Level *)level {
   self = [super init];
@@ -37,61 +44,66 @@
 }
 
 - (char *)encodeKey:(id)key length:(size_t *)length {
+  assert(0);
   *length = 0;
   return NULL;
 }
 
 - (char *)encodeValue:(id)value length:(size_t *)length {
+  assert(0);
   *length = 0;
   return NULL;
 }
 - (id)decodeValue:(const char *)bytes length:(size_t)length {
+  assert(0);
   return nil;
 }
 
 - (id)decodeKey:(const char *)bytes length:(size_t)length {
+  assert(0);
   return nil;
 }
 
 - (id)get:(id)key {
   size_t keyLength = 0;
   char *keyBytes = [self encodeKey:key length:&keyLength];
-  leveldb::Slice keySlice(keyBytes, keyLength);
+  string s([self keyPrefix]);
+  s.append(keyBytes, keyLength);
+  free(keyBytes);
   std::string val;
 
   id ret = nil;
-  leveldb::Status st = level_.db->Get(leveldb::ReadOptions(), keySlice, &val);
+  leveldb::Status st = level_.db->Get(leveldb::ReadOptions(), s, &val);
   if (st.ok() && !st.IsNotFound())  {
     ret = [self decodeValue:val.c_str() length:val.length()];
   }
-  free(keyBytes);
   return ret;
 }
 
 - (void)put:(id)value forKey:(id)key {
+  string key0([self keyPrefix]);
   size_t keyLength = 0;
   char *keyBytes = [self encodeKey:key length:&keyLength];
+  key0.append(keyBytes, keyLength);
+  free(keyBytes);
   size_t valLength = 0;
   char *valBytes = [self encodeValue:value length:&valLength];
-  leveldb::Slice keySlice(keyBytes, keyLength);
   leveldb::Slice valSlice(valBytes, valLength);
-  level_.db->Put(leveldb::WriteOptions(), keySlice, valSlice);
-  free(keyBytes);
+  level_.db->Put(leveldb::WriteOptions(), key0, valSlice);
   free(valBytes);
 }
 
 - (void)delete:(id)key { 
+  string key0([self keyPrefix]);
   size_t keyLength = 0;
   char *keyBytes = [self encodeKey:key length:&keyLength];
-  leveldb::Slice keySlice(keyBytes, keyLength);
-  level_.db->Delete(leveldb::WriteOptions(), keySlice);
+  key0.append(keyBytes, keyLength);
   free(keyBytes);
+  level_.db->Delete(leveldb::WriteOptions(), key0);
 }
 
 - (void)each:(void (^)(id key, id val))block {
-  size_t prefixLength = 0;
-  char *prefixBytes = [self encodeKey:nil length:&prefixLength];
-  leveldb::Slice prefixSlice(prefixBytes, prefixLength);
+  leveldb::Slice prefixSlice([self keyPrefix]);
   leveldb::Iterator *i = level_.db->NewIterator(leveldb::ReadOptions());
   i->Seek(prefixSlice);
   while (i->Valid()) {
@@ -99,8 +111,12 @@
     if (keySlice.starts_with(prefixSlice)) {
       leveldb::Slice valueSlice = i->value();
       NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-      id key = [self decodeKey:keySlice.data() length:keySlice.size()];
-      id value = [self decodeValue:valueSlice.data() length:valueSlice.size()];
+      id key = [self 
+        decodeKey:prefixSlice.size() + keySlice.data() 
+        length:keySlice.size() - prefixSlice.size()];
+      id value = [self
+        decodeValue:valueSlice.data()
+        length:valueSlice.size()];
       block(key, value);
       [pool release];
     } else {
@@ -109,14 +125,11 @@
     i->Next();
   }
   delete i;      
-  free(prefixBytes);
 }
 
 - (NSNumber *)nextID { 
   std::string key("autoinc:");
-  size_t prefixLength = 0;
-  char *pfx = [self encodeKey:nil length:&prefixLength];
-  key.append(pfx, prefixLength);
+  key.append([self keyPrefix]);
   std::string val;
   uint32_t ret = 1;
   leveldb::Status st = level_.db->Get(leveldb::ReadOptions(), key, &val);
@@ -126,14 +139,11 @@
   }
   std::string newValue((const char *)&ret, sizeof(ret));
   level_.db->Put(leveldb::WriteOptions(), key, newValue);
-  free(pfx);
   return [NSNumber numberWithUnsignedInt:ret];
 }
 
 - (int)count { 
-  size_t l = 0;
-  char *p = [self encodeKey:nil length:&l];
-  leveldb::Slice prefix(p, l);
+  leveldb::Slice prefix([self keyPrefix]);
   leveldb::Iterator *i = level_.db->NewIterator(leveldb::ReadOptions());
   i->Seek(prefix);
   int ret = 0;
@@ -142,14 +152,11 @@
     i->Next();
   }
   delete i;
-  free(p);
   return ret;   
 }
 
 - (void)clear { 
-  size_t l = 0;
-  char *p = [self encodeKey:nil length:&l];
-  leveldb::Slice prefix(p, l);
+  leveldb::Slice prefix([self keyPrefix]);
   leveldb::Iterator *i = level_.db->NewIterator(leveldb::ReadOptions());
   i->Seek(prefix);
   int ret = 0;
@@ -158,7 +165,43 @@
     i->Next();
   }
   delete i;
-  free(p);
+}
+
+@end
+
+@interface JSONTable (P)
+- (char *)encodeJSON:(id)value length:(size_t *)length;
+- (id)decodeJSON:(const char *)value length:(size_t)length;
+@end
+
+@implementation JSONTable
+- (char *)encodeJSON:(id)value length:(size_t *)length {
+  json_t *js = [((NSObject *)value) getJSON];
+  char *ret = js ? json_dumps(js, JSON_ENCODE_ANY) : NULL;
+  *length = (js && ret) ? strlen(ret) + 1 : 0;      
+  if (js) 
+    json_decref(js); 
+  return ret; 
+}
+
+- (id)decodeJSON:(const char *)bytes length:(size_t)length {
+  return length > 0 ? FromJSONBytes(bytes) : nil;
+}
+
+- (char *)encodeValue:(id)value length:(size_t *)length {
+  return [self encodeJSON:value length:length];
+}
+
+- (char *)encodeKey:(id)value length:(size_t *)length {
+  return [self encodeJSON:value length:length];
+}
+
+- (id)decodeValue:(const char *)bytes length:(size_t)length { 
+  return [self decodeJSON:bytes length:length];
+}
+
+- (id)decodeKey:(const char *)bytes length:(size_t)length { 
+  return [self decodeJSON:bytes length:length];
 }
 
 @end

@@ -5,7 +5,6 @@
 #include <sys/utsname.h>
 
 #import "md0/AppDelegate.h"
-#import "md0/MarqueePlugin.h"
 #import "md0/Movie.h"
 #import "md0/NSStringNaturalComparison.h"
 #import "md0/NSNumberTimeFormat.h"
@@ -14,6 +13,7 @@
 #import "md0/Slider.h"
 #import "md0/Track.h"
 #import "md0/Util.h"
+#import "md0/WebPlugin.h"
 
 static const int64_t kLibraryRefreshInterval = 2 * 1000000;
 static const int kDefaultPort = 6226;
@@ -39,12 +39,6 @@ typedef enum {
   Ascending = 1,
   Descending = 2
 } Direction;
-
-
-static int GetTrackID(NSDictionary *t) { 
-  NSNumber *i = [t objectForKey:kID]; 
-  return i ? i.intValue : -1;
-}
 
 typedef NSComparisonResult (*ComparisonFunc)(id left, id right);
 
@@ -77,6 +71,7 @@ typedef NSComparisonResult (*ComparisonFunc)(id left, id right);
 
 - (void)dealloc { 
   [key_ release];
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
   [super dealloc];
 }
 @end
@@ -100,11 +95,11 @@ static NSString *CoverArtPath() {
   return [LibraryDir() stringByAppendingPathComponent:@"coverart.db"];
 }
 
-static NSString *GetWindowTitle(NSDictionary *t) { 
-  NSString *title = [t objectForKey:kTitle];
-  NSString *artist = [t objectForKey:kArtist];
-  NSString *album = [t objectForKey:kAlbum];
-  NSString *url = [t objectForKey:kURL];
+static NSString *GetWindowTitle(Track *t) { 
+  NSString *title = t.title;
+  NSString *artist = t.artist;
+  NSString *album = t.album;
+  NSString *url = t.url;
 
   if ([title length] && [artist length] && [album length])
     return [NSString stringWithFormat:@"%@ - %@ - %@ ", title, artist, album, nil];
@@ -135,14 +130,14 @@ NSComparisonResult NaturalComparison(id left, id right) {
 
 NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   NSArray *sortFields = (NSArray *)ctx;
-  NSDictionary *left = (NSDictionary *)l;
-  NSDictionary *right = (NSDictionary *)r;
+  Track *left = (Track *)l;
+  Track *right = (Track *)r;
   NSComparisonResult cmp = NSOrderedSame;
   for (SortField *f in sortFields) {
     NSString *key = f.key;
     Direction d = f.direction;
-    id leftValue = [left objectForKey:key];
-    id rightValue = [right objectForKey:key];
+    id leftValue = [left valueForKey:key];
+    id rightValue = [right valueForKey:key];
     cmp = f.comparator(leftValue, rightValue);
     if (f.direction == Descending) 
       cmp *= -1;
@@ -156,9 +151,19 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
 @synthesize searchQuery = searchQuery_;
 
 - (void)dealloc { 
+  [allTracks_ release];
+  [tracks_ release];
+  [appleCoverArtClient_ release];
   [contentView_ dealloc];
   [mainWindow_ dealloc];
   [super dealloc];
+}
+
+- (void)search:(NSString *)term {
+  searchField_.stringValue = term;
+  self.searchQuery = term;
+  predicateChanged_ = YES;
+  needsReload_ = YES;
 }
 
 - (void)setupMenu {
@@ -221,7 +226,7 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   @synchronized(allTracks_) {
     [allTracks_ removeObjectsInArray:tracks_];
   }
-  for (NSDictionary *o in allTracks_) {
+  for (Track *o in allTracks_) {
     [localLibrary_ delete:o];
     needsReload_ = YES;
   }
@@ -255,9 +260,8 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
     while (i != NSNotFound) {
       if (i >= [tracks_ count])
         continue;
-      NSDictionary *t = [tracks_ objectAtIndex:i];
-      NSString *path = [t objectForKey:kURL];
-      NSURL *url = [NSURL fileURLWithPath:path];
+      Track *t = [tracks_ objectAtIndex:i];
+      NSURL *url = [NSURL fileURLWithPath:t.url];
       [urls addObject:url];
       i = [indices indexLessThanIndex:i];
       requestClearSelection_ = YES;
@@ -321,6 +325,8 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   contentVerticalSplit_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
   contentVerticalSplit_.focusRingType = NSFocusRingTypeNone;
   contentVerticalSplit_.vertical = YES;
+  contentVerticalSplit_.dividerColor = [NSColor blackColor];
+  contentVerticalSplit_.dividerThickness = 1;
   [contentHorizontalSplit_ addSubview:contentVerticalSplit_];
 }
 
@@ -635,7 +641,43 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   [NSApp setApplicationIconImage:[NSImage imageNamed:@"md0dock"]];
 }
 
+- (void)onTrackDeleted:(NSNotification *)notification {
+  Track *t = [notification.userInfo objectForKey:@"track"];
+  @synchronized (plugins_) {
+    for (Plugin *p in plugins_) {
+      [p trackDeleted:t];
+    }
+  }
+}
+
+- (void)onTrackAdded:(NSNotification *)notification {
+  Track *t = [notification.userInfo objectForKey:@"track"];
+  @synchronized (plugins_) {
+    for (Plugin *p in plugins_) {
+      [p trackAdded:t];
+    }
+  }
+}
+
+- (void)onTrackSaved:(NSNotification *)notification {
+  Track *t = [notification.userInfo objectForKey:@"track"];
+  @synchronized (plugins_) {
+    for (Plugin *p in plugins_) {
+      [p trackSaved:t];
+    }
+  }
+}
+
 - (void)applicationDidFinishLaunching:(NSNotification *)n {
+  [[NSUserDefaults standardUserDefaults] setBool:TRUE forKey:@"WebKitDeveloperExtras"];
+  [[NSUserDefaults standardUserDefaults] synchronize];
+
+  [[NSNotificationCenter defaultCenter]
+    addObserver:self selector:@selector(onTrackSaved:) name:TrackSavedLibraryNotification object:nil];
+  [[NSNotificationCenter defaultCenter]
+    addObserver:self selector:@selector(onTrackAdded:) name:TrackAddedLibraryNotification object:nil];
+  [[NSNotificationCenter defaultCenter]
+    addObserver:self selector:@selector(onTrackDeleted:) name:TrackDeletedLibraryNotification object:nil];
 
   trackEnded_ = NO;
   requestPrevious_ = NO;
@@ -643,6 +685,7 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   requestNext_ = NO;
   needsLibraryRefresh_ = NO;
   tracks_ = [[NSMutableArray array] retain];
+  appleCoverArtClient_ = [[AppleCoverArtClient alloc] init];
   allTracks_ = [[NSMutableArray array] retain];
 
   [self setupDockIcon];
@@ -715,19 +758,21 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
 
 - (void)setupPlugins {
   plugins_ = [[NSMutableArray array] retain];
-  Plugin *marqueePlugin = [[[MarqueePlugin alloc] init] autorelease];
-  [plugins_ addObject:marqueePlugin];
-}
-
-- (void)webView:(WebView *)sender decidePolicyForNavigationAction:(NSDictionary *)actionInformation
-request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id)listener {
-  NSLog(@"policy");
-  [listener use];
+  NSString *resourceDir = [NSBundle mainBundle].resourcePath;
+  NSString *pluginsDir = [resourceDir stringByAppendingPathComponent:@"Plugins"];
+  NSArray *pluginDirs = GetSubDirectories([NSArray arrayWithObjects:pluginsDir, nil]);
+  for (NSString *p in pluginDirs) {
+    p = [p stringByAppendingPathComponent:@"index.html"];
+    NSLog(@"plugin path: %@", p);
+    NSURL *u = [NSURL fileURLWithPath:p];
+    NSLog(@"url: %@", u);
+    WebPlugin *webPlugin = [[[WebPlugin alloc] initWithURL:u] autorelease];
+    [plugins_ addObject:webPlugin]; 
+  }
 }
 
 - (void)netServiceBrowser:(NSNetServiceBrowser *)netServiceBrowser didFindDomain:(NSString *)domainName moreComing:(BOOL)moreDomainsComing {
 }
-
 
 - (NSDragOperation)tableView:(NSTableView *)aTableView validateDrop:(id < NSDraggingInfo >)info proposedRow:(NSInteger)row proposedDropOperation:(NSTableViewDropOperation)operation {  
 
@@ -772,7 +817,7 @@ request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id)lis
   [netService autorelease];
 }
 
-- (void)netService:(NSNetService *)sender didNotResolve:(NSDictionary *)errorDict {
+- (void)netService:(NSNetService *)sender didNotResolve:(NSMutableDictionary *)errorDict {
   NSLog(@"failed to resolve: %@ dict:%@", sender, errorDict);
 }
 
@@ -913,9 +958,7 @@ request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id)lis
 }
 
 - (void)onSearch:(id)sender { 
-  self.searchQuery = searchField_.stringValue;
-  predicateChanged_ = YES;
-  needsReload_ = YES;
+  [self search:searchField_.stringValue];
 }
 
 - (void)volumeClicked:(id)sender { 
@@ -962,9 +1005,8 @@ request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id)lis
   } else { 
     mainWindow_.title = @"MD0";
   }
-  if (trackEnded_) {
-    [self playNextTrack];
-    trackEnded_ = NO;
+  if (movie_ && [movie_ state] == kEOFAudioSourceState) {
+    requestNext_ = YES;
   }
 
   if (requestNext_) {
@@ -1028,7 +1070,7 @@ request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id)lis
     NSLog(@"refreshing library");
     @synchronized(allTracks_) { 
       [allTracks_ removeAllObjects];
-      [library_ each:^(NSDictionary *t) {
+      [library_ each:^(Track *t) {
         [allTracks_ addObject:t];
       }];
     }
@@ -1080,43 +1122,40 @@ request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id)lis
       return;
     if (index >= tracks_.count) 
       return;
-    NSDictionary *aTrack = [tracks_ objectAtIndex:index];
+    Track *aTrack = [tracks_ objectAtIndex:index];
     if (movie_) {
       [movie_ stop];
-      for (Plugin *p in plugins_) {
-        [p trackEnded:track_];
+      @synchronized (plugins_) {
+        for (Plugin *p in plugins_) {
+          [p trackEnded:track_];
+        }
       }
     }
-    track_ = aTrack;
-    if (movie_) 
-      [[NSNotificationCenter defaultCenter]
-        removeObserver:self 
-        name:DidEndMovie 
-        object:movie_]; 
+    [track_ release];
+    track_ = [aTrack retain];
     [movie_ release];
-    movie_ = nil;
-    movie_ = [[Movie alloc] initWithURL:[aTrack objectForKey:kURL]];
+    movie_ = [((Movie *)[Movie alloc]) initWithURL:track_.url];
     [movie_ start];
 
-    [[NSNotificationCenter defaultCenter] 
-      addObserver:self selector:@selector(movieEnded:) name:DidEndMovie object:movie_];
     seekToRow_ = index;
     needsReload_ = YES;
-    for (Plugin *p in plugins_) {
-      [p trackStarted:track_];
+    @synchronized(plugins_) {
+      for (Plugin *p in plugins_) {
+        [p trackStarted:track_];
+      }
     }
-  }
-}
-
-- (void)moviEnded:(NSNotification *)notification {
-  Movie *movie = [notification object];
-  if (movie == movie_) {
-    trackEnded_ = YES;
+    // load the cover art:
+    [appleCoverArtClient_ queryTrack:track_ block:^(NSString *coverArtURL) {
+      track_.coverArtURL = coverArtURL;
+      [localLibrary_ save:track_];
+    }];
   }
 }
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)aTableView { 
-  return tracks_.count;
+  @synchronized (tracks_) {
+    return tracks_.count;
+  }
 }
 
 /*
@@ -1126,8 +1165,8 @@ request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id)lis
   int idx = 0;
   int found = -1;
   if (movie_) {
-    for (NSDictionary *t in tracks_) {
-      if (GetTrackID(t) == GetTrackID(track_)) {
+    for (Track *t in tracks_) {
+      if ([t isEqual:track_]) {
         found = idx;
         break;
       }
@@ -1142,8 +1181,8 @@ request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id)lis
   int found = -1;
   int req = 0;
   if (movie_) {
-    for (NSDictionary *t in tracks_ ) {
-      if (GetTrackID(t) == GetTrackID(track_)) {
+    for (Track *t in tracks_ ) {
+      if ([t isEqual:track_]) {
         found = idx;
         break;
       }
@@ -1157,13 +1196,17 @@ request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id)lis
 
 - (id)tableView:(NSTableView *)aTableView objectValueForTableColumn:(NSTableColumn *)aTableColumn
 row:(NSInteger)rowIndex { 
-  NSDictionary *t = [tracks_ objectAtIndex:rowIndex];
+  Track *t = nil;
+  @synchronized(tracks_) { 
+    if (rowIndex < tracks_.count) 
+      t = [tracks_ objectAtIndex:rowIndex];
+  }
   NSString *identifier = aTableColumn.identifier;
   id result = nil;
   NSString *s = nil;
-  bool isPlaying = movie_ && GetTrackID(t) == GetTrackID(track_);
+  bool isPlaying = movie_ && [t isEqual:track_];
   if (identifier == kDuration) 
-    s = [((NSNumber *)[t objectForKey:kDuration]) formatSeconds];
+    s = [((NSNumber *)[t valueForKey:kDuration]) formatSeconds];
   else if (identifier == kStatus) {
     if (isPlaying) {
       result = playImage_;
@@ -1176,7 +1219,7 @@ row:(NSInteger)rowIndex {
       || identifier == kTitle
       || identifier == kYear
       || identifier == kTrackNumber) {
-    s = [t objectForKey:identifier];
+    s = [t valueForKey:identifier];
   }
   if (s) {
     result = s;
@@ -1206,7 +1249,24 @@ row:(NSInteger)rowIndex {
   return NO;
 }
 
+// Make everything available via javascript:
++ (NSString *)webScriptNameForKey:(const char *)name {
+  return [NSString stringWithUTF8String:name];
+}
 
++ (BOOL)isKeyExcludedFromWebScript:(const char *)name {
+  return NO;
+}
+
++ (BOOL)isSelectorExcludedFromWebScript:(SEL)aSelector {
+  return NO;
+}
+
++ (NSString *)webScriptNameForSelector:(SEL)aSelector {
+  NSString *s = NSStringFromSelector(aSelector);
+  s = [s stringByReplacingOccurrencesOfString:@":" withString:@"_"];
+  return s;
+}
 
 @end
 

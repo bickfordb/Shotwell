@@ -96,10 +96,10 @@ static void OnRequest(evhttp_request *r, void *ctx) {
   NSMutableArray *tracks = [NSMutableArray array];
   NSArray *keys = [NSArray arrayWithObjects:kArtist, kID, kAlbum, kGenre, kTitle, kDuration, kTrackNumber, kYear, nil];
 
-  [library_ each:^(NSDictionary *t) { 
+  [library_ each:^(Track *t) { 
     NSMutableDictionary *r = [NSMutableDictionary dictionary]; 
     for (NSString *k in keys) { 
-      [r setObject:[t objectForKey:k] forKey:k];
+      [r setObject:[t valueForKey:k] forKey:k];
     }
   }];
   [r respondWithStatus:200 message:@"OK" body:[tracks getJSONEncodedString]];
@@ -111,18 +111,16 @@ static void OnRequest(evhttp_request *r, void *ctx) {
   if (!trackPattern_->FullMatch(request.path.UTF8String, &track_path)) {
     return false;
   }
-  INFO("load: %s", track_path.c_str());
   // make sure it's a real track
-  uint32_t trackID = (uint32_t)[[NSString stringWithUTF8String:track_path.c_str()] intValue];
-  NSNumber *trackID0 = [NSNumber numberWithUnsignedInt:trackID];
-  NSDictionary *track = [library_ get:trackID0];
+  int64_t trackID = (int64_t)[[NSString stringWithUTF8String:track_path.c_str()] longLongValue];
+  Track *track = [library_ get:[NSNumber numberWithLongLong:trackID]];
   if (!track) {
     DEBUG("no track");
     [request respondNotFound];
     return true;
   }
   
-  int fd = open([[track objectForKey:kURL] UTF8String], O_RDONLY);
+  int fd = open(track.url.UTF8String, O_RDONLY);
   if (fd < 0) {
     DEBUG("missing fd");
     [request respondNotFound];
@@ -169,16 +167,15 @@ static void OnRequest(evhttp_request *r, void *ctx) {
     trackPattern_ = new pcrecpp::RE("^/tracks/([^/]+)$");
     libraryPattern_ = new pcrecpp::RE("^/library$");
     loop_ = [[Loop alloc] init];
-    eventHTTP_ = evhttp_new(loop_.eventBase);
+    eventHTTP_ = evhttp_new(loop_.base);
     evhttp_bind_socket(eventHTTP_, host.UTF8String, port);
     evhttp_set_gencb(eventHTTP_, OnRequest, self);
-    [loop_ start];
   }
   return self;
 }
 
 - (void)dealloc { 
-  [loop_ stop];
+  [loop_ release];
   [library_ release];
   delete rootPattern_;
   delete trackPattern_;

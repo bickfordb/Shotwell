@@ -21,97 +21,30 @@
 
 using namespace std;
 
-static void *PruneThread(void *ctx);
-static void *ScanThread(void *ctx);
-bool IsTrackKey(const string &key);
-
 @interface LocalLibrary (P)  
 - (void)scanQueuedPaths;
 - (void)pruneQueued;
 @end
 
-const char *kTrackTablePrefix = "t:";
-const char *kURLTablePrefix = "u:";
-
-bool IsTrackKey(const string &key) {
-  return key.find(kTrackTablePrefix, 0) == 0;
-}
-
 @implementation TrackTable 
-- (char *)encodeKey:(id)key length:(size_t *)length {
-  NSNumber *trackID = (NSNumber *)key;
-  uint32_t trackID0 = htonl([trackID unsignedIntValue]);
-  size_t prefixLength = strlen(kTrackTablePrefix);
-  size_t keyLength = key ? (prefixLength + sizeof(trackID0)) : prefixLength;
-  char *ret = (char *)malloc(keyLength);
-  memcpy(ret, kTrackTablePrefix, prefixLength);
-  if (key) 
-    memcpy(ret + prefixLength, &trackID0, sizeof(trackID0));
-  *length = keyLength;
-  return ret;
-}
-
-- (char *)encodeValue:(id)value length:(size_t *)length {
-
-  NSDictionary *trackDictionary = (NSDictionary *)value;
-  json_t *js = [trackDictionary getJSON];
-  char *ret = js ? json_dumps(js, 0) : NULL;
-  *length = (js && ret) ? strlen(ret) + 1 : 0;      
-  if (js) 
-    json_decref(js); 
-  return ret; 
+- (const char *)keyPrefix {
+  return "t:";
 }
 
 - (id)decodeValue:(const char *)bytes length:(size_t)length {
-  return length > 0 ? FromJSONBytes(bytes) : nil;
-}
-
-- (id)decodeKey:(const char *)bytes length:(size_t)length {
-  uint32_t val;
-  memcpy(&val, bytes + strlen(kTrackTablePrefix), sizeof(val));
-  val = ntohl(val);
-  return [NSNumber numberWithUnsignedInt:val];
+  NSDictionary *v = [super decodeValue:bytes length:length];
+  Track *t = [[[Track alloc] init] autorelease];
+  [t setValuesForKeysWithDictionary:v];
+  return t;
 }
 @end
 
 @implementation URLTable
-- (char *)encodeKey:(id)key length:(size_t *)length {
-  NSString *trackURL = (NSString *)key;
-  size_t keyLength = strlen(kURLTablePrefix);
-  const char *key0 = key ? ((NSString *)key).UTF8String : "";
-  if (key) {
-    keyLength += strlen(key0);
-  }
-  char *ret = (char *)malloc(keyLength);
-  memcpy(ret, kURLTablePrefix, strlen(kURLTablePrefix));
-  if (key) 
-    memcpy(ret + strlen(kURLTablePrefix), key0, strlen(key0));
-  *length = keyLength;
-  return ret;
-}
-
-- (char *)encodeValue:(id)value length:(size_t *)length {
-  json_t *js = [((NSNumber *)value) getJSON];
-  char *ret = js ? json_dumps(js, 0) : NULL;   
-  *length = (js && ret) ? strlen(ret) + 1 : 0;
-  if (js)
-    json_decref(js);   
-  return ret;
-}
-
-- (id)decodeValue:(const char *)bytes length:(size_t)length {
-  return length > 0 ? FromJSONBytes(bytes) : nil;
-}
-
-- (id)decodeKey:(const char *)bytes length:(size_t)length {
-  size_t prefixLength = strlen(kURLTablePrefix);
-  id ret = [[[NSString alloc] 
-    initWithBytes:bytes length:length - prefixLength encoding:NSUTF8StringEncoding] autorelease];
-  return ret;
+- (const char *)keyPrefix { 
+  return "u:"; 
 }
 
 @end
-
 
 @implementation LocalLibrary
 
@@ -130,8 +63,6 @@ bool IsTrackKey(const string &key) {
 
     pruneEvent_ = [[Event timeoutEventWithLoop:pruneLoop_ interval:1000000] retain];
     pruneEvent_.delegate = self;
-    [pruneLoop_ start];
-    [scanLoop_ start];
   }
   return self;
 }
@@ -198,18 +129,19 @@ bool IsTrackKey(const string &key) {
     }
     NSNumber *trackID = [urlTable_ get:filename];
     if (!trackID) {
-      NSMutableDictionary *t = [NSMutableDictionary dictionary];
-      [t setObject:filename forKey:kURL];
-      ReadTag(filename, t);
+      Track *t = [[Track alloc] init];
+      t.url = filename;
+      int st = [t readTag];
       [self save:t];
+      [t release];
     } else { 
+      NSLog(@"already in index: %@", filename);
     }
   }
   [pool release];
   if (tree) 
     fts_close(tree);
 }
-
 
 - (id)init {
   self = [super init];
@@ -218,39 +150,38 @@ bool IsTrackKey(const string &key) {
     scanLoop_ = [[Loop alloc] init];
     pruneRequested_ = false;
     pathsToScan_ = [NSMutableSet set];
-    [scanLoop_ start];
-    [pruneLoop_ start];
     self.lastUpdatedAt = Now();
   }
   return self;
 }
+
 - (void)pruneQueued {
   [trackTable_ each:^(id key, id val) {
-    NSDictionary *track = (NSDictionary *)val;    
-    NSString *path = [track objectForKey:kURL];
+    Track *track = (Track *)val;    
     struct stat fsStatus;
-    if (stat(path.UTF8String, &fsStatus) < 0 && errno == ENOENT) {
+    if (stat(track.url.UTF8String, &fsStatus) < 0 && errno == ENOENT) {
       [self delete:track];
     }
   }];
 }     
 
-- (void)save:(NSDictionary *)track { 
-  NSString *url = [track objectForKey:kURL];
-  NSNumber *trackID = [track objectForKey:kID];
+- (void)save:(Track *)track { 
+  NSString *url = track.url;
   if (!url || !url.length) 
     return;
-  NSMutableDictionary *track0 = [NSMutableDictionary dictionaryWithDictionary:track];
-  if (!trackID) {
-    trackID = [trackTable_ nextID];
-    [track0 setObject:trackID forKey:kID];
+  if (!track.id) {
+    track.id = [trackTable_ nextID];
   }
-  [urlTable_ put:trackID forKey:url];
-  [trackTable_ put:track0 forKey:trackID];
+  [urlTable_ put:track.id forKey:track.url];
+  [trackTable_ put:track forKey:track.id];
+  [[NSNotificationCenter defaultCenter]
+    postNotificationName:TrackSavedLibraryNotification 
+    object:self
+    userInfo:[NSDictionary dictionaryWithObjectsAndKeys:track, @"track", nil]];
   self.lastUpdatedAt = Now();
 }
 
-- (NSDictionary *)get:(NSNumber *)trackID {
+- (Track *)get:(NSNumber *)trackID {
   return [trackTable_ get:trackID]; 
 }
 
@@ -259,23 +190,21 @@ bool IsTrackKey(const string &key) {
   [trackTable_ clear];
 }
 
-- (void)delete:(NSDictionary *)track { 
-  NSNumber *key = [track objectForKey:kID];
-  NSString *url = [track objectForKey:kURL];
-  [trackTable_ delete:key];
-  if (url) 
-    [urlTable_ delete:url];
+- (void)delete:(Track *)track { 
+  [trackTable_ delete:track.id];
+  if (track.url) 
+    [urlTable_ delete:track.url];
   self.lastUpdatedAt = Now();
 }
 
 
 - (int)count { 
-  return [trackTable_ count];
+  return trackTable_.count;
 }
 
-- (void)each:(void (^)(NSDictionary *track))block {
+- (void)each:(void (^)(Track *track))block {
   [trackTable_ each:^(id key, id val) {
-    block((NSDictionary *)val);
+    block((Track *)val);
   }];
 }
 

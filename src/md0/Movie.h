@@ -2,13 +2,8 @@
 #import "AudioSink.h"
 #import "AudioSource.h"
 
-extern NSString * const DidEndMovie;
-extern NSString * const DidChangeRateMovie;
-
 @interface Movie : NSObject {
   NSString *url_;
-  id <AudioSink> sink_;
-  id <AudioSource> source_;
   double volume_;
 }
 

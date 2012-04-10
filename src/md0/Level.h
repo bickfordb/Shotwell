@@ -27,5 +27,11 @@
 - (id)decodeKey:(const char *)bytes length:(size_t)length;
 - (void)clear;
 - (NSNumber *)nextID;
+/* Get the number of entries */
 - (int)count;
+/* Prefix keys with this value.  This allows for multiple databases to exist within one Level database. */
+- (const char *)keyPrefix;
+@end
+
+@interface JSONTable : LevelTable
 @end

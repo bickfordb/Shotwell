@@ -1,7 +1,7 @@
 #import "JSON.h"
 #include <jansson.h>
 
-static id FromJSON(json_t *obj) {
+id FromJSON(json_t *obj) {
   id ret = nil;
   if (!obj) { 
     return nil;
@@ -35,7 +35,7 @@ static id FromJSON(json_t *obj) {
 }
 
 id FromJSONBytes(const char *s) {
-  json_t *o = json_loads(s, 0, NULL);
+  json_t *o = json_loads(s, JSON_DECODE_ANY, NULL);
   id obj = FromJSON(o);
   json_decref(o);
   return obj;
@@ -46,7 +46,7 @@ id FromJSONBytes(const char *s) {
   json_t *o = [self getJSON];
   if (!o)
     return nil;
-  char *s = json_dumps(o, 0);
+  char *s = json_dumps(o, JSON_ENCODE_ANY);
   json_decref(o);
   NSString *ret = [NSString stringWithUTF8String:s];
   free(s);
@@ -58,26 +58,18 @@ id FromJSONBytes(const char *s) {
 @end
 
 @implementation NSString (JSON) 
+
 - (json_t *)getJSON {
   return json_string(self.UTF8String);
 }
 
-- (NSArray *)decodeJSONArray {
-  json_t *o = json_loads(self.UTF8String, 0, NULL);
-  id ret = o && json_is_array(o) ? FromJSON(o) : nil;
+- (id)decodeJSON {
+  json_t *o = json_loads(self.UTF8String, JSON_DECODE_ANY, NULL);
+  id ret = o ? FromJSON(o) : nil;
   if (o)
     json_decref(o);
   return ret;
 }
-
-- (NSDictionary *)decodeJSONObject {
-  json_t *o = json_loads(self.UTF8String, 0, NULL);
-  id ret = o && json_is_object(o) ? FromJSON(o) : nil;
-  if (o)
-    json_decref(o);
-  return ret;
-}
-
 @end
 
 @implementation NSArray (JSON) 
@@ -128,3 +120,14 @@ id FromJSONBytes(const char *s) {
   return ret;
 }
 @end
+
+@implementation NSData (JSON) 
+- (id)decodeJSON {
+  json_t *o = json_loadb((const char *)self.bytes, self.length, JSON_DECODE_ANY, NULL);
+  id ret = o ? FromJSON(o) : nil;
+  if (o)
+    json_decref(o);
+  return ret;
+}
+@end
+

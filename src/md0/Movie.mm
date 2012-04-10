@@ -8,8 +8,6 @@
 #import "md0/NSObjectPThread.h"
 #import "md0/RAOP.h"
 
-NSString * const DidEndMovie = @"DidEndMovie";
-NSString * const DidChangeRateMovie = @"DidChangeRateMovie";
 
 @implementation Movie
 @synthesize url = url_;
@@ -20,7 +18,8 @@ NSString * const DidChangeRateMovie = @"DidChangeRateMovie";
   self = [super init];
   if (self) { 
     self.url = url;
-    volume_ = 0.5;
+    self.source = [[((LibAVSource *)[LibAVSource alloc]) initWithURL:url_] autorelease];
+    self.sink = [[((CoreAudioSink *)[CoreAudioSink alloc]) initWithSource:source_] autorelease]; 
   }
   return self;
 }
@@ -74,13 +73,7 @@ NSString * const DidChangeRateMovie = @"DidChangeRateMovie";
 }
 
 - (void)start { 
-  if (!source_) { 
-    source_ = [((LibAVSource *)[LibAVSource alloc]) initWithURL:url_];
-  }
   [source_ start];
-  if (!sink_) { 
-    sink_ = [((CoreAudioSink *)[CoreAudioSink alloc]) initWithSource:source_];
-  }
   [sink_ start];
 }
 @end

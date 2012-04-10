@@ -1,9 +1,12 @@
 #import "Library.h"
 
+NSString * const TrackSavedLibraryNotification = @"TrackSavedLibraryNotification";
+NSString * const TrackAddedLibraryNotification = @"TrackAddedLibraryNotification";
+NSString * const TrackDeletedLibraryNotification = @"TrackDeletedLibraryNotification";
+
 @implementation Library
-@synthesize delegate = delegate_;
 @synthesize lastUpdatedAt = lastUpdatedAt_;
-- (void)each:(DictionaryFtor) t { }; 
+- (void)each:(void (^)(Track *t)) t { }; 
 - (int)count { return 0; };
 @end
 

@@ -6,7 +6,6 @@ static AVPacket flushPacket;
 
 @interface LibAVSource (Prrrivate) 
 - (AVCodecContext *)audioCodecContext;
-- (void)notifyChangedState;
 @end
 
 @implementation LibAVSource
@@ -118,13 +117,9 @@ static AVPacket flushPacket;
   }
 
   state_ = kPlayingAudioSourceState;
-  [self notifyChangedState];
   return true;
 }
 
-- (void)notifyChangedState {
-  [[NSNotificationCenter defaultCenter] postNotificationName:DidChangeStateAudioSource object:self];
-}
 
 - (bool)readPacket:(AVPacket *)packet {  
   if (!opened_) {
@@ -154,7 +149,6 @@ static AVPacket flushPacket;
         ERROR("read packet fail (%d)", read);
       } 
       state_ = kEOFAudioSourceState;
-      [self notifyChangedState];
       return false;
     } 
     if (packet->size <= 0)  {
@@ -264,13 +258,11 @@ static AVPacket flushPacket;
 - (void)stop {
   if (state_ == kPlayingAudioSourceState)  {
     state_ = kPausedAudioSourceState;
-    [self notifyChangedState];  
   }
 }
 - (void)start { 
   if (state_ == kPausedAudioSourceState) {
     state_ = kPlayingAudioSourceState;
-    [self notifyChangedState];
   }
 }
 

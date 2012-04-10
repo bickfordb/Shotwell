@@ -9,8 +9,6 @@ typedef enum {
   // error or end of file have the same status since they have the same use case
   kEOFAudioSourceState} AudioSourceState;
 
-extern NSString * const DidChangeStateAudioSource;
-
 @protocol AudioSource <NSObject>
 - (void)getAudio:(uint8_t *)bytes length:(size_t)len;
 - (void)seek:(int64_t)usecs;

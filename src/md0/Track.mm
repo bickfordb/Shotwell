@@ -11,6 +11,7 @@
 #include <unicode/bytestream.h>
 
 #import "md0/AV.h"
+#import "md0/JSON.h"
 #import "md0/Track.h"
 #import "md0/Log.h"
 
@@ -32,23 +33,116 @@ static NSString *ToUTF8(const char *src) {
 
 NSString * const kAlbum = @"album";
 NSString * const kArtist = @"artist";
-NSString * const kCreatedAt = @"created_at";
+NSString * const kCreatedAt = @"createdAt";
+NSString * const kCoverArtURL = @"coverArtURL";
 NSString * const kDuration = @"duration";
 NSString * const kGenre = @"genre";
 NSString * const kID = @"id";
-NSString * const kIsVideo = @"is_video";
-NSString * const kLastPlayedAt = @"last_played_at";
+NSString * const kIsVideo = @"isVideo";
+NSString * const kLastPlayedAt = @"lastPlayedAt";
+NSString * const kPublisher = @"publisher";
 NSString * const kTitle = @"title";
-NSString * const kTrackNumber = @"track_number";
+NSString * const kTrackNumber = @"trackNumber";
 NSString * const kURL = @"url";
-NSString * const kUpdatedAt = @"updated_at"; 
+NSString * const kUpdatedAt = @"updatedAt"; 
 NSString * const kYear = @"year";
 
-void Init() {
-  AVInit(); 
+NSArray *allTrackKeys = nil;
+static NSDictionary *tagKeyToTrackKey; 
+
+@implementation Track
+@synthesize album = album_;
+@synthesize artist = artist_;
+@synthesize coverArtURL = coverArtURL_;
+@synthesize createdAt = createdAt_;
+@synthesize duration = duration_;
+@synthesize genre = genre_;
+@synthesize id = id_;
+@synthesize isVideo = isVideo_;
+@synthesize lastPlayedAt = lastPlayedAt_;
+@synthesize title = title_;
+@synthesize publisher = publisher_;
+@synthesize trackNumber = trackNumber_;
+@synthesize updatedAt = updatedAt_;
+@synthesize url = url_;
+@synthesize year = year_;
+
+- (void)dealloc { 
+  [album_ release];
+  [artist_ release];
+  [coverArtURL_ release];
+  [duration_ release];
+  [genre_ release];
+  [id_ release];
+  [isVideo_ release];
+  [lastPlayedAt_ release];
+  [publisher_ release];
+  [title_ release];
+  [trackNumber_ release];
+  [updatedAt_ release];
+  [url_ release];
+  [year_ release];
+  [super dealloc];
 }
 
-int ReadTag(NSString *url, NSMutableDictionary *aTrack) {
++ (void)initialize {
+  AVInit(); 
+  allTrackKeys = [[NSArray arrayWithObjects:
+    kAlbum,
+    kArtist,
+    kCoverArtURL,
+    kCreatedAt,
+    kDuration,
+    kGenre,
+    kID, 
+    kIsVideo,
+    kLastPlayedAt,
+    kPublisher,
+    kTitle,
+    kTrackNumber,
+    kURL,
+    kUpdatedAt,
+    kYear, 
+    nil] retain];
+  tagKeyToTrackKey = [[NSDictionary dictionaryWithObjectsAndKeys:
+    kArtist, @"artist",
+    kAlbum, @"album",
+    kYear, @"year",
+    kTitle, @"title",
+    kYear, @"date",
+    kGenre, @"genre",
+    kTrackNumber, @"track", nil] retain];
+}
+
+- (NSString *)description {
+  NSMutableString *ret = [NSMutableString string];
+  [ret appendString:@"{"];
+  int i = 0;
+  for (NSString *key in allTrackKeys) {
+    if (i != 0) {
+      [ret appendString:@", "];
+    }
+    [ret appendFormat:@"%@: %@", key, [self valueForKeyPath:key]];
+    i += 1;
+  }
+  [ret appendString:@"}"];
+  return ret;
+}
+
+- (BOOL)isEqual:(id)other {
+  if ([other isKindOfClass:[Track class]]) {
+    Track *other0 = (Track *)other;
+    return [id_ longLongValue] == [other0->id_ longLongValue];
+  } else { 
+    return NO;
+  }
+}
+
+- (NSUInteger)hash {
+  return [id_ hash];
+}
+
+- (int)readTag {
   int ret = 0;
   AVFormatContext *c = NULL;
   struct stat st;
@@ -56,23 +150,14 @@ int ReadTag(NSString *url, NSMutableDictionary *aTrack) {
   AVDictionaryEntry *tag = NULL;
   int audioStreamIndex = -1;
 
-  NSDictionary *tagKeyToTrackKey = [NSDictionary dictionaryWithObjectsAndKeys:
-    kTrackNumber, @"track",
-    kArtist, @"artist",
-    kAlbum, @"album",
-    kYear, @"year",
-    kTitle, @"title",
-    kYear, @"date",
-    kGenre, @"genre",
-    kTrackNumber, @"track",
-    nil];
+  if (!url_ || !url_.length) 
+    return -1;
   memset(&st, 0, sizeof(st));
-  if (stat(url.UTF8String, &st) < 0) {
+  if (stat(url_.UTF8String, &st) < 0) {
     ret = -2;
     goto done;
   }
-  AVInit();
-  if (avformat_open_input(&c, url.UTF8String, NULL, NULL) < 0) {
+  if (avformat_open_input(&c, url_.UTF8String, NULL, NULL) < 0) {
     ret = -3;
     goto done;
   }
@@ -87,14 +172,14 @@ int ReadTag(NSString *url, NSMutableDictionary *aTrack) {
       break;
     }
   }
+
   if (audioStreamIndex >= 0) {
     int64_t d = ((c->streams[audioStreamIndex]->duration * c->streams[audioStreamIndex]->time_base.num) / c->streams[audioStreamIndex]->time_base.den) * 1000000;
-    [aTrack setObject:[NSNumber numberWithLong:d] forKey:kDuration];
+    self.duration = [NSNumber numberWithLongLong:d];
   }
-  [aTrack setObject:[NSNumber numberWithBool:NO] forKey:kIsVideo];
   for (int i = 0; i < c->nb_streams; i++) {
     if (c->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
-      [aTrack setObject:[NSNumber numberWithBool:YES] forKey:kIsVideo];
+      self.isVideo = [NSNumber numberWithBool:YES];
       break;
     }
   } 
@@ -105,10 +190,8 @@ int ReadTag(NSString *url, NSMutableDictionary *aTrack) {
     if (trackKey) {
       NSString *value = ToUTF8(tag->value);
       if (value && value.length > 0) {
-        [aTrack setObject:value forKey:trackKey];
+        [self setValue:value forKey:trackKey];
       }
-    } else { 
-      NSLog(@"missing key for %@", tagKey);
     }
   }
 done:
@@ -119,3 +202,31 @@ done:
   return ret;
 }
 
+
+- (json_t *)getJSON {
+  NSDictionary *data = [self dictionaryWithValuesForKeys:allTrackKeys];
+  return [data getJSON];
+}
+
++ (NSString *)webScriptNameForKey:(const char *)name {
+  return [NSString stringWithUTF8String:name];
+}
+
++ (BOOL)isKeyExcludedFromWebScript:(const char *)name {
+  return YES;
+}
+
++ (BOOL)isSelectorExcludedFromWebScript:(SEL)aSelector {
+  return NO;
+}
+
++ (NSString *)webScriptNameForSelector:(SEL)aSelector {
+  NSString *s = NSStringFromSelector(aSelector);
+  return [s stringByReplacingOccurrencesOfString:@":" withString:@"_"];
+}
+
+- (void)finalizeForWebScript {
+}
+
+
+@end

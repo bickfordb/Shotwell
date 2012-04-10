@@ -3,6 +3,7 @@
 
 #import <Cocoa/Cocoa.h>
 
+#import "md0/AppleCoverArtClient.h"
 #import "md0/Library.h"
 #import "md0/Movie.h"
 #import "md0/Slider.h"
@@ -14,6 +15,7 @@
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSNetServiceBrowserDelegate, NSNetServiceDelegate, NSTableViewDataSource, NSTableViewDelegate, NSToolbarDelegate> {
   NSMutableArray *services_;
   NSMutableArray *plugins_;
+  AppleCoverArtClient *appleCoverArtClient_;
   BOOL needsReload_; 
   BOOL sortChanged_;
   BOOL trackEnded_;
@@ -74,8 +76,10 @@
   NSWindow *mainWindow_;
   Library *library_;
   LocalLibrary *localLibrary_;
+  // Currently playing movie
   Movie *movie_;
-  NSDictionary *track_;
+  // Currently playing track
+  Track *track_;
   NSMutableArray *allTracks_;
   NSMutableArray *tracks_;
   NSString *searchQuery_;
@@ -106,6 +110,7 @@
 - (void)updateTableColumnHeaders;
 - (NSArray *)cutTracksAtIndices:(NSIndexSet *)indices;
 - (void)setVolume:(double)pct;
+- (void)search:(NSString *)query;
 @end
 
 #endif

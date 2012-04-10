@@ -1,7 +1,8 @@
 all:
 	@echo Targets:
-	@echo "  run  -- Run the app application"
-	@echo "  gdb  -- Run the app application in gdb"
+	@echo "\trun  -- Run the application (w/o gdb)"
+	@echo "\tgdb  -- Run the application (w/ gdb)"
+	@echo "\tgdb-memory  -- Run the application (w/ gdb) w/ malloc checking hooks turned on"
 
 APPNAME = MD0
 APP = build/$(APPNAME).app
@@ -22,6 +23,7 @@ LDFLAGS += -Lbuild/vendor/lib
 LDFLAGS += -lleveldb
 LDFLAGS += -ljansson
 LDFLAGS += -levent
+LDFLAGS += -levent_pthreads
 LDFLAGS += -lstdc++
 LDFLAGS += -lpcrecpp
 LDFLAGS += -lpcre
@@ -49,7 +51,7 @@ LDFLAGS += -framework CoreFoundation
 LDFLAGS += -framework Foundation 
 LDFLAGS += -framework JavaScriptCore 
 LDFLAGS += -framework IOKit 
-LDFLAGS += -framework OpenGL 
+#LDFLAGS += -framework OpenGL 
 LDFLAGS += -framework VideoDecodeAcceleration 
 LDFLAGS += -framework QuartzCore
 LDFLAGS += -framework WebKit 
@@ -59,6 +61,8 @@ SRC_RES := src/md0/res
 SRC_RESOURCES = $(wildcard $(SRC_RES)/*.png $(SRC_RES)/*.pdf $(SRC_RES)/*.js)
 RESOURCETARGETS := $(foreach f, $(SRC_RESOURCES), $(addprefix $(DST_RES)/, $(notdir $(f)))) 
 
+.PHONY: build
+
 PROJ = $(CURDIR)
 
 APPDIRS = $(APP) $(APP)/Contents/MacOS $(APP/Contents) $(APP)/Contents/Resources
@@ -66,40 +70,64 @@ APPDIRS = $(APP) $(APP)/Contents/MacOS $(APP/Contents) $(APP)/Contents/Resources
 $(APPDIRS): 
 	mkdir -p $@
 
+
+$(DST_RES)/Plugins:
+	mkdir -p $@
+build: $(DST_RES)/Plugins
+
+$(DST_RES)/Plugins/Marquee:
+	mkdir -p $@
+build: $(DST_RES)/Plugins/Marquee
+
+$(DST_RES)/Plugins/Marquee/main.js: $(SRC_RES)/Plugins/Marquee/main.js
+	cp $+ $@
+build: $(DST_RES)/Plugins/Marquee/main.js
+
+$(DST_RES)/Plugins/Marquee/main.css: $(SRC_RES)/Plugins/Marquee/main.css
+	cp $+ $@
+build: $(DST_RES)/Plugins/Marquee/main.css
+
+$(DST_RES)/Plugins/Marquee/jquery-1.7.2.min.js: $(SRC_RES)/Plugins/Marquee/jquery-1.7.2.min.js
+	cp $+ $@
+build: $(DST_RES)/Plugins/Marquee/jquery-1.7.2.min.js
+
+$(DST_RES)/Plugins/Marquee/index.html: $(SRC_RES)/Plugins/Marquee/index.html
+	cp $+ $@
+build: $(DST_RES)/Plugins/Marquee/index.html
+
 $(APP)/Contents/MacOS/MD0: $(SRCS) $(HDRS) $(VENDOR_STAMP) $(APPDIRS)
 	$(CXX) $(CXXFLAGS) $(APPCXXFLAGS) $(SRCS) -o $@ $(LDFLAGS)
-app: $(APP)/Contents/MacOS/MD0
+build: $(APP)/Contents/MacOS/MD0
 
 $(APP)/Contents/Info.plist: src/md0/Info.plist $(APP)/Contents
 	cp $< $@
-app: $(APP)/Contents/Info.plist
+build: $(APP)/Contents/Info.plist
 
-all: app
-
-run: all
+run: build
 	$(APP)/Contents/MacOS/$(APPNAME)
 
-gdb: all
+gdb: build
 	echo break malloc_error_break >build/gdb-commands
 	echo run >>build/gdb-commands
 	gdb -f -x build/gdb-commands $(APP)/Contents/MacOS/$(APPNAME) 
 
-gdb-memory: all
+gdb-memory: build
 	echo run >build/gdb-commands
 	MallocScribbling=1 MallocGuardEdges=1 NSDebugEnabled=YES MallocStackLoggingNoCompact=YES gdb -f -x build/gdb-commands $(APP)/Contents/MacOS/$(APPNAME) 
 
 $(DST_RES)/en.lproj:
 	mkdir -p $@
-app: $(DST_RES)/en.lproj
+build: $(DST_RES)/en.lproj
 
 $(DST_RES)/en.lproj/MainMenu.nib: $(SRC_RES)/en.lproj/MainMenu.xib 
 	ibtool --compile $@ $+
-app: $(DST_RES)/en.lproj/MainMenu.nib
+build: $(DST_RES)/en.lproj/MainMenu.nib
 
 $(RESOURCETARGETS): $(DST_RES)/%: $(SRC_RES)/% 
 	cp $< $@
 
-app: $(RESOURCETARGETS)
+build: $(RESOURCETARGETS)
+
 
 build/test-runner: $(TESTSRCS) $(LIBSRCS) $(LIBHDRS) $(VENDOR_STAMP) $(PROTOSRCS) 
 	$(CXX) $(CXXFLAGS) $(TESTCFLAGS) $(LIBSRCS) $(GTESTSRCS) $(TESTSRCS) -o $@ $(LDFLAGS) $(TESTLDFLAGS)

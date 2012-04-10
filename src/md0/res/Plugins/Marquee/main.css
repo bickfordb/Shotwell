@@ -1,0 +1,42 @@
+* { font-family: lucida grande;}
+body { 
+  margin: 0;
+  padding: 0;
+  background: black;
+  background-size: 300px 300px;
+}
+
+div.track-info-container { 
+  border-bottom: solid 1px black;
+}
+div.track-info { 
+  padding: 5px; 
+  opacity: 0.9;
+  border-bottom: solid 1px rgba(107, 118, 125, 0.9);
+  background-image: -webkit-linear-gradient(top, rgb(67, 78, 85), rgb(7, 18, 25));
+}
+
+p.track-field {  
+  color: #ffffff;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 1.0);
+  text-align: center;
+  margin-top: 3px;
+  margin-bottom: 3px; 
+  font-style: normal;
+  font-size: 10pt;
+  text-align: center;
+}
+
+p.title {
+  font-weight: bold;
+  font-size: 12pt;
+}
+
+p.url { 
+  font-size: 8pt;
+}
+
+p.track-field:hover {
+  text-decoration: underline; 
+  cursor: pointer;
+}

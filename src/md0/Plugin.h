@@ -3,16 +3,12 @@
 #import "md0/Track.h"
 
 @interface Plugin : NSObject { 
-  NSView *content_;
 }
-- (void)start;
-- (void)stop;
-- (void)showVertical:(bool)isVertical;
-- (void)hide;
-- (void)hideTrackTable;
-- (void)trackStarted:(NSDictionary *)t;
-- (void)trackEnded:(NSDictionary *)t;
-- (void)trackUpdated:(NSDictionary *)t;
-- (NSView *)content;
+
+- (void)trackStarted:(Track *)t;
+- (void)trackEnded:(Track *)t;
+- (void)trackAdded:(Track *)t;
+- (void)trackSaved:(Track *)t;
+- (void)trackDeleted:(Track *)t;
 
 @end

@@ -7,10 +7,14 @@
 @end
 
 @interface NSString (JSON) 
-- (NSArray *)decodeJSONArray;
-- (NSDictionary *)decodeJSONObject;
+- (id)decodeJSON;
+@end
+
+@interface NSData (JSON) 
+- (id)decodeJSON;
 @end
 
 id FromJSONBytes(const char *js);
+id FromJSON(json_t *);
 
 // vim: filetype=objcpp
