@@ -9,7 +9,6 @@ function onTrackStarted(track) {
   window.playing = track;
   plugin.showSize_isVertical_(300, true); 
   renderPlaying(); 
-  plugin.log_("starting " + track.url());
 }
 
 function onTrackEnded(track) { 

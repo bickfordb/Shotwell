@@ -131,8 +131,6 @@ using namespace std;
       int st = [t readTag];
       [self save:t];
       [t release];
-    } else { 
-      NSLog(@"already in index: %@", filename);
     }
   }
   [pool release];

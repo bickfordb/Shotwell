@@ -52,7 +52,7 @@ static NSString * const kITunesAffiliateURL = @"http://itunes.apple.com/search";
   NSURL *url = [NSURL URLWithString:kITunesAffiliateURL];
   url = [url pushKey:@"term" value:term];
   url = [url pushKey:@"entity" value:entity];
-  [loop_ fetchURL:url withBlock:^(HTTPResponse *r) { 
+  [loop_ fetchURL:url with:^(HTTPResponse *r) { 
     NSDictionary *data = (NSDictionary *)r.body.decodeJSON;
     if (r.status != 200 || !data) 
       return;

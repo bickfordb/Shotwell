@@ -33,6 +33,7 @@ static OSStatus GetAudioCallback(void *context,
 - (id)initWithSource:(id <AudioSource>)audioSource {
   self = [super init];
   if (self) { 
+    volume_ = 0.5;
     audioSource_ = [audioSource retain];  
     opened_ = false;
   }
@@ -92,6 +93,8 @@ static OSStatus GetAudioCallback(void *context,
   AudioUnitSetProperty(outputAudioUnit_, kAudioUnitProperty_SetRenderCallback,
       kAudioUnitScope_Input, 0, &callback, sizeof(callback));
   AudioOutputUnitStart(outputAudioUnit_);
+  AudioUnitSetParameter(outputAudioUnit_, 
+      kHALOutputParam_Volume, kAudioUnitScope_Output, 0, (AudioUnitParameterValue)volume_, 0);
 }
 
 - (double)volume {
@@ -105,6 +108,9 @@ static OSStatus GetAudioCallback(void *context,
 }
 
 - (void)setVolume:(double)pct { 
+  volume_ = pct;
+  if (!opened_)
+    return;
   OSStatus status = AudioUnitSetParameter(outputAudioUnit_, 
       kHALOutputParam_Volume, kAudioUnitScope_Output, 0, (AudioUnitParameterValue)pct, 0);
   if (status != 0) 

@@ -14,23 +14,21 @@
 static const int64_t kLibraryRefreshInterval = 2 * 1000000;
 static const int kDefaultPort = 6226;
 static NSSize kStartupSize = {1100, 600};
-static NSString *kMD0ServiceType = @"_md0._tcp.";
-static NSString *kRAOPServiceType = @"_raop._tcp.";
-static NSString *kNextButton = @"NextButton";
-static NSString *kPlayButton = @"PlayButton";
-static NSString *kPreviousButton = @"PreviousButton";
-static NSString *kProgressControl = @"ProgressControl";
-static NSString *kSearchControl = @"SearchControl";
-static NSString *kStatus = @"status";
-static NSString *kDefaultWindowTitle = @"MD0";
-static NSString *kVolumeControl = @"VolumeControl";
-static int kBottomEdgeMargin = 25;
-
+static NSString * const kMD0ServiceType = @"_md0._tcp.";
+static NSString * const kRAOPServiceType = @"_raop._tcp.";
+static NSString * const kNextButton = @"NextButton";
+static NSString * const kPlayButton = @"PlayButton";
+static NSString * const kPreviousButton = @"PreviousButton";
+static NSString * const kProgressControl = @"ProgressControl";
+static NSString * const kSearchControl = @"SearchControl";
+static NSString * const kStatus = @"status";
+static NSString * const kDefaultWindowTitle = @"MD0";
+static NSString * const kVolumeControl = @"VolumeControl";
+static NSString * const kPathsToScan = @"PathsToScan";
+static  const int kBottomEdgeMargin = 25;
 static NSString * LibraryDir();
 static NSString * LibraryPath();
 static NSString *GetString(const string &s);
-
-
 
 static NSString *LibraryDir() { 
   NSArray *paths = NSSearchPathForDirectoriesInDomains(
@@ -71,7 +69,7 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize addToLibraryMenuItem = addToLibraryMenuItem_;
 @synthesize allTracks = allTracks_;
 @synthesize appleCoverArtClient = appleCoverArtClient_;
-@synthesize audioOutputSelect = audioOutputSelect_;
+@synthesize audioOutputPopUp = audioOutputPopUp_;
 @synthesize contentHorizontalSplit = contentHorizontalSplit_;
 @synthesize contentVerticalSplit = contentVerticalSplit_;
 @synthesize contentView = contentView_;
@@ -84,10 +82,10 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize emptyImage = emptyImage_;
 @synthesize lastLibraryRefresh = lastLibraryRefresh_;
 @synthesize library = library_;
-@synthesize librarySelect = librarySelect_;
+@synthesize libraryPopUp = libraryPopUp_;
 @synthesize localLibrary = localLibrary_;
 @synthesize mainWindow = mainWindow_;
-@synthesize md0Services = md0Services_;
+@synthesize libraries = libraries_;
 @synthesize mdServiceBrowser = mdServiceBrowser_;
 @synthesize movie = movie_;
 @synthesize needsLibraryRefresh = needsLibraryRefresh_;
@@ -110,9 +108,8 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize previousButtonItem = previousButtonItem_;
 @synthesize progressSlider = progressSlider_;
 @synthesize progressSliderItem = progressSliderItem_;
-@synthesize raopService = raopService_;
 @synthesize raopServiceBrowser = raopServiceBrowser_;
-@synthesize raopServices = raopServices_;
+@synthesize audioOutputs = audioOutputs_;
 @synthesize requestClearSelection = requestClearSelection_;
 @synthesize requestNext = requestNext_;
 @synthesize requestPlayTrackAtIndex = requestPlayTrackAtIndex_;
@@ -123,6 +120,8 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize searchQuery = searchQuery_;
 @synthesize seekToRow = seekToRow_;
 @synthesize selectAllMenuItem = selectAllMenuItem_;
+@synthesize selectedAudioOutput = selectedAudioOutput_;
+@synthesize selectedLibrary = selectedLibrary_;
 @synthesize selectNoneMenuItem = selectNoneMenuItem_;
 @synthesize sortChanged = sortChanged_;
 @synthesize sortFields = sortFields_;
@@ -142,19 +141,19 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize volumeSlider = volumeSlider_;
 
 - (void)dealloc { 
-  [allTracks_ release];
-  [tracks_ release];
-  [appleCoverArtClient_ release];
-  [contentView_ dealloc];
-  [mainWindow_ dealloc];
+  self.tracks = nil;
+  self.allTracks = nil;
+  self.appleCoverArtClient = nil;
+  self.contentView = nil;
+  self.mainWindow = nil;
   [super dealloc];
 }
 
 - (void)search:(NSString *)term {
-  searchField_.stringValue = term;
+  self.searchField.stringValue = term;
   self.searchQuery = term;
-  predicateChanged_ = YES;
-  needsReload_ = YES;
+  self.predicateChanged = YES;
+  self.needsReload = YES;
 }
 
 - (void)setupMenu {
@@ -170,21 +169,21 @@ static NSString *GetWindowTitle(Track *t) {
   NSMenu *editMenu = [editMenuItem submenu];
   [editMenu removeAllItems];
 
-  selectAllMenuItem_ = [editMenu addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
-  selectAllMenuItem_.target = trackTableView_;
-  selectNoneMenuItem_ = [editMenu addItemWithTitle:@"Select None" action:@selector(selectNone:) keyEquivalent:@"A"];
-  selectNoneMenuItem_.target = trackTableView_;
-  addToLibraryMenuItem_ = [fileMenu addItemWithTitle:@"Add to Library" action:@selector(addToLibrary:) keyEquivalent:@"o"];
-  addToLibraryMenuItem_.target = self;
-  cutMenuItem_ = [editMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
-  cutMenuItem_.target = self;
-  copyMenuItem_ = [editMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
-  copyMenuItem_.target = self;
-  deleteMenuItem_ = [editMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:[NSString stringWithFormat:@"%C", NSBackspaceCharacter]];
-  [deleteMenuItem_ setKeyEquivalentModifierMask:0];
-  deleteMenuItem_.target = self;
-  pasteMenuItem_ = [editMenu addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
-  pasteMenuItem_.target = self;
+  self.selectAllMenuItem = [editMenu addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
+  self.selectAllMenuItem.target = trackTableView_;
+  self.selectNoneMenuItem = [editMenu addItemWithTitle:@"Select None" action:@selector(selectNone:) keyEquivalent:@"A"];
+  self.selectNoneMenuItem.target = trackTableView_;
+  self.addToLibraryMenuItem = [fileMenu addItemWithTitle:@"Add to Library" action:@selector(addToLibrary:) keyEquivalent:@"o"];
+  self.addToLibraryMenuItem.target = self;
+  self.cutMenuItem = [editMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
+  self.cutMenuItem.target = self;
+  self.copyMenuItem = [editMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
+  self.copyMenuItem.target = self;
+  self.deleteMenuItem = [editMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:[NSString stringWithFormat:@"%C", NSBackspaceCharacter]];
+  [self.deleteMenuItem setKeyEquivalentModifierMask:0];
+  self.deleteMenuItem.target = self;
+  self.pasteMenuItem = [editMenu addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
+  self.pasteMenuItem.target = self;
 }
 
 - (void)addToLibrary:(id)sender { 
@@ -325,32 +324,34 @@ static NSString *GetWindowTitle(Track *t) {
   int w = 160;
   int x = ((NSView *)[mainWindow_ contentView]).bounds.size.width;
   x -= w + 10;
-  audioOutputSelect_ = [[NSPopUpButton alloc] initWithFrame:CGRectMake(x, 3, w, 18)];
-  audioOutputSelect_.autoresizingMask = NSViewMinXMargin | NSViewMaxYMargin;
-  [audioOutputSelect_ setTarget:self];
-  [audioOutputSelect_ setAction:@selector(audioOutputSelected:)];
-  NSButtonCell *buttonCell = (NSButtonCell *)[audioOutputSelect_ cell];
+  audioOutputPopUp_ = [[NSPopUpButton alloc] initWithFrame:CGRectMake(x, 3, w, 18)];
+  audioOutputPopUp_.autoresizingMask = NSViewMinXMargin | NSViewMaxYMargin;
+  [audioOutputPopUp_ setTarget:self];
+  [audioOutputPopUp_ setAction:@selector(audioOutputSelected:)];
+  NSButtonCell *buttonCell = (NSButtonCell *)[audioOutputPopUp_ cell];
   [buttonCell setFont:[NSFont systemFontOfSize:11.0]];
   [buttonCell setControlSize:NSSmallControlSize];
 
-  [[mainWindow_ contentView] addSubview:audioOutputSelect_];
+  [[mainWindow_ contentView] addSubview:audioOutputPopUp_];
+  [self.audioOutputs addObject:[NSMutableDictionary dictionaryWithObjectsAndKeys:
+    @"Local Audio", @"title", nil]]; 
+  self.selectedAudioOutput = [self.audioOutputs objectAtIndex:0];
   [self refreshAudioOutputList];
 }
 
 - (void)audioOutputSelected:(id)sender { 
-  NSLog(@"selected audio output");
   NSInteger i = [sender indexOfSelectedItem];
-  if (i == 0) {
-    self.raopService = nil;
-  } else {
-    i--;
-    if (i >= 0 && i < raopServices_.count) { 
-      NSNetService *svc = [raopServices_ objectAtIndex:i];
-      self.raopService = svc;
+  NSMutableDictionary *output = nil;
+  @synchronized(audioOutputs_) {
+    if (i > 0 && i < audioOutputs_.count) {
+      output = [audioOutputs_ objectAtIndex:i];
     }
   }
-  @synchronized (tracks_) {
-    requestPlayTrackAtIndex_ = [tracks_ indexOfObject:track_];
+  if (output) {
+    self.selectedAudioOutput = output;
+    @synchronized (tracks_) {
+      self.requestPlayTrackAtIndex = [tracks_ indexOfObject:track_];
+    }
   }
 }
 
@@ -358,55 +359,53 @@ static NSString *GetWindowTitle(Track *t) {
   int w = 160;
   int x = ((NSView *)[mainWindow_ contentView]).bounds.size.width;
   x -= w + 10;
-  librarySelect_ = [[NSPopUpButton alloc] initWithFrame:CGRectMake(5, 3, w, 18)];
-  librarySelect_.autoresizingMask = NSViewMaxXMargin | NSViewMaxYMargin;
-  NSButtonCell *buttonCell = (NSButtonCell *)[librarySelect_ cell];
+  libraryPopUp_ = [[NSPopUpButton alloc] initWithFrame:CGRectMake(5, 3, w, 18)];
+  libraryPopUp_.autoresizingMask = NSViewMaxXMargin | NSViewMaxYMargin;
+  NSButtonCell *buttonCell = (NSButtonCell *)[libraryPopUp_ cell];
   [buttonCell setFont:[NSFont systemFontOfSize:11.0]];
   [buttonCell setControlSize:NSSmallControlSize];
-  [librarySelect_ setTarget:self];
-  [librarySelect_ setAction:@selector(librarySelected:)];
-  [[mainWindow_ contentView] addSubview:librarySelect_];
+  [libraryPopUp_ setTarget:self];
+  [libraryPopUp_ setAction:@selector(librarySelected:)];
+  [[mainWindow_ contentView] addSubview:libraryPopUp_];
+  [self.libraries addObject:[NSMutableDictionary dictionaryWithObjectsAndKeys: 
+    @"Local Library", @"title", 
+    self.localLibrary, @"library", nil]];
+  self.selectedLibrary = [self.libraries objectAtIndex:0];
   [self refreshLibraryList];
 }
 
 - (void)librarySelected:(id)sender { 
-  /*
-     NSInteger index = [librarySelect_ indexOfSelectedItem];
-     if (index < 0) 
-     return;
-     string name([[librarySelect_ titleOfSelectedItem] UTF8String]);
-     @synchronized (self) {
-     if (library_ != localLibrary_)
-     delete library_;
-     if (index == 0) {
-     library_ = localLibrary_;
-     } else { 
-     for (set<Service>::iterator i = services_.begin(); i != services_.end(); i++) {
-     if (i->mdns_type() == "_md0._tcp." && i->name() == name) {
-     library_ = new RemoteLibrary(i->host(), i->port());
-     break;
-     }
-     }
-     }
-     }*/
   NSLog(@"library selected");
-  needsLibraryRefresh_ = YES;
+  int i = [sender indexOfSelectedItem];
+  if (i >= 0 && i < self.libraries.count) {
+    self.selectedLibrary = [self.libraries objectAtIndex:[sender indexOfSelectedItem]];
+  }
+  if (self.selectedLibrary) {
+    self.library = [self.selectedLibrary objectForKey:@"library"];
+    self.needsLibraryRefresh = YES;
+  }
 }
 
 - (void)refreshAudioOutputList {
-  [audioOutputSelect_ removeAllItems];
-  [audioOutputSelect_ addItemWithTitle:@"Local Speakers"];
-  for (NSNetService *svc in raopServices_) {
-    [audioOutputSelect_ addItemWithTitle:svc.name];
+  [self.audioOutputPopUp removeAllItems];
+  for (NSDictionary *d in self.audioOutputs) {
+    [self.audioOutputPopUp addItemWithTitle:[d objectForKey:@"title"]];
   }
+  int index = self.selectedAudioOutput ? 0 : [self.audioOutputs indexOfObject:self.selectedAudioOutput];
+  if (index == NSNotFound)
+    index = 0;
+  [self.audioOutputPopUp selectItemAtIndex:index];
 }
 
 - (void)refreshLibraryList {
-  [librarySelect_ removeAllItems];
-  [librarySelect_ addItemWithTitle:@"Library"];
-  for (NSNetService *svc in md0Services_) {
-    [librarySelect_ addItemWithTitle:svc.name];
+  [self.libraryPopUp removeAllItems];
+  for (NSDictionary *d in self.libraries) {
+    [self.libraryPopUp addItemWithTitle:[d objectForKey:@"title"]];
   }
+  int index = self.selectedLibrary ? 0 : [self.libraries indexOfObject:self.selectedLibrary];
+  if (index == NSNotFound)
+    index = 0;
+  [self.libraryPopUp selectItemAtIndex:index];
 }
 
 - (void)setupTrackTable {
@@ -649,15 +648,26 @@ static NSString *GetWindowTitle(Track *t) {
   }
 }
 
+- (NSArray *)pathsToAutomaticallyScan {
+  return [[NSUserDefaults standardUserDefaults] arrayForKey:kPathsToScan];
+}
+
+- (void)setPathsToAutomaticallyScan:(NSArray *)paths {
+  NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
+  [d setObject:paths forKey:kPathsToScan];
+  [d synchronize];
+}
+
 - (void)parseDefaults { 
   [[NSUserDefaults standardUserDefaults] setBool:TRUE forKey:@"WebKitDeveloperExtras"];
   [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification *)n {
+  [self setupDockIcon];
   [self parseDefaults];
-  self.raopServices = [NSMutableArray array];
-  self.md0Services = [NSMutableArray array];
+  self.audioOutputs = [NSMutableArray array];
+  self.libraries = [NSMutableArray array];
 
   [[NSNotificationCenter defaultCenter]
     addObserver:self selector:@selector(onTrackSaved:) name:TrackSavedLibraryNotification object:nil];
@@ -675,9 +685,7 @@ static NSString *GetWindowTitle(Track *t) {
   self.appleCoverArtClient = [[[AppleCoverArtClient alloc] init] autorelease];
   self.allTracks = [NSMutableArray array];
 
-  [self setupDockIcon];
 
-  NSApplication *sharedApp = [NSApplication sharedApplication];
   self.localLibrary = [[[LocalLibrary alloc] initWithPath:LibraryPath()] autorelease];
   self.library = self.localLibrary;
   self.movie = nil;
@@ -715,6 +723,8 @@ static NSString *GetWindowTitle(Track *t) {
   [[NSRunLoop mainRunLoop] addTimer:pollLibraryTimer_ forMode:NSDefaultRunLoopMode];
   [self setupPlugins];
   [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
+
+  [self.localLibrary scan:self.pathsToAutomaticallyScan];
 }
 
 - (void)setupRAOP { 
@@ -769,37 +779,56 @@ static NSString *GetWindowTitle(Track *t) {
   NSPasteboard *pasteboard = [info draggingPasteboard];
   NSArray *paths = [pasteboard propertyListForType:NSFilenamesPboardType];
   [localLibrary_ scan:paths];
+  
+  for (NSString *p in paths) {
+    struct stat status;
+    if (stat(p.UTF8String, &status) == 0) {
+      if (status.st_mode & S_IFDIR) {
+        NSArray *pathsToAutomaticallyScan = self.pathsToAutomaticallyScan;
+        if (!pathsToAutomaticallyScan)
+          pathsToAutomaticallyScan = [NSArray array];
+        NSMutableSet *pset = [NSMutableSet setWithArray:pathsToAutomaticallyScan];
+        [pset addObject:p];
+        self.pathsToAutomaticallyScan = pset.allObjects;
+      }
+    }
+  }
+
   return [paths count] ? YES : NO;
 }
 
 - (void)netServiceBrowser:(NSNetServiceBrowser *)netServiceBrowser didFindService:(NSNetService *)netService moreComing:(BOOL)moreServicesComing {
-  NSLog(@"found service: %@", netService);
   [netService retain];
   [netService setDelegate:self];
   [netService resolveWithTimeout:10.0];
 }
 
 - (void)netServiceDidResolveAddress:(NSNetService *)netService {
-  if ([netService.type isEqualToString:kRAOPServiceType]) { 
-    @synchronized(raopServices_) {
-      if (![raopServices_ containsObject:netService]) 
-        [raopServices_ addObject:netService];
+  NSMutableDictionary *d = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+    netService, @"service", 
+    netService.name, @"title", 
+    nil]; 
+  NSMutableArray *arr = nil;
+  if ([netService.type isEqualToString:kRAOPServiceType]) {
+    arr = self.audioOutputs;
+  } else { 
+    arr = self.libraries;
+    RemoteLibrary *remoteLibrary = [[[RemoteLibrary alloc] initWithNetService:netService] autorelease];
+    [d setObject:remoteLibrary forKey:@"library"];
+  }  
+
+  @synchronized(arr) {
+    if (![arr containsObject:d]) {
+      [arr addObject:d];
     }
-    [self refreshAudioOutputList];
-  } else if ([netService.type isEqualToString:kMD0ServiceType]) {
-    @synchronized(md0Services_) {
-      if (![md0Services_ containsObject:netService]) 
-        [md0Services_ addObject:netService];
-    }
-    [self refreshLibraryList];
   }
+  [self refreshLibraryList];
+  [self refreshAudioOutputList];
   [netService release];
 }
 
 - (void)netService:(NSNetService *)sender didNotResolve:(NSMutableDictionary *)errorDict {
-  NSLog(@"failed to resolve: %@ dict:%@", sender, errorDict);
 }
-
 
 - (void)tableView:(NSTableView *)tableView didClickTableColumn:(NSTableColumn *)tableColumn {
   NSString *ident = tableColumn.identifier;
@@ -1039,12 +1068,9 @@ static NSString *GetWindowTitle(Track *t) {
     needsLibraryRefresh_ = YES;
   } else if ((library_.lastUpdatedAt > lastLibraryRefresh_)
       && (lastLibraryRefresh_ < (Now() - kLibraryRefreshInterval))) {
-    NSLog(@"library last update is newer (%lld, %lld)", library_.lastUpdatedAt, lastLibraryRefresh_);
-
     needsLibraryRefresh_ = YES;
   }
   if (needsLibraryRefresh_) {
-    NSLog(@"refreshing library");
     @synchronized(allTracks_) { 
       [allTracks_ removeAllObjects];
       [library_ each:^(Track *t) {
@@ -1103,14 +1129,15 @@ static NSString *GetWindowTitle(Track *t) {
   @synchronized(tracks_) {
     self.track = (index > 0 && index < tracks_.count) ? [tracks_ objectAtIndex:index] : nil;
   }
-  self.movie = track_ ? [[[Movie alloc] initWithURL:track_.url
-    address:self.raopService.ipv4Address
-    port:self.raopService.port] autorelease] : nil;
-  self.movie.volume = self.volumeSlider.doubleValue;
-  [movie_ start];
+  NSNetService *netService = [self.selectedAudioOutput objectForKey:@"service"];
 
-  seekToRow_ = index;
-  needsReload_ = YES;
+  self.movie = track_ ? [[[Movie alloc] initWithURL:track_.url
+    address:netService.ipv4Address port:netService.port] autorelease] : nil;
+  self.movie.volume = self.volumeSlider.doubleValue;
+  [self.movie start];
+
+  self.seekToRow = index;
+  self.needsReload = YES;
   if (track_) {
     @synchronized(plugins_) {
       for (Plugin *p in plugins_) {

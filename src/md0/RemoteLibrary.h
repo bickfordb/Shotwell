@@ -12,7 +12,10 @@
   NSArray *tracks_;
   bool requestRefresh_;
 }
-@property (atomic, retain) NSNetService *netService;
+@property (retain) NSNetService *netService;
+@property (retain) Loop *loop;
+@property (retain) NSArray *tracks;
+@property bool requestRefresh;
 
 - (void)refresh;
 - (id)initWithNetService:(NSNetService *)netService;
