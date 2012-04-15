@@ -12,7 +12,6 @@
 #import "md0/RTSPClient.h"
 #import "md0/Random.h"
 
-static const int kSamplesPerFrame = 4096;
 static const int kBytesPerChannel = 2;
 static const int kNumChannels = 2;
 static const int kBitRate = 44100;
@@ -72,6 +71,7 @@ void RSAEncrypt(
 @synthesize challenge = challenge_;
 @synthesize cid = cid_;
 @synthesize dataPort = dataPort_;
+@synthesize framesPerPacket = framesPerPacket_;
 @synthesize iv = iv_;
 @synthesize key = key_;
 @synthesize loop = loop_;
@@ -80,7 +80,6 @@ void RSAEncrypt(
 @synthesize urlAbsPath = urlAbsPath_;
 
 - (void)dealloc { 
-  NSLog(@"dealloc RTSP");
   [address_ release];
   [iv_ release];
   [key_ release];
@@ -102,6 +101,8 @@ void RSAEncrypt(
     self.dataPort = 6000;
     self.key = [NSData randomDataWithLength:AES_BLOCK_SIZE];
     self.iv = [NSData randomDataWithLength:AES_BLOCK_SIZE];
+    self.framesPerPacket = 0;
+
     assert(iv_);
     assert(key_);
 
@@ -138,11 +139,10 @@ void RSAEncrypt(
   evbuffer_add(buf, request.body.bytes, request.body.length);
    
   // write buffer
-  //NSLog(@"sending request: %@", request);
-  NSLog(@"sending request: %@", [[NSString alloc] initWithCString:(const char *)evbuffer_pullup(buf, evbuffer_get_length(buf)) length:evbuffer_get_length(buf)]);
+  //NSLog(@"sending request: %@", [[NSString alloc] initWithCString:(const char *)evbuffer_pullup(buf, evbuffer_get_length(buf)) length:evbuffer_get_length(buf)]);
 
-  [loop_ writeBuffer:buf fd:fd_ with:^(bool succ) {
-      if (succ) {
+  [loop_ writeBuffer:buf fd:fd_ with:^(int succ) {
+      if (succ == 0) {
         [self readResponseWithBlock:block];
       }
     }];
@@ -230,7 +230,6 @@ void RSAEncrypt(
     ERROR("error creating socket");
     return false;
   }
-  NSLog(@"Connecting to %@, %d", address_, (int)port_);
   struct sockaddr_in addr;
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port_);
@@ -267,8 +266,9 @@ void RSAEncrypt(
           ERROR("Failed to record");
           block(st);
           return;
+        } else { 
+          block(st);
         }
-        [self sendVolume:0.5 with:block];
       }];
     }];
   }];
@@ -304,10 +304,10 @@ void RSAEncrypt(
       "a=fmtp:96 %d 0 %d 40 10 14 %d 255 0 0 %d\r\n"
       "a=rsaaeskey:%s\r\n"
       "a=aesiv:%s\r\n",
-      urlAbsPath_.UTF8String,
+      self.urlAbsPath.UTF8String,
       localAddress,
-      address_.UTF8String,
-      kSamplesPerFrame,
+      self.address.UTF8String,
+      self.framesPerPacket,
       kBytesPerChannel * 8,
       kNumChannels,
       kBitRate,
@@ -329,7 +329,7 @@ void RSAEncrypt(
     [response.headers enumerateKeysAndObjectsUsingBlock:^(id key, id val, BOOL *stop) {
       if ([((NSString *)key) caseInsensitiveCompare:@"session"] == 0) 
         self.sessionID = (NSString *)val;
-        NSLog(@"got session ID: %@", self.sessionID);
+        //NSLog(@"got session ID: %@", self.sessionID);
     }];
     block(response ? response.status : -1);
   })];
@@ -344,6 +344,9 @@ void RSAEncrypt(
 }
 
 - (void)sendVolume:(double)pct with:(OnStatus)block { 
+  if (fd_ <= 0) {
+    return;
+  }
   // value appears to be in some sort of decibel value 
   // 0 is max, -144 is min  
   double volume = 0;  
@@ -368,6 +371,7 @@ void RSAEncrypt(
 static OnResponse ToStatus(OnStatus block) {
    block = [block copy];
    return Block_copy(^(RTSPResponse *response) {
+      //NSLog(@"got response: %@", response);
       block(response ? response.status : 0);
    });
 }

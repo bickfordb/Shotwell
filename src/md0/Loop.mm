@@ -77,7 +77,7 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
   [e add:timeout];
 }
 
-- (void)writeBuffer:(struct evbuffer *)buffer fd:(int)fd with:(void (^)(bool succ))block {
+- (void)writeBuffer:(struct evbuffer *)buffer fd:(int)fd with:(void (^)(int succ))block {
   block = [block copy];
   [self monitorFd:fd flags:EV_WRITE timeout:-1 with:^(Event *event, short flags) {
     int write_st = evbuffer_write(buffer, fd);
@@ -87,7 +87,7 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
       [event add:-1];
     } else { 
       evbuffer_free(buffer);
-      block(write_st >= 0 ? true : false);
+      block(write_st >= 0 ? 0 : write_st);
     }
   }];
 }

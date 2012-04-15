@@ -10,6 +10,7 @@ typedef void (^OnResponse)(RTSPResponse *response);
   Loop *loop_;
   NSData *iv_;
   NSData *key_;
+
   NSString *address_;
   NSString *challenge_;
   NSString *cid_;
@@ -20,8 +21,11 @@ typedef void (^OnResponse)(RTSPResponse *response);
   uint16_t dataPort_;
   uint16_t port_;
   uint32_t ssrc_;
+  int framesPerPacket_;
+
 }
 
+@property int framesPerPacket;
 @property (retain) Loop *loop;
 @property (retain) NSData *iv;
 @property (retain) NSData *key;

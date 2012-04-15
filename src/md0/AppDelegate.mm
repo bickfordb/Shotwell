@@ -1106,6 +1106,7 @@ static NSString *GetWindowTitle(Track *t) {
   self.movie = track_ ? [[[Movie alloc] initWithURL:track_.url
     address:self.raopService.ipv4Address
     port:self.raopService.port] autorelease] : nil;
+  self.movie.volume = self.volumeSlider.doubleValue;
   [movie_ start];
 
   seekToRow_ = index;
