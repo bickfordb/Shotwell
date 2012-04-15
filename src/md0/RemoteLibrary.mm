@@ -9,6 +9,8 @@
 #import "md0/RemoteLibrary.h"
 #import "md0/Util.h"
 
+int kRefreshInterval = 10000;
+
 @implementation RemoteLibrary
 
 @synthesize netService = netService_;
