@@ -1,23 +1,25 @@
 #include <event2/buffer.h>
 #include <event2/thread.h>
-#include <event2/keyvalq_struct.h>
 #include <unistd.h>
 
 #import "md0/Loop.h"
 #import "md0/Log.h"
 #import "md0/NSObjectPthread.h"
+#import "md0/Event.h"
 
 static NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv);
 static void OnRequestComplete(struct evhttp_request *req, void *context);
 
-static const int kDispatchInterval = 10000;
-static const int kCheckRunningInterval = 1000;
+static const int kDispatchInterval = 10000; // .01 seconds
+static const int kCheckRunningInterval = 1000; // .001 seconds
 
 @interface Loop (P) 
 - (void)run;
 @end
 
 @implementation Loop 
+@synthesize pendingEvents = pendingEvents_;
+
 + (void)initialize {
   evthread_use_pthreads();
 }
@@ -28,217 +30,136 @@ static const int kCheckRunningInterval = 1000;
     base_ = event_base_new();
     running_ = false;
     started_ = true;
+    pendingEvents_ = [[NSMutableSet set] retain];
     [self runSelectorInThread:@selector(run)];
   }
   return self;
 }
 
- 
 - (void)dealloc { 
   started_ = false;
   while (running_) {
     usleep(kCheckRunningInterval); 
   }
+  [pendingEvents_ release];
   event_base_free(base_);
   [super dealloc];
 }
 
 
 - (void)run { 
-  NSAutoreleasePool *outerPool = [[NSAutoreleasePool alloc] init];
   running_ = true;
   struct timeval dispatchInterval;
   dispatchInterval.tv_sec = 0;
   dispatchInterval.tv_usec = kDispatchInterval;
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   while (started_) {
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     event_base_loopexit(base_, &dispatchInterval);
     event_base_dispatch(base_);
-    [pool release];
   }
+  [pool release];
   running_ = false;
-  [outerPool release];
 }
 
 - (struct event_base *)base { 
   return base_;
 }
 
-- (bool)fetchURL:(NSURL *)url withBlock:(void (^)(HTTPResponse *response))onResponse {
-  HTTPRequest *request = [[[HTTPRequest alloc] init] autorelease];
-  request.method = @"GET";
-  [request.headers setObject:url.host forKey:@"Host"];
-  [request.headers setObject:@"iTunes/9.0.3 (Macintosh; U; Intel Mac OS X 10_6_2; en-ca)" forKey:@"User-Agent"];
-  request.uri = (!url.query || !url.query.length) ? 
-    url.path 
-    : [NSString stringWithFormat:@"%@?%@", url.path, url.query, nil];
-  return [self fetchRequest:request
-    address:url.host
-    port:url.port ? url.port.unsignedIntValue : 80
-    withBlock:onResponse];
+- (void)onTimeout:(int64_t)timeout with:(void (^)(Event *e, short flags))block {
+  [self monitorFd:-1 flags:0 timeout:timeout with:block];
 }
 
-- (bool)fetchRequest:(HTTPRequest *)request 
-  address:(NSString *)address
-  port:(uint16_t)port
-  withBlock:(void (^)(HTTPResponse *response))onResponse {
-  onResponse = Block_copy(onResponse);
-  struct evhttp_connection *conn = evhttp_connection_base_new(base_, NULL, address.UTF8String, port);
-  void (^onReq)(struct evhttp_request *req) = Block_copy(^(evhttp_request *req) {
-      HTTPResponse *resp = [[HTTPResponse alloc] init];
-      if (req) {
-        resp.status = evhttp_request_get_response_code(req);
-        resp.headers = FromEvKeyValQ(evhttp_request_get_input_headers(req));
-        const char *buf = (const char *)evbuffer_pullup(evhttp_request_get_input_buffer(req), -1);
-        ssize_t buf_len =  evbuffer_get_length(evhttp_request_get_input_buffer(req));
-        resp.body = [NSData 
-          dataWithBytes:buf 
-          length:evbuffer_get_length(evhttp_request_get_input_buffer(req))];
-      } else { 
-        resp.status = 0;
-      }
-      onResponse(resp);
-      [resp release];
-      evhttp_connection_free(conn);
-      // hack: Making a reference to self keeps the loop alive while the request is still going.
-      // this actually does a double free/retain
-      [self release];
-    });
-  struct evhttp_request *req = evhttp_request_new(OnRequestComplete, (void *)onReq);
-  [request.headers setValue:@"close" forKey:@"Connection"];
-  [request.headers enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
-    NSString *key0 = (NSString *)key;
-    NSString *value0 = (NSString *)obj;
-    evhttp_add_header(
-        evhttp_request_get_output_headers(req),
-        ((NSString *)key).UTF8String,
-        ((NSString *)obj).UTF8String);
-  }];
-
-  evhttp_cmd_type cmdType = EVHTTP_REQ_GET; 
-  int st = evhttp_make_request(conn, req, cmdType, request.uri.UTF8String);
-  if (st != 0) {
-    ERROR("failed to create request");
-    evhttp_connection_free(conn);
-    evhttp_request_free(req);
-    [self release];
-    return false;
-  } else { 
-    [onReq retain];
-    [self retain];
-    return true;
-  }
+- (void)monitorFd:(int)fd flags:(int)flags timeout:(int64_t)timeout with:(OnFireEvent)block {
+  if (timeout > 0)
+    flags |= EV_TIMEOUT;
+  Event *e = [[[Event alloc] initWithLoop:self fd:fd flags:flags] autorelease];
+  e.fire = [block copy];
+  [e add:timeout];
 }
 
-
-@end
-
-static void EventCallback(int fd, short evt, void *ctx) {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-  Event *e = (Event *)ctx;
-  id delegate = e.delegate;
-  [delegate retain];
-  if ((evt & EV_TIMEOUT) && [delegate respondsToSelector:@selector(eventTimeout:)])
-    [delegate performSelector:@selector(eventTimeout:) withObject:e];
-  if ((evt & EV_WRITE) && [delegate respondsToSelector:@selector(eventWriteReady:)])
-    [delegate performSelector:@selector(eventWriteReady:) withObject:e];
-  if ((evt & EV_READ) && [delegate respondsToSelector:@selector(eventReadReady:)])
-    [delegate performSelector:@selector(eventReadReady:) withObject:e];
-  [delegate release];
-  [pool release];
-}
-
-@implementation Event 
-@synthesize loop = loop_;
-@synthesize delegate = delegate_;
-@synthesize event = event_;
-
-+ (id)timeoutEventWithLoop:(Loop *)loop interval:(uint64_t)interval {
-  Event *e = [[Event alloc] init];
-  e->loop_ = [loop retain];
-  e->event_ = event_new(loop.base, -1, EV_TIMEOUT | EV_PERSIST, EventCallback, e);
-  struct timeval t;
-  t.tv_sec = interval / 1000000.0;
-  t.tv_usec = interval - (t.tv_sec * 1000000);
-  event_add(e->event_, &t);
-  return [e autorelease]; 
-}
-
-
-- (void)dealloc {
-  event_del(event_);
-  event_free(event_);
-  [loop_ release];
-  [super dealloc];
-}
-@end
-
-typedef void (^OnResponseBlock)(struct evhttp_request *req); 
-
-static void OnRequestComplete(struct evhttp_request *req, void *context) {
-  OnResponseBlock block = (OnResponseBlock)context;
-  block(req);
-  [block release];
-}
-
-static NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv) { 
-  NSMutableDictionary *d = [NSMutableDictionary dictionary];
-  if (kv) {
-    struct evkeyval *e = kv->tqh_first;
-    while (e) {
-      NSString *key = [NSString stringWithUTF8String:e->key];
-      NSString *value = [NSString stringWithUTF8String:e->value];
-      [d setValue:value forKey:key];
-      e = e->next.tqe_next;
+- (void)writeBuffer:(struct evbuffer *)buffer fd:(int)fd with:(void (^)(bool succ))block {
+  block = [block copy];
+  [self monitorFd:fd flags:EV_WRITE timeout:-1 with:^(Event *event, short flags) {
+    int write_st = evbuffer_write(buffer, fd);
+    if ((write_st < 0) && (errno == EAGAIN || errno == EINTR)) 
+      write_st = 0;
+    if (evbuffer_get_length(buffer) > 0 && write_st >= 0) {
+      [event add:-1];
+    } else { 
+      evbuffer_free(buffer);
+      block(write_st >= 0 ? true : false);
     }
-  }
-  return d;
+  }];
 }
 
-
-@implementation HTTPRequest 
-@synthesize method = method_;
-@synthesize uri = uri_;
-@synthesize body = body_;
-@synthesize headers = headers_;
-
-- (id)init { 
-  self = [super init];
-  if (self) { 
-    method_ = [@"GET" retain];
-    uri_ = [@"/" retain];
-    body_ = [[NSData data] retain];
-    headers_ = [[NSMutableDictionary dictionary] retain];
-  }
-  return self;
+- (void)readLine:(int)fd with:(void (^)(NSString *line))block {
+  struct evbuffer *buf = evbuffer_new();
+  assert(buf);
+  [self readLine:fd buffer:buf with:block];
 }
 
-- (void)dealloc { 
-  [method_ release];
-  [body_ release];
-  [headers_ release];
-  [super dealloc];
+- (void)readLine:(int)fd buffer:(struct evbuffer *)buffer with:(void (^)(NSString *line))block { 
+  block = [block copy];
+  [self monitorFd:fd flags:EV_READ timeout:-1 with:^(Event *event, short flags) {
+    for (;;) { 
+      char c = 0;
+      int read_len = read(fd, &c, 1);
+      if (read_len < 0 && errno != EAGAIN && errno != EINTR)
+        break;
+      if (read_len <= 0) {
+        [event add:-1];   
+        break;
+      }
+      evbuffer_add(buffer, &c, 1);
+      if (c != '\n') 
+        continue;
+      int blen = evbuffer_get_length(buffer);
+      NSString *s = [[NSString alloc] 
+        initWithBytes:evbuffer_pullup(buffer, blen)
+        length:blen
+        encoding:NSUTF8StringEncoding];
+      block(s);
+      evbuffer_free(buffer);
+      [s release];
+      break;
+    }
+  }];
 }
-@end   
-
-@implementation HTTPResponse
-@synthesize status = status_;
-@synthesize headers = headers_;
-@synthesize body = body_;
-
-- (id)init { 
-  self = [super init];
-  if (self) {
-    status_ = 200;
-    body_ = [[NSData data] retain];
-    headers_ = [[NSMutableDictionary dictionary] retain];
-  }
-  return self;  
+  
+- (void)readData:(int)fd length:(size_t)length with:(void (^)(NSData *bytes))block {
+  struct evbuffer *buffer = evbuffer_new();
+  [self readData:fd buffer:buffer length:length with:block];
 }
 
-- (void)dealloc { 
-  [body_ release];
-  [headers_ release];
-  [super dealloc];
+- (void)readData:(int)fd buffer:(struct evbuffer *)buffer length:(size_t)length with:(void (^)(NSData *bytes))block {
+  block = [block copy];
+  [self 
+    monitorFd:fd
+    flags:EV_READ
+    timeout:-1
+    with:^(Event *event, short flag) {
+      NSString *s = nil;
+      for (;;) {
+        if (evbuffer_get_length(buffer) == length)
+          break;
+        if (evbuffer_read(buffer, fd, 1) <= 0)
+          break;
+      }
+      if (evbuffer_get_length(buffer) != length) {
+        [event add:-1];
+      } else { 
+        NSData *ret = [NSData dataWithBytes:evbuffer_pullup(buffer, length) length:length];
+        evbuffer_free(buffer);
+        block(ret);
+      }
+    }];
 }
+
++ (Loop *)loop {
+  return [[[Loop alloc] init] autorelease];
+}
+
 @end
+
+
+

@@ -13,7 +13,7 @@
 	uint32_t bufferSize_;
   bool opened_;
 }
-@property (retain, atomic) id <AudioSource> audioSource;
+//@property (retain, atomic) id <AudioSource> audioSource;
 - (id)initWithSource:(id <AudioSource>)audioSource;
 
 @end

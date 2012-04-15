@@ -1,24 +1,20 @@
-#include <arpa/inet.h>
 #include <locale>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/utsname.h>
 
 #import "md0/AppDelegate.h"
-#import "md0/Movie.h"
-#import "md0/NSStringNaturalComparison.h"
 #import "md0/NSNumberTimeFormat.h"
-#import "md0/Plugin.h"
+#import "md0/RAOP.h"
 #import "md0/RemoteLibrary.h"
-#import "md0/Slider.h"
-#import "md0/Track.h"
+#import "md0/NSNetServiceAddress.h"
 #import "md0/Util.h"
 #import "md0/WebPlugin.h"
 
 static const int64_t kLibraryRefreshInterval = 2 * 1000000;
 static const int kDefaultPort = 6226;
 static NSSize kStartupSize = {1100, 600};
-static NSString *kMDNSServiceType = @"_md0._tcp.";
+static NSString *kMD0ServiceType = @"_md0._tcp.";
 static NSString *kRAOPServiceType = @"_raop._tcp.";
 static NSString *kNextButton = @"NextButton";
 static NSString *kPlayButton = @"PlayButton";
@@ -34,47 +30,7 @@ static NSString * LibraryDir();
 static NSString * LibraryPath();
 static NSString *GetString(const string &s);
 
-typedef enum {
-  NoDirection = 0,// pointing at Eris
-  Ascending = 1,
-  Descending = 2
-} Direction;
 
-typedef NSComparisonResult (*ComparisonFunc)(id left, id right);
-
-@interface SortField : NSObject { 
-  Direction direction_;
-  NSString *key_;
-  ComparisonFunc comparator_;
-}
-
-@property (nonatomic) Direction direction;
-@property (retain, nonatomic) NSString *key;
-@property (nonatomic) ComparisonFunc comparator;
-- (id)initWithKey:(NSString *)key direction:(Direction)direction comparator:(ComparisonFunc)comparator;
-@end
-
-@implementation SortField 
-@synthesize key = key_;
-@synthesize direction = direction_;
-@synthesize comparator = comparator_;
-
-- (id)initWithKey:(NSString *)key direction:(Direction)direction comparator:(ComparisonFunc)comparator {
-  self = [super init];
-  if (self) { 
-    self.key = key;
-    self.direction = direction;
-    self.comparator = comparator;
-  }
-  return self;
-}
-
-- (void)dealloc { 
-  [key_ release];
-  [[NSNotificationCenter defaultCenter] removeObserver:self];
-  [super dealloc];
-}
-@end
 
 static NSString *LibraryDir() { 
   NSArray *paths = NSSearchPathForDirectoriesInDomains(
@@ -108,47 +64,82 @@ static NSString *GetWindowTitle(Track *t) {
   else if (url) 
     return url;
   else 
-    return @"MD0";
-}
-
-/*static bool Contains(const string &haystack, const string &needle) {
-  return strcasestr(haystack.c_str(), needle.c_str()) != NULL;
-  }*/
-
-NSComparisonResult NaturalComparison(id left, id right) {
-  NSString *l = left;
-  NSString *r = right;
-  NSComparisonResult ret;
-  if (![l length] && [r length]) 
-    ret = 1;
-  else if ([l length] && ![r length])
-    ret = -1;
-  else
-    ret = [l naturalCompareCaseInsensitive:r];
-  return ret;
-}
-
-NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
-  NSArray *sortFields = (NSArray *)ctx;
-  Track *left = (Track *)l;
-  Track *right = (Track *)r;
-  NSComparisonResult cmp = NSOrderedSame;
-  for (SortField *f in sortFields) {
-    NSString *key = f.key;
-    Direction d = f.direction;
-    id leftValue = [left valueForKey:key];
-    id rightValue = [right valueForKey:key];
-    cmp = f.comparator(leftValue, rightValue);
-    if (f.direction == Descending) 
-      cmp *= -1;
-    if (cmp != NSOrderedSame) 
-      break;
-  }
-  return cmp;
+    return kDefaultWindowTitle;
 }
 
 @implementation AppDelegate
+@synthesize addToLibraryMenuItem = addToLibraryMenuItem_;
+@synthesize allTracks = allTracks_;
+@synthesize appleCoverArtClient = appleCoverArtClient_;
+@synthesize audioOutputSelect = audioOutputSelect_;
+@synthesize contentHorizontalSplit = contentHorizontalSplit_;
+@synthesize contentVerticalSplit = contentVerticalSplit_;
+@synthesize contentView = contentView_;
+@synthesize copyMenuItem = copyMenuItem_;
+@synthesize cutMenuItem = cutMenuItem_;
+@synthesize daemon = daemon_;
+@synthesize deleteMenuItem = deleteMenuItem_;
+@synthesize durationText = durationText_;
+@synthesize elapsedText = elapsedText_;
+@synthesize emptyImage = emptyImage_;
+@synthesize lastLibraryRefresh = lastLibraryRefresh_;
+@synthesize library = library_;
+@synthesize librarySelect = librarySelect_;
+@synthesize localLibrary = localLibrary_;
+@synthesize mainWindow = mainWindow_;
+@synthesize md0Services = md0Services_;
+@synthesize mdServiceBrowser = mdServiceBrowser_;
+@synthesize movie = movie_;
+@synthesize needsLibraryRefresh = needsLibraryRefresh_;
+@synthesize needsReload = needsReload_; 
+@synthesize netService = netService_;
+@synthesize nextButton = nextButton_;
+@synthesize nextButtonItem = nextButtonItem_;
+@synthesize nextMenuItem = nextMenuItem_;
+@synthesize pasteMenuItem = pasteMenuItem_;
+@synthesize playButton = playButton_;
+@synthesize playButtonItem = playButtonItem_;
+@synthesize playImage = playImage_;
+@synthesize playMenuItem = playMenuItem_;
+@synthesize plugins = plugins_;
+@synthesize pollLibraryTimer = pollLibraryTimer_;
+@synthesize pollMovieTimer = pollMovieTimer_;
+@synthesize predicateChanged = predicateChanged_;
+@synthesize prevMenuItem = prevMenuItem_;
+@synthesize previousButton = previousButton_;
+@synthesize previousButtonItem = previousButtonItem_;
+@synthesize progressSlider = progressSlider_;
+@synthesize progressSliderItem = progressSliderItem_;
+@synthesize raopService = raopService_;
+@synthesize raopServiceBrowser = raopServiceBrowser_;
+@synthesize raopServices = raopServices_;
+@synthesize requestClearSelection = requestClearSelection_;
+@synthesize requestNext = requestNext_;
+@synthesize requestPlayTrackAtIndex = requestPlayTrackAtIndex_;
+@synthesize requestPrevious = requestPrevious_;
+@synthesize requestTogglePlay = requestTogglePlay_;
+@synthesize searchField = searchField_;
+@synthesize searchItem = searchItem_;
 @synthesize searchQuery = searchQuery_;
+@synthesize seekToRow = seekToRow_;
+@synthesize selectAllMenuItem = selectAllMenuItem_;
+@synthesize selectNoneMenuItem = selectNoneMenuItem_;
+@synthesize sortChanged = sortChanged_;
+@synthesize sortFields = sortFields_;
+@synthesize startImage = startImage_;
+@synthesize stopImage = stopImage_;
+@synthesize stopMenuItem = stopMenuItem_;
+@synthesize toolbar = toolbar_;
+@synthesize track = track_;
+@synthesize trackEnded = trackEnded_;
+@synthesize trackTableFont = trackTableFont_;
+@synthesize trackTablePlayingFont = trackTablePlayingFont_;
+@synthesize trackTableScrollView = trackTableScrollView_;
+@synthesize trackTableView = trackTableView_;
+@synthesize tracks = tracks_;
+@synthesize volumeControl = volumeControl_;
+@synthesize volumeItem = volumeItem_;
+@synthesize volumeSlider = volumeSlider_;
 
 - (void)dealloc { 
   [allTracks_ release];
@@ -311,7 +302,7 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   splitRect.origin.y += kBottomEdgeMargin;
   splitRect.size.height -= kBottomEdgeMargin;
 
-  contentHorizontalSplit_ = [[SplitView alloc] initWithFrame:splitRect];
+  self.contentHorizontalSplit = [[[SplitView alloc] initWithFrame:splitRect] autorelease];
   [contentHorizontalSplit_ setDividerStyle:NSSplitViewDividerStyleThin];
   contentHorizontalSplit_.autoresizesSubviews = YES;
   contentHorizontalSplit_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
@@ -319,7 +310,7 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   contentHorizontalSplit_.focusRingType = NSFocusRingTypeNone;
   [contentView_ addSubview:contentHorizontalSplit_];
 
-  contentVerticalSplit_ = [[SplitView alloc] initWithFrame:splitRect];
+  self.contentVerticalSplit = [[[SplitView alloc] initWithFrame:splitRect] autorelease];
   [contentVerticalSplit_ setDividerStyle:NSSplitViewDividerStyleThin];
   contentVerticalSplit_.autoresizesSubviews = YES;
   contentVerticalSplit_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
@@ -350,17 +341,17 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   NSLog(@"selected audio output");
   NSInteger i = [sender indexOfSelectedItem];
   if (i == 0) {
-    [self selectLocalAudio];
+    self.raopService = nil;
   } else {
-    NSString *s = @"10.0.1.10";
-    uint16_t port = 5000;
-    [self selectRemoteAudioHost:s port:port];
+    i--;
+    if (i >= 0 && i < raopServices_.count) { 
+      NSNetService *svc = [raopServices_ objectAtIndex:i];
+      self.raopService = svc;
+    }
   }
-}
-
-- (void)selectLocalAudio {
-
-  //md0::movie::Movie::StartSDL();
+  @synchronized (tracks_) {
+    requestPlayTrackAtIndex_ = [tracks_ indexOfObject:track_];
+  }
 }
 
 - (void)setupLibrarySelect { 
@@ -402,37 +393,27 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   needsLibraryRefresh_ = YES;
 }
 
-- (void)selectRemoteAudioHost:(NSString *)host port:(uint16_t)port {
-  //md0::movie::Movie::StartRAOP([host UTF8String], port);
-}
-
 - (void)refreshAudioOutputList {
   [audioOutputSelect_ removeAllItems];
   [audioOutputSelect_ addItemWithTitle:@"Local Speakers"];
-  /*
-     set<Service>::iterator i;
-     for (i = services_.begin(); i != services_.end(); i++) {
-     if (i->mdns_type() == "_raop._tcp.") 
-     [audioOutputSelect_ addItemWithTitle:GetString(i->name())];
-     }*/
+  for (NSNetService *svc in raopServices_) {
+    [audioOutputSelect_ addItemWithTitle:svc.name];
+  }
 }
 
 - (void)refreshLibraryList {
   [librarySelect_ removeAllItems];
   [librarySelect_ addItemWithTitle:@"Library"];
-  /*
-     set<Service>::iterator i;
-     for (i = services_.begin(); i != services_.end(); i++) {
-     if (i->mdns_type() == "_md0._tcp.") 
-     [librarySelect_ addItemWithTitle:GetString(i->name())];
-     }*/
+  for (NSNetService *svc in md0Services_) {
+    [librarySelect_ addItemWithTitle:svc.name];
+  }
 }
-- (void)setupTrackTable {
-  trackTableFont_ = [[NSFont systemFontOfSize:11.0] retain];
-  trackTablePlayingFont_ = [[NSFont boldSystemFontOfSize:11.0] retain];
 
-  trackTableScrollView_ = [[NSScrollView alloc] initWithFrame:CGRectMake(0, kBottomEdgeMargin, 
-      contentView_.frame.size.width, contentView_.frame.size.height - kBottomEdgeMargin)];
+- (void)setupTrackTable {
+  self.trackTableFont = [NSFont systemFontOfSize:11.0];
+  self.trackTablePlayingFont = [NSFont boldSystemFontOfSize:11.0];
+  self.trackTableScrollView = [[[NSScrollView alloc] initWithFrame:CGRectMake(0, kBottomEdgeMargin, 
+      contentView_.frame.size.width, contentView_.frame.size.height - kBottomEdgeMargin)] autorelease];
   trackTableScrollView_.autoresizesSubviews = YES;
   trackTableScrollView_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
   trackTableScrollView_.focusRingType = NSFocusRingTypeNone;
@@ -452,10 +433,10 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   NSTableColumn *yearColumn = [[[NSTableColumn alloc] initWithIdentifier:kYear] autorelease];
   NSTableColumn *pathColumn = [[[NSTableColumn alloc] initWithIdentifier:kURL] autorelease];
 
-  emptyImage_ = [[NSImage alloc] initWithSize:NSMakeSize(22, 22)];
-  playImage_ = [[NSImage imageNamed:@"dot"] retain];
-  startImage_ = [[NSImage imageNamed:@"start"] retain];
-  stopImage_ = [[NSImage imageNamed:@"stop"] retain];
+  self.emptyImage = [[[NSImage alloc] initWithSize:NSMakeSize(22, 22)] autorelease];
+  self.playImage = [NSImage imageNamed:@"dot"];
+  self.startImage = [NSImage imageNamed:@"start"];
+  self.stopImage = [NSImage imageNamed:@"stop"];
   [statusColumn setDataCell:[[NSImageCell alloc] initImageCell:emptyImage_]];
   [statusColumn setDataCell:[[NSImageCell alloc] initImageCell:emptyImage_]];
   [statusColumn setWidth:30];
@@ -614,7 +595,7 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   [progressSliderItem_ setView:progressControl];
 
   [[NSNotificationCenter defaultCenter] 
-    addObserver:self selector:@selector(progressSliderIsUp:) name:kSliderIsUpNotification object:nil];
+    addObserver:self selector:@selector(progressSliderIsUp:) name:kSliderIsUpNotification object:progressSlider_];
 
   [progressSliderItem_ setMaxSize:NSMakeSize(1000, 22)];
   [progressSliderItem_ setMinSize:NSMakeSize(400, 22)];
@@ -668,9 +649,15 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   }
 }
 
-- (void)applicationDidFinishLaunching:(NSNotification *)n {
+- (void)parseDefaults { 
   [[NSUserDefaults standardUserDefaults] setBool:TRUE forKey:@"WebKitDeveloperExtras"];
   [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
+- (void)applicationDidFinishLaunching:(NSNotification *)n {
+  [self parseDefaults];
+  self.raopServices = [NSMutableArray array];
+  self.md0Services = [NSMutableArray array];
 
   [[NSNotificationCenter defaultCenter]
     addObserver:self selector:@selector(onTrackSaved:) name:TrackSavedLibraryNotification object:nil];
@@ -684,44 +671,23 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   requestTogglePlay_ = NO;
   requestNext_ = NO;
   needsLibraryRefresh_ = NO;
-  tracks_ = [[NSMutableArray array] retain];
-  appleCoverArtClient_ = [[AppleCoverArtClient alloc] init];
-  allTracks_ = [[NSMutableArray array] retain];
+  self.tracks = [NSMutableArray array];
+  self.appleCoverArtClient = [[[AppleCoverArtClient alloc] init] autorelease];
+  self.allTracks = [NSMutableArray array];
 
   [self setupDockIcon];
 
   NSApplication *sharedApp = [NSApplication sharedApplication];
-  localLibrary_ = [[LocalLibrary alloc] initWithPath:LibraryPath()];
-  library_ = localLibrary_;
-  movie_ = nil;
-  track_ = nil;
-  seekToRow_ = -1;
-  needsReload_ = NO;
-  lastLibraryRefresh_ = 0;
+  self.localLibrary = [[[LocalLibrary alloc] initWithPath:LibraryPath()] autorelease];
+  self.library = self.localLibrary;
+  self.movie = nil;
+  self.track = nil;
+  self.seekToRow = -1;
+  self.needsReload = NO;
+  self.lastLibraryRefresh = 0;
 
-  daemon_ = [[Daemon alloc] initWithHost:@"0.0.0.0" port:kDefaultPort library:localLibrary_];
-
-  struct utsname the_utsname;
-  uname(&the_utsname);
-  NSString *nodeName = [NSString stringWithUTF8String:the_utsname.nodename];
-  netService_ = [[NSNetService alloc] 
-    initWithDomain:@"local."
-    type:kMDNSServiceType
-    name:nodeName 
-    port:kDefaultPort];
-  [netService_ retain];
-  [netService_ publish];
-  [netService_ scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
-
-  raopServiceBrowser_ = [[NSNetServiceBrowser alloc] init];
-  [raopServiceBrowser_ setDelegate:self];
-  [raopServiceBrowser_ searchForServicesOfType:kRAOPServiceType inDomain:@"local."];
-  [raopServiceBrowser_ retain];
-
-  mdServiceBrowser_ = [[NSNetServiceBrowser alloc] init];
-  [mdServiceBrowser_ setDelegate:self];
-  [mdServiceBrowser_ searchForServicesOfType:kMDNSServiceType inDomain:@"local."];
-  [mdServiceBrowser_ retain];
+  [self setupSharing];
+  [self setupRAOP]; 
 
   [localLibrary_ prune];
   [self setupWindow];
@@ -734,26 +700,48 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   sortFields_ = [[NSMutableArray array] retain];
 
   for (NSString *key in [NSArray arrayWithObjects:kArtist, kAlbum, kTrackNumber, kTitle, kURL, nil]) { 
-    SortField *s = [[[SortField alloc] initWithKey:kArtist direction:Ascending comparator:NaturalComparison] autorelease];
+    SortField *s = [[[SortField alloc] initWithKey:key direction:Ascending comparator:NaturalComparison] autorelease];
     [sortFields_ addObject:s];
   }
   [self updateTableColumnHeaders];
   predicateChanged_ = YES;
   sortChanged_ = YES;
 
+  requestPlayTrackAtIndex_ = -1;
+  pollMovieTimer_ = [NSTimer timerWithTimeInterval:.15 target:self selector:@selector(onPollMovieTimer:) userInfo:nil repeats:YES];
 
-  pollMovieTimer_ = [NSTimer scheduledTimerWithTimeInterval:.15 target:self selector:@selector(onPollMovieTimer:) userInfo:nil repeats:YES];
-  pollLibraryTimer_ = [NSTimer scheduledTimerWithTimeInterval:10.0 target:self selector:@selector(onPollLibraryTimer:) userInfo:nil repeats:YES];
+  [[NSRunLoop mainRunLoop] addTimer:pollMovieTimer_ forMode:NSDefaultRunLoopMode];
+  pollLibraryTimer_ = [NSTimer timerWithTimeInterval:10.0 target:self selector:@selector(onPollLibraryTimer:) userInfo:nil repeats:YES];
+  [[NSRunLoop mainRunLoop] addTimer:pollLibraryTimer_ forMode:NSDefaultRunLoopMode];
   [self setupPlugins];
   [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
 }
 
-- (NSSplitView *)contentVerticalSplit { 
-  return contentVerticalSplit_;
+- (void)setupRAOP { 
+  self.raopServiceBrowser = [[[NSNetServiceBrowser alloc] init] autorelease];
+  [raopServiceBrowser_ setDelegate:self];
+  [raopServiceBrowser_ searchForServicesOfType:kRAOPServiceType inDomain:@"local."];
 }
 
-- (NSSplitView *)contentHorizontalSplit {
-  return contentHorizontalSplit_;
+- (void)setupSharing { 
+  self.daemon = [[[Daemon alloc] initWithHost:@"0.0.0.0" port:kDefaultPort
+    library:self.localLibrary] autorelease];
+
+  struct utsname the_utsname;
+  uname(&the_utsname);
+  NSString *nodeName = [NSString stringWithUTF8String:the_utsname.nodename];
+  self.netService = [[[NSNetService alloc] 
+    initWithDomain:@"local."
+    type:kMD0ServiceType
+    name:nodeName 
+    port:kDefaultPort] autorelease];
+  [netService_ publish];
+  [netService_ scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+  mdServiceBrowser_ = [[NSNetServiceBrowser alloc] init];
+  [mdServiceBrowser_ setDelegate:self];
+  [mdServiceBrowser_ searchForServicesOfType:kMD0ServiceType inDomain:@"local."];
+
+
 }
 
 - (void)setupPlugins {
@@ -763,9 +751,7 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   NSArray *pluginDirs = GetSubDirectories([NSArray arrayWithObjects:pluginsDir, nil]);
   for (NSString *p in pluginDirs) {
     p = [p stringByAppendingPathComponent:@"index.html"];
-    NSLog(@"plugin path: %@", p);
     NSURL *u = [NSURL fileURLWithPath:p];
-    NSLog(@"url: %@", u);
     WebPlugin *webPlugin = [[[WebPlugin alloc] initWithURL:u] autorelease];
     [plugins_ addObject:webPlugin]; 
   }
@@ -776,7 +762,6 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
 
 - (NSDragOperation)tableView:(NSTableView *)aTableView validateDrop:(id < NSDraggingInfo >)info proposedRow:(NSInteger)row proposedDropOperation:(NSTableViewDropOperation)operation {  
 
-  NSLog(@"validate drop");
   return operation;
 }
 
@@ -788,33 +773,27 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
 }
 
 - (void)netServiceBrowser:(NSNetServiceBrowser *)netServiceBrowser didFindService:(NSNetService *)netService moreComing:(BOOL)moreServicesComing {
+  NSLog(@"found service: %@", netService);
   [netService retain];
   [netService setDelegate:self];
   [netService resolveWithTimeout:10.0];
 }
 
 - (void)netServiceDidResolveAddress:(NSNetService *)netService {
-  /*
-     string name([[netService hostName] UTF8String]);
-     for (NSData *d in [netService addresses]) {
-     struct sockaddr *a = ((struct sockaddr *)[d bytes]);
-     if (a->sa_family != AF_INET) { // we only want ipv4
-     continue;
-     }
-     char buf[256];
-     buf[0] = 0;
-     if (inet_ntop(AF_INET, &((struct sockaddr_in *)a)->sin_addr, buf, 256)) {
-     addr = (const char *)buf;
-     break;
-     }
-     }*/
-  @synchronized(services_) {
-    if (![services_ containsObject:netService]) 
-      [services_ addObject:netService];
+  if ([netService.type isEqualToString:kRAOPServiceType]) { 
+    @synchronized(raopServices_) {
+      if (![raopServices_ containsObject:netService]) 
+        [raopServices_ addObject:netService];
+    }
+    [self refreshAudioOutputList];
+  } else if ([netService.type isEqualToString:kMD0ServiceType]) {
+    @synchronized(md0Services_) {
+      if (![md0Services_ containsObject:netService]) 
+        [md0Services_ addObject:netService];
+    }
+    [self refreshLibraryList];
   }
-  [self refreshAudioOutputList];
-  [self refreshLibraryList];
-  [netService autorelease];
+  [netService release];
 }
 
 - (void)netService:(NSNetService *)sender didNotResolve:(NSMutableDictionary *)errorDict {
@@ -866,15 +845,11 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
   for (NSTableColumn *c in trackTableView_.tableColumns) { 
     [trackTableView_ setIndicatorImage:nil inTableColumn:c];
   }
-  int i = 0;
   for (SortField *f in sortFields_) {
-    NSString *ident = f.key;
     Direction d = f.direction;
-    NSImage *img;
-    img = img == 0 ? [NSImage imageNamed:d == Ascending ? @"NSAscendingSortIndicator" : @"NSDescendingSortIndicator"] 
-      : nil;
-    [trackTableView_ setIndicatorImage:img inTableColumn:[trackTableView_ tableColumnWithIdentifier:ident]];
-    i++;
+    NSImage *img = [NSImage imageNamed:d == Ascending ? @"NSAscendingSortIndicator" : @"NSDescendingSortIndicator"];
+    [trackTableView_ setIndicatorImage:img inTableColumn:[trackTableView_ tableColumnWithIdentifier:f.key]];
+    break;
   }
 }
 
@@ -1000,12 +975,14 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
 }
 
 - (void)onPollMovieTimer:(id)sender { 
-  if (movie_) {
-    mainWindow_.title = GetWindowTitle(track_);
-  } else { 
-    mainWindow_.title = @"MD0";
+  if (requestPlayTrackAtIndex_ >= 0) {
+    [self playTrackAtIndex:requestPlayTrackAtIndex_];
+    requestPlayTrackAtIndex_ = -1;
   }
-  if (movie_ && [movie_ state] == kEOFAudioSourceState) {
+
+  mainWindow_.title = GetWindowTitle(track_);
+
+  if (movie_ && ([movie_ state] == kEOFAudioSourceState)) {
     requestNext_ = YES;
   }
 
@@ -1106,50 +1083,45 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
 
 - (void)onPollLibraryTimer:(id)sender { 
   [raopServiceBrowser_ searchForServicesOfType:kRAOPServiceType inDomain:@"local."];
-  [mdServiceBrowser_ searchForServicesOfType:kMDNSServiceType inDomain:@"local."]; 
+  [mdServiceBrowser_ searchForServicesOfType:kMD0ServiceType inDomain:@"local."]; 
 }
 
 - (void)trackTableDoubleClicked:(id)sender { 
   int row = [trackTableView_ clickedRow]; 
-  if (row >= 0 && row < tracks_.count) { 
-    [self playTrackAtIndex:row]; 
-  } 
+  requestPlayTrackAtIndex_ = row;
 }
 
 - (void)playTrackAtIndex:(int)index {
-  @synchronized(self) {
-    if (index < 0)
-      return;
-    if (index >= tracks_.count) 
-      return;
-    Track *aTrack = [tracks_ objectAtIndex:index];
-    if (movie_) {
-      [movie_ stop];
-      @synchronized (plugins_) {
-        for (Plugin *p in plugins_) {
-          [p trackEnded:track_];
-        }
+  if (movie_) {
+    [movie_ stop];
+    @synchronized (plugins_) {
+      for (Plugin *p in plugins_) {
+        [p trackEnded:track_];
       }
     }
-    [track_ release];
-    track_ = [aTrack retain];
-    [movie_ release];
-    movie_ = [((Movie *)[Movie alloc]) initWithURL:track_.url];
-    [movie_ start];
+  }
+  @synchronized(tracks_) {
+    self.track = (index > 0 && index < tracks_.count) ? [tracks_ objectAtIndex:index] : nil;
+  }
+  self.movie = track_ ? [[[Movie alloc] initWithURL:track_.url
+    address:self.raopService.ipv4Address
+    port:self.raopService.port] autorelease] : nil;
+  [movie_ start];
 
-    seekToRow_ = index;
-    needsReload_ = YES;
+  seekToRow_ = index;
+  needsReload_ = YES;
+  if (track_) {
     @synchronized(plugins_) {
       for (Plugin *p in plugins_) {
         [p trackStarted:track_];
       }
     }
-    // load the cover art:
-    [appleCoverArtClient_ queryTrack:track_ block:^(NSString *coverArtURL) {
-      track_.coverArtURL = coverArtURL;
-      [localLibrary_ save:track_];
-    }];
   }
+  // load the cover art:
+  //[appleCoverArtClient_ queryTrack:track_ block:^(NSString *coverArtURL) {
+  //  track_.coverArtURL = coverArtURL;
+  //  [localLibrary_ save:track_];
+  //}];
 }
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)aTableView { 
@@ -1173,7 +1145,7 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
       idx++;
     }
   } 
-  [self playTrackAtIndex:found + 1];
+  requestPlayTrackAtIndex_ = found + 1;
 }
 
 - (void)playPreviousTrack { 
@@ -1191,7 +1163,7 @@ NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
     if (found > 0) 
       req = found - 1;
   } 
-  [self playTrackAtIndex:req];
+  requestPlayTrackAtIndex_ = req;
 }
 
 - (id)tableView:(NSTableView *)aTableView objectValueForTableColumn:(NSTableColumn *)aTableColumn

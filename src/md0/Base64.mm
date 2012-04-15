@@ -1,5 +1,6 @@
+#import "md0/Base64.h"
 /*
- * Copyright (c) 1995-2001 Kungliga Tekniska Högskolan
+ * Copyright (c) 1995-2001 Kungliga Tekniska HÃ¶gskolan
  * (Royal Institute of Technology, Stockholm, Sweden).
  * All rights reserved.
  *
@@ -33,14 +34,11 @@
 
 #include <stdlib.h>
 #include <string.h>
-#import "Base64.h"
 
 static char base64_chars[] = 
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-static int 
-pos(char c)
-{
+static int pos(char c) {
     char *p;
     for (p = base64_chars; *p; p++)
 	if (*p == c)
@@ -48,9 +46,7 @@ pos(char c)
     return -1;
 }
 
-int 
-base64_encode(const void *data, int size, char **str)
-{
+int base64_encode(const void *data, int size, char **str) {
     char *s, *p;
     int i;
     int c;
@@ -110,8 +106,7 @@ token_decode(const char *token)
     return (marker << 24) | val;
 }
 
-int
-base64_decode(const char *str, void *data)
+int base64_decode(const char *str, void *data)
 {
     const char *p;
     unsigned char *q;
@@ -131,22 +126,23 @@ base64_decode(const char *str, void *data)
     return q - (unsigned char *) data;
 }
 
-@implementation NSString (Base64)
-- (NSData *)base64Decode {
-  char *s = (char *)malloc(self.length);
-  int len = base64_decode(self.UTF8String, s);
-  NSData *ret = [NSData dataWithBytesNoCopy:s length:len];
+@implementation NSString (Base64) 
+- (NSData *)decodeBase64 {
+  uint8_t d[self.length];
+  int sz = base64_decode(self.UTF8String, (void *)d); 
+  NSData *ret = [NSData dataWithBytes:d length:sz];
+  assert(ret.length > 0);
   return ret;
 }
 @end
- 
-@implementation NSData (Base64)
-- (NSString *)base64Encode {
-  char *bytes = NULL;
-  int len = base64_encode(self.bytes, self.length, &bytes);
-  NSString *s = [[[NSString alloc] initWithBytesNoCopy:bytes length:len encoding:NSUTF8StringEncoding freeWhenDone:YES] autorelease];
-  return s;
+
+@implementation NSData (Base64) 
+- (NSString *)encodeBase64 { 
+  char *s = NULL;
+  int len = base64_encode(self.bytes, self.length, &s);
+  NSString *ret = [NSString stringWithUTF8String:s];
+  free(s);
+  ret = [ret stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"="]];
+  return ret;
 }
 @end
-  
-

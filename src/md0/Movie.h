@@ -7,9 +7,9 @@
   double volume_;
 }
 
-@property (retain, atomic) NSString *url;
-@property (retain, atomic) id <AudioSink> sink;
-@property (retain, atomic) id <AudioSource> source;
+@property (retain) NSString *url;
+@property (retain) id <AudioSink> sink;
+@property (retain) id <AudioSource> source;
 @property double volume;
 - (void)seek:(int64_t)usecs;
 - (void)start;
@@ -18,6 +18,6 @@
 - (AudioSourceState)state;
 - (int64_t)elapsed;
 - (int64_t)duration;
-- (id)initWithURL:(NSString *)url;
+- (id)initWithURL:(NSString *)url address:(NSString *)address port:(uint16_t)port;
 @end  
 // vim: filetype=objcpp

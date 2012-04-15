@@ -97,10 +97,11 @@ static void OnRequest(evhttp_request *r, void *ctx) {
   NSArray *keys = [NSArray arrayWithObjects:kArtist, kID, kAlbum, kGenre, kTitle, kDuration, kTrackNumber, kYear, nil];
 
   [library_ each:^(Track *t) { 
-    NSMutableDictionary *r = [NSMutableDictionary dictionary]; 
+    NSMutableDictionary *d = [NSMutableDictionary dictionary]; 
     for (NSString *k in keys) { 
-      [r setObject:[t valueForKey:k] forKey:k];
+      [d setValue:[t valueForKey:k] forKey:k];
     }
+    [tracks addObject:d];
   }];
   [r respondWithStatus:200 message:@"OK" body:[tracks getJSONEncodedString]];
   return true;

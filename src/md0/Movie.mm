@@ -14,22 +14,22 @@
 @synthesize sink = sink_;
 @synthesize source = source_;
 
-- (id)initWithURL:(NSString *)url {
+- (id)initWithURL:(NSString *)url address:(NSString *)address port:(uint16_t)port {
   self = [super init];
   if (self) { 
     self.url = url;
     self.source = [[((LibAVSource *)[LibAVSource alloc]) initWithURL:url_] autorelease];
-    self.sink = [[((CoreAudioSink *)[CoreAudioSink alloc]) initWithSource:source_] autorelease]; 
+    self.sink = address ? 
+      [[[RAOPSink alloc] initWithAddress:address port:port source:self.source] autorelease]
+      : [[((CoreAudioSink *)[CoreAudioSink alloc]) initWithSource:self.source] autorelease];
   }
   return self;
 }
 
 - (void)dealloc { 
   self.url = nil;
-  [source_ stop];
-  [sink_ stop];
-  [sink_ release];
-  [source_ release];
+  self.source = nil;
+  self.sink = nil;
   [super dealloc];
 }
 
@@ -51,6 +51,7 @@
 }
 
 - (void)seek:(int64_t)usecs { 
+  NSLog(@"seek: %lld", usecs);
   [source_ seek:usecs];
   [sink_ flush];
 }

@@ -67,7 +67,7 @@ static AVPacket flushPacket;
     avcodec_get_frame_defaults(currAudioFrame_);   
     currAudioFrameOffset_ = 0;
     currAudioFrameRemaining_ = 0;
-    state_ = kEOFAudioSourceState;
+    state_ = kPausedAudioSourceState;
 
     memset(&currAudioPacket_, 0, sizeof(AVPacket));
     av_init_packet(&currAudioPacket_);

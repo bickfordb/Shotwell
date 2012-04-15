@@ -2,6 +2,7 @@
 #import "md0/JSON.h"
 #import "md0/NSURLAdditions.h"
 #import "md0/Track.h"
+#import "md0/HTTP.h"
 
 static const int64_t kPollInterval = 500000;
 
@@ -14,20 +15,16 @@ static NSString * const kITunesAffiliateURL = @"http://itunes.apple.com/search";
 @end
 
 @implementation AppleCoverArtClient
+@synthesize loop = loop_;
+@synthesize queries = queries_;
 
 - (id)init {
   self = [super init];
   if (self) { 
-    queries_ = [[NSMutableArray array] retain];
-    loop_ = [[Loop alloc] init];
-    timeoutEvent_ = [[Event timeoutEventWithLoop:loop_ interval:kPollInterval] retain];
-    timeoutEvent_.delegate = self;
-    //level_ = [[Level alloc] initWithPath:@"/Users/bran/x.db"];
+    self.queries = [NSMutableArray array];
+    self.loop = [[[Loop alloc] init] autorelease];
   }
   return self;
-}
-
-- (void)eventTimeout:(Event *)e {
 }
 
 - (void)queryTrack:(Track *)track block:(void (^)(NSString *artworkURL))block { 
@@ -67,8 +64,6 @@ static NSString * const kITunesAffiliateURL = @"http://itunes.apple.com/search";
 }
 
 - (void)dealloc { 
-  NSLog(@"dealloc: %@", self);
-  [timeoutEvent_ release];
   [loop_ release];
   [queries_ release];
   [super dealloc];

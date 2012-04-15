@@ -47,6 +47,12 @@ using namespace std;
 @end
 
 @implementation LocalLibrary
+@synthesize trackTable = trackTable_;
+@synthesize urlTable = urlTable_;
+@synthesize pathsToScan = pathsToScan_;
+@synthesize pruneRequested = pruneRequested_;
+@synthesize pruneLoop = pruneLoop_;
+@synthesize scanLoop = scanLoop_;
 
 - (id)initWithPath:(NSString *)path {  
   self = [super init];
@@ -54,34 +60,25 @@ using namespace std;
     Level *level = [[[Level alloc] initWithPath:path] autorelease]; 
     urlTable_ = [[URLTable alloc] initWithLevel:level];
     trackTable_ = [[TrackTable alloc] initWithLevel:level];
-    pathsToScan_ = [[NSMutableSet set] retain];
-    pruneRequested_ = false;
-    pruneLoop_ = [[Loop alloc] init];
-    scanLoop_ = [[Loop alloc] init];
-    scanEvent_ = [[Event timeoutEventWithLoop:scanLoop_ interval:1000000] retain];
-    scanEvent_.delegate = self;
-
-    pruneEvent_ = [[Event timeoutEventWithLoop:pruneLoop_ interval:1000000] retain];
-    pruneEvent_.delegate = self;
+    self.pathsToScan = [NSMutableSet set];
+    self.pruneRequested = false;
+    self.pruneLoop = [[[Loop alloc] init] autorelease];
+    self.scanLoop = [[[Loop alloc] init] autorelease];
+    void *weakSelf = (void*)self;
+    [pruneLoop_ onTimeout:1000000 with:^(Event *e, short flags) {
+      [((LocalLibrary *)weakSelf) pruneQueued]; 
+      ((LocalLibrary *)weakSelf)->pruneRequested_ = false;
+      [e add:1000000];
+    }];
+    [scanLoop_ onTimeout:1000000 with:^(Event *e, short flags) {
+      [((LocalLibrary *)weakSelf) scanQueuedPaths];
+      [e add:1000000];
+    }];
   }
   return self;
 }
 
-- (void)eventTimeout:(Event *)e { 
-  if (e == scanEvent_) {
-    [self scanQueuedPaths];
-  }
-  if (e == pruneEvent_) {
-    if (pruneRequested_) {
-      pruneRequested_ = false;
-      [self pruneQueued];
-    }
-  }
-}
-
 - (void)dealloc { 
-  [scanEvent_ release];
-  [pruneEvent_ release];
   [pruneLoop_ release];
   [scanLoop_ release];
   [pathsToScan_ release];

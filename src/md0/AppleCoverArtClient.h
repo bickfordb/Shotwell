@@ -4,9 +4,11 @@
 
 @interface AppleCoverArtClient : NSObject {
   Loop *loop_;
-  Event *timeoutEvent_;
   NSMutableArray *queries_;
 }
+@property (retain) Loop *loop;
+@property (retain) NSMutableArray *queries;
+
 - (void)queryTrack:(Track *)track block:(void (^)(NSString *artworkURL))block; 
 @end
 

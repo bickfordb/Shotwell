@@ -1,51 +1,30 @@
 #import <Cocoa/Cocoa.h>
 #include <event2/event.h>
-#include <event2/dns.h>
-#include <event2/http.h>
 #include <pthread.h>
 
-@interface HTTPRequest : NSObject {
-  NSString *method_; 
-  NSString *uri_;
-  NSMutableDictionary *headers_;
-  NSData *body_;
-}
-@property (retain, atomic) NSData *body;
-@property (retain, atomic) NSString *method;
-@property (retain, atomic) NSString *uri;
-@property (retain, atomic) NSMutableDictionary *headers;
-@end
+#import "md0/Event.h"
 
-@interface HTTPResponse : NSObject {
-  int status_;
-  NSMutableDictionary *headers_;
-  NSData *body;
-}
+typedef void (^LoopOnLine)(NSString *line);
+typedef void (^LoopOnData)(NSData *data);
 
-@property int status;
-@property (retain, atomic) NSMutableDictionary *headers;
-@property (retain, atomic) NSData *body;
-@end
-
-@class Loop;
-@interface Event : NSObject { 
-  struct event *event_;
-  Loop *loop_;
-  id delegate_;
-}
-
-@property (assign, nonatomic) id delegate;
-@property (readonly) struct event *event;
-@property (atomic, retain) Loop *loop;
-+ (id)timeoutEventWithLoop:(Loop *)loop interval:(uint64_t)interval;
-@end
 
 @interface Loop : NSObject {
   bool running_;
   bool started_;
   struct event_base *base_;
+  NSMutableSet *pendingEvents_;
+  pthread_t threadID_;
 }
+
 @property (readonly, nonatomic) struct event_base *base;  
-- (bool)fetchURL:(NSURL *)url withBlock:(void (^)(HTTPResponse *response))onResponse;
-- (bool)fetchRequest:(HTTPRequest *)request address:(NSString *)host port:(uint16_t)port withBlock:(void (^)(HTTPResponse *response))onResponse;
+@property (retain) NSMutableSet *pendingEvents;
+
+- (void)monitorFd:(int)fd flags:(int)flags timeout:(int64_t)timeout with:(OnFireEvent)block;
+- (void)onTimeout:(int64_t)timeout with:(OnFireEvent)block;
+- (void)writeBuffer:(struct evbuffer *)buffer fd:(int)fd with:(void (^)(bool succ))block; 
+- (void)readLine:(int)fd with:(void (^)(NSString *line))aBlock;
+- (void)readData:(int)fd length:(size_t)length with:(void (^)(NSData *bytes))aBlock;
+- (void)readLine:(int)fd buffer:(struct evbuffer *)buffer with:(LoopOnLine)block;
+- (void)readData:(int)fd buffer:(struct evbuffer *)buffer length:(size_t)length with:(void (^)(NSData *bytes))block;
++ (Loop *)loop;
 @end

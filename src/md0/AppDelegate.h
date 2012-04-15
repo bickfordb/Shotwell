@@ -4,62 +4,66 @@
 #import <Cocoa/Cocoa.h>
 
 #import "md0/AppleCoverArtClient.h"
-#import "md0/Library.h"
-#import "md0/Movie.h"
-#import "md0/Slider.h"
-#import "md0/SplitView.h"
 #import "md0/Daemon.h"
+#import "md0/Library.h"
 #import "md0/LocalLibrary.h"
+#import "md0/Movie.h"
+#import "md0/Plugin.h"
+#import "md0/Slider.h"
+#import "md0/SortField.h"
+#import "md0/SplitView.h"
+#import "md0/Track.h"
 #import "md0/Plugin.h"
 
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSNetServiceBrowserDelegate, NSNetServiceDelegate, NSTableViewDataSource, NSTableViewDelegate, NSToolbarDelegate> {
-  NSMutableArray *services_;
-  NSMutableArray *plugins_;
   AppleCoverArtClient *appleCoverArtClient_;
+  BOOL needsLibraryRefresh_;
   BOOL needsReload_; 
-  BOOL sortChanged_;
-  BOOL trackEnded_;
-  BOOL requestPrevious_;
   BOOL requestClearSelection_;
   BOOL requestNext_;
+  BOOL requestPrevious_;
   BOOL requestTogglePlay_;
-  BOOL needsLibraryRefresh_;
-  int seekToRow_;
-  int64_t lastLibraryRefresh_;
+  BOOL sortChanged_;
+  BOOL trackEnded_;
   Daemon *daemon_;
-  NSNetService *netService_;
-  SplitView *contentVerticalSplit_;
-  SplitView *contentHorizontalSplit_;
-  NSNetServiceBrowser *raopServiceBrowser_;
-  NSNetServiceBrowser *mdServiceBrowser_;
-  NSMutableArray *sortFields_;
+  Library *library_;
+  LocalLibrary *localLibrary_;
+  Movie *movie_;
+  NSButton *nextButton_;
+  NSButton *playButton_;
+  NSButton *previousButton_;
   NSFont *trackTableFont_;
   NSFont *trackTablePlayingFont_;
   NSImage *emptyImage_;
   NSImage *playImage_;
   NSImage *startImage_;
   NSImage *stopImage_;
-  NSButton *nextButton_;
-  NSButton *playButton_;
-  NSButton *previousButton_;
-  NSPopUpButton *audioOutputSelect_;
-  NSPopUpButton *librarySelect_;
   NSMenuItem *addToLibraryMenuItem_;
-  NSMenuItem *cutMenuItem_;
-  NSMenuItem *pasteMenuItem_;
   NSMenuItem *copyMenuItem_;
+  NSMenuItem *cutMenuItem_;
   NSMenuItem *deleteMenuItem_;
+  NSMenuItem *nextMenuItem_;
+  NSMenuItem *pasteMenuItem_;
   NSMenuItem *playMenuItem_;
+  NSMenuItem *prevMenuItem_;
   NSMenuItem *selectAllMenuItem_;
   NSMenuItem *selectNoneMenuItem_;
   NSMenuItem *stopMenuItem_;
-  NSMenuItem *nextMenuItem_;
-  NSMenuItem *prevMenuItem_;
+  NSMutableArray *allTracks_;
+  NSMutableArray *md0Services_;
+  NSMutableArray *plugins_;
+  NSMutableArray *raopServices_;
+  NSMutableArray *sortFields_;
+  NSMutableArray *tracks_;
+  NSNetService *netService_;
+  NSNetService *raopService_;
+  NSNetServiceBrowser *mdServiceBrowser_;
+  NSNetServiceBrowser *raopServiceBrowser_;
+  NSPopUpButton *audioOutputSelect_;
+  NSPopUpButton *librarySelect_;
   NSScrollView *trackTableScrollView_;
   NSSearchField *searchField_;
-  NSToolbarItem *searchItem_;
-  Slider *progressSlider_;
-  Slider *volumeSlider_;
+  NSString *searchQuery_;
   NSTableView *trackTableView_;
   NSTextField *durationText_;
   NSTextField *elapsedText_;
@@ -70,28 +74,96 @@
   NSToolbarItem *playButtonItem_;
   NSToolbarItem *previousButtonItem_;
   NSToolbarItem *progressSliderItem_;
+  NSToolbarItem *searchItem_;
+  NSToolbarItem *volumeItem_;
   NSView *contentView_;
   NSView *volumeControl_;
-  NSToolbarItem *volumeItem_;
   NSWindow *mainWindow_;
-  Library *library_;
-  LocalLibrary *localLibrary_;
-  // Currently playing movie
-  Movie *movie_;
-  // Currently playing track
+  Slider *progressSlider_;
+  Slider *volumeSlider_;
+  SplitView *contentHorizontalSplit_;
+  SplitView *contentVerticalSplit_;
   Track *track_;
-  NSMutableArray *allTracks_;
-  NSMutableArray *tracks_;
-  NSString *searchQuery_;
   bool predicateChanged_;
-
+  int requestPlayTrackAtIndex_;
+  int seekToRow_;
+  int64_t lastLibraryRefresh_;
 }
 
+@property (retain) AppleCoverArtClient *appleCoverArtClient;
+@property (retain) Daemon *daemon;
+@property (retain) Library *library;
+@property (retain) LocalLibrary *localLibrary;
+@property (retain) Movie *movie;
+@property (retain) NSButton *nextButton;
+@property (retain) NSButton *playButton;
+@property (retain) NSButton *previousButton;
+@property (retain) NSFont *trackTableFont;
+@property (retain) NSFont *trackTablePlayingFont;
+@property (retain) NSImage *emptyImage;
+@property (retain) NSImage *playImage;
+@property (retain) NSImage *startImage;
+@property (retain) NSImage *stopImage;
+@property (retain) NSMenuItem *addToLibraryMenuItem;
+@property (retain) NSMenuItem *copyMenuItem;
+@property (retain) NSMenuItem *cutMenuItem;
+@property (retain) NSMenuItem *deleteMenuItem;
+@property (retain) NSMenuItem *nextMenuItem;
+@property (retain) NSMenuItem *pasteMenuItem;
+@property (retain) NSMenuItem *playMenuItem;
+@property (retain) NSMenuItem *prevMenuItem;
+@property (retain) NSMenuItem *selectAllMenuItem;
+@property (retain) NSMenuItem *selectNoneMenuItem;
+@property (retain) NSMenuItem *stopMenuItem;
+@property (retain) NSMutableArray *allTracks;
+@property (retain) NSMutableArray *md0Services;
+@property (retain) NSMutableArray *plugins;
+@property (retain) NSMutableArray *raopServices;
+@property (retain) NSMutableArray *sortFields;
+@property (retain) NSMutableArray *tracks;
+@property (retain) NSNetService *netService;
+@property (retain) NSNetService *raopService;
+@property (retain) NSNetServiceBrowser *mdServiceBrowser;
+@property (retain) NSNetServiceBrowser *raopServiceBrowser;
+@property (retain) NSPopUpButton *audioOutputSelect;
+@property (retain) NSPopUpButton *librarySelect;
+@property (retain) NSScrollView *trackTableScrollView;
+@property (retain) NSSearchField *searchField;
 @property (retain) NSString *searchQuery;
+@property (retain) NSTableView *trackTableView;
+@property (retain) NSTextField *durationText;
+@property (retain) NSTextField *elapsedText;
+@property (retain) NSTimer *pollLibraryTimer;
+@property (retain) NSTimer *pollMovieTimer;
+@property (retain) NSToolbar *toolbar;
+@property (retain) NSToolbarItem *nextButtonItem;
+@property (retain) NSToolbarItem *playButtonItem;
+@property (retain) NSToolbarItem *previousButtonItem;
+@property (retain) NSToolbarItem *progressSliderItem;
+@property (retain) NSToolbarItem *searchItem;
+@property (retain) NSToolbarItem *volumeItem;
+@property (retain) NSView *contentView;
+@property (retain) NSView *volumeControl;
+@property (retain) NSWindow *mainWindow;
+@property (retain) Slider *progressSlider;
+@property (retain) Slider *volumeSlider;
+@property (retain) SplitView *contentHorizontalSplit;
+@property (retain) SplitView *contentVerticalSplit;
+@property (retain) Track *track;
+@property BOOL needsLibraryRefresh;
+@property BOOL needsReload; 
+@property BOOL requestClearSelection;
+@property BOOL requestNext;
+@property BOOL requestPrevious;
+@property BOOL requestTogglePlay;
+@property BOOL sortChanged;
+@property BOOL trackEnded;
+@property bool predicateChanged;
+@property int requestPlayTrackAtIndex;
+@property int seekToRow;
+@property int64_t lastLibraryRefresh;
 
-
-- (NSSplitView *)contentVerticalSplit;
-- (NSSplitView *)contentHorizontalSplit;
+- (NSArray *)cutTracksAtIndices:(NSIndexSet *)indices;
 - (void)displayElapsed:(int64_t)elapsed duration:(int64_t)duration;
 - (void)executeSearch;
 - (void)playNextTrack;
@@ -99,18 +171,17 @@
 - (void)playTrackAtIndex:(int)idx;
 - (void)refreshAudioOutputList;
 - (void)refreshLibraryList;
-- (void)selectLocalAudio;
-- (void)selectRemoteAudioHost:(NSString *)host port:(uint16_t)port;
+- (void)search:(NSString *)query;
+- (void)setVolume:(double)pct;
 - (void)setupAudioSelect;
 - (void)setupDockIcon;
+- (void)setupPlugins;
+- (void)setupRAOP;
+- (void)setupSharing;
 - (void)setupToolbar;
 - (void)setupTrackTable;
 - (void)setupWindow;
-- (void)setupPlugins;
 - (void)updateTableColumnHeaders;
-- (NSArray *)cutTracksAtIndices:(NSIndexSet *)indices;
-- (void)setVolume:(double)pct;
-- (void)search:(NSString *)query;
 @end
 
 #endif

@@ -19,13 +19,16 @@
   URLTable *urlTable_;
   Loop *pruneLoop_;
   Loop *scanLoop_;
-  Event *scanEvent_;
-  Event *pruneEvent_;
   bool pruneRequested_;
   NSMutableSet *pathsToScan_;
-  struct event *scanTimeout_;
-  struct event *pruneTimeout_;
 }
+
+@property (retain) TrackTable *trackTable;
+@property (retain) URLTable *urlTable;
+@property (retain) Loop *pruneLoop;
+@property (retain) Loop *scanLoop;
+@property bool pruneRequested;
+@property (retain) NSMutableSet *pathsToScan;
 
 - (id)initWithPath:(NSString *)path;
 - (void)save:(Track *)t;

@@ -1,11 +1,12 @@
 #import <Cocoa/Cocoa.h>
-
+int base64_decode(const char *str, void *data);
+int base64_encode(const void *data, int size, char **str);
 
 @interface NSString (Base64) 
-- (NSData *)base64Decode;
+- (NSData *)decodeBase64;
 @end
 
 @interface NSData (Base64) 
-- (NSString *)base64Encode;
+- (NSString *)encodeBase64;
 @end
 // vim: filetype=objcpp
