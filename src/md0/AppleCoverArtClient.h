@@ -4,12 +4,11 @@
 
 @interface AppleCoverArtClient : NSObject {
   Loop *loop_;
-  NSMutableArray *queries_;
 }
 @property (retain) Loop *loop;
-@property (retain) NSMutableArray *queries;
 
-- (void)queryTrack:(Track *)track block:(void (^)(NSString *artworkURL))block; 
+- (void)search:(NSString *)d entity:(NSString *)entity withResult:(void(^)(NSArray *results))onResults;
+- (void)search:(NSString *)term withArtworkData:(void (^)(NSData *d))block;
 @end
 
 

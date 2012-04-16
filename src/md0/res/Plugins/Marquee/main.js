@@ -1,13 +1,14 @@
 playing = null;
 
 var builtinWallpapers = [
-  "file:///Library/Desktop%20Pictures/Nature/Tahoe.jpg",
+  //"file:///Library/Desktop%20Pictures/Nature/Tahoe.jpg",
   "file:///Library/Desktop%20Pictures/Nature/Summit.jpg"
 ];
 
 function onTrackStarted(track) {
   window.playing = track;
-  plugin.showSize_isVertical_(300, true); 
+  //if (plugin.hidden())
+    plugin.showSize_isVertical_(300, true); 
   renderPlaying(); 
 }
 
@@ -36,19 +37,21 @@ function renderPlaying() {
       coverArtURL = builtinWallpapers[i];
     }
     $("body").css("background-image", "url(" + coverArtURL + ")");
-    var w = $("body").width();
-    var h = $("body").height();
-    if (w < h) 
-      w = h;
-    if (h < w)
-      h = w;
-    $("body").css("background-size", "" + w + "px " + h  +"px");
-
+    fixBackgroundSize(); 
   }
 }
 
+function fixBackgroundSize() {
+  var w = $("body").width();
+  var h = $("body").height();
+  if (w < h) 
+    w = h;
+  if (h < w)
+    h = w;
+  $("body").css("background-size", "" + w + "px " + h  +"px");
+}
+
 function search(s) { 
-  plugin.log_("Search: " + s);
   plugin.controller().search_(s);
 }
 
@@ -58,5 +61,6 @@ $(function() {
     search($(el).text());
     return false;
   });
-  
+  $(window).resize(fixBackgroundSize);
+
 })

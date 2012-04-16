@@ -184,6 +184,7 @@
 - (void)setupTrackTable;
 - (void)setupWindow;
 - (void)updateTableColumnHeaders;
+- (void)loadCoverArt:(Track *)track;
 @end
 
 #endif

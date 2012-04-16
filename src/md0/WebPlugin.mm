@@ -22,6 +22,10 @@
   return self;
 }
 
+- (BOOL)hidden { 
+  return self.content.superview != nil;
+}
+
 - (AppDelegate *)controller  {
   return (AppDelegate *)[[NSApplication sharedApplication] delegate];
 }

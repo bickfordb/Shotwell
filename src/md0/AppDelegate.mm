@@ -4,10 +4,11 @@
 #include <sys/utsname.h>
 
 #import "md0/AppDelegate.h"
+#import "md0/NSNetServiceAddress.h"
 #import "md0/NSNumberTimeFormat.h"
+#import "md0/NSStringDigest.h"
 #import "md0/RAOP.h"
 #import "md0/RemoteLibrary.h"
-#import "md0/NSNetServiceAddress.h"
 #import "md0/Util.h"
 #import "md0/WebPlugin.h"
 
@@ -282,11 +283,11 @@ static NSString *GetWindowTitle(Track *t) {
   }
 }
 - (void)setupWindow {
-  mainWindow_ = [[NSWindow alloc] 
+  self.mainWindow = [[[NSWindow alloc] 
     initWithContentRect:CGRectMake(150, 150, kStartupSize.width, kStartupSize.height)
     styleMask:NSClosableWindowMask | NSTitledWindowMask | NSResizableWindowMask | NSMiniaturizableWindowMask 
     backing:NSBackingStoreBuffered
-    defer:YES];
+    defer:YES] autorelease];
   [mainWindow_ setAutorecalculatesKeyViewLoop:YES];
   [mainWindow_ display];
   [mainWindow_ makeKeyAndOrderFront:self];
@@ -324,7 +325,7 @@ static NSString *GetWindowTitle(Track *t) {
   int w = 160;
   int x = ((NSView *)[mainWindow_ contentView]).bounds.size.width;
   x -= w + 10;
-  audioOutputPopUp_ = [[NSPopUpButton alloc] initWithFrame:CGRectMake(x, 3, w, 18)];
+  self.audioOutputPopUp = [[[NSPopUpButton alloc] initWithFrame:CGRectMake(x, 3, w, 18)] autorelease];
   audioOutputPopUp_.autoresizingMask = NSViewMinXMargin | NSViewMaxYMargin;
   [audioOutputPopUp_ setTarget:self];
   [audioOutputPopUp_ setAction:@selector(audioOutputSelected:)];
@@ -359,7 +360,7 @@ static NSString *GetWindowTitle(Track *t) {
   int w = 160;
   int x = ((NSView *)[mainWindow_ contentView]).bounds.size.width;
   x -= w + 10;
-  libraryPopUp_ = [[NSPopUpButton alloc] initWithFrame:CGRectMake(5, 3, w, 18)];
+  self.libraryPopUp = [[[NSPopUpButton alloc] initWithFrame:CGRectMake(5, 3, w, 18)] autorelease];
   libraryPopUp_.autoresizingMask = NSViewMaxXMargin | NSViewMaxYMargin;
   NSButtonCell *buttonCell = (NSButtonCell *)[libraryPopUp_ cell];
   [buttonCell setFont:[NSFont systemFontOfSize:11.0]];
@@ -436,8 +437,8 @@ static NSString *GetWindowTitle(Track *t) {
   self.playImage = [NSImage imageNamed:@"dot"];
   self.startImage = [NSImage imageNamed:@"start"];
   self.stopImage = [NSImage imageNamed:@"stop"];
-  [statusColumn setDataCell:[[NSImageCell alloc] initImageCell:emptyImage_]];
-  [statusColumn setDataCell:[[NSImageCell alloc] initImageCell:emptyImage_]];
+  [statusColumn setDataCell:[[[NSImageCell alloc] initImageCell:emptyImage_] autorelease]];
+  [statusColumn setDataCell:[[[NSImageCell alloc] initImageCell:emptyImage_] autorelease]];
   [statusColumn setWidth:30];
   [statusColumn setMaxWidth:30];
   [artistColumn setWidth:180];
@@ -504,36 +505,36 @@ static NSString *GetWindowTitle(Track *t) {
 
 - (void)setupToolbar { 
   // Setup the toolbar items and the toolbar.
-  playButton_ = [[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)];
+  self.playButton = [[[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)] autorelease];
   [playButton_ setTarget:self];
   [playButton_ setTitle:@""];
   [playButton_ setImage:startImage_];
   [playButton_ setBezelStyle:NSTexturedRoundedBezelStyle];
 
   [playButton_ setAction:@selector(playClicked:)];
-  playButtonItem_ = [[NSToolbarItem alloc] initWithItemIdentifier:kPlayButton];
+  self.playButtonItem = [[[NSToolbarItem alloc] initWithItemIdentifier:kPlayButton] autorelease];
   [playButtonItem_ setEnabled:YES];
   [playButtonItem_ setView:playButton_];
 
-  nextButton_ = [[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)];
+  self.nextButton = [[[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)] autorelease];
   [nextButton_ setTarget:self];
   [nextButton_ setTitle:@""];
   [nextButton_ setImage:[NSImage imageNamed:@"right"]];
   [nextButton_ setAction:@selector(nextClicked:)];
   [nextButton_ setBezelStyle:NSTexturedRoundedBezelStyle];
-  nextButtonItem_ = [[NSToolbarItem alloc] initWithItemIdentifier:kNextButton];
+  self.nextButtonItem = [[[NSToolbarItem alloc] initWithItemIdentifier:kNextButton] autorelease];
   [nextButtonItem_ setEnabled:YES];
   [nextButtonItem_ setView:nextButton_];
 
 
   // Previous button
-  previousButton_ = [[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)];
+  self.previousButton = [[[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)] autorelease];
   [previousButton_ setTarget:self];
   [previousButton_ setTitle:@""];
   [previousButton_ setBezelStyle:NSTexturedRoundedBezelStyle];
   [previousButton_ setImage:[NSImage imageNamed:@"left"]];
   [previousButton_ setAction:@selector(previousClicked:)];
-  previousButtonItem_ = [[NSToolbarItem alloc] initWithItemIdentifier:kPreviousButton];
+  self.previousButtonItem = [[[NSToolbarItem alloc] initWithItemIdentifier:kPreviousButton] autorelease];
   [previousButtonItem_ setEnabled:YES];
   [previousButtonItem_ setView:previousButton_];
 
@@ -542,7 +543,7 @@ static NSString *GetWindowTitle(Track *t) {
   [[previousButton_ cell] setImageScaling:0.8];
 
   // Volume
-  volumeSlider_ = [[Slider alloc] initWithFrame:CGRectMake(0, 0, 100, 22)];
+  self.volumeSlider = [[[Slider alloc] initWithFrame:CGRectMake(0, 0, 100, 22)] autorelease];
   [volumeSlider_ setContinuous:YES];
   [volumeSlider_ setTarget:self];
   [volumeSlider_ setAction:@selector(volumeClicked:)];
@@ -551,13 +552,13 @@ static NSString *GetWindowTitle(Track *t) {
   [volumeSlider_ setMaxValue:1.0];
   [volumeSlider_ setMinValue:0.0];
   [volumeSlider_ setDoubleValue:0.5];
-  volumeItem_ = [[NSToolbarItem alloc] initWithItemIdentifier:kVolumeControl];
+  self.volumeItem = [[[NSToolbarItem alloc] initWithItemIdentifier:kVolumeControl] autorelease];
   [volumeItem_ setView:volumeSlider_];
 
-  NSView *progressControl = [[NSView alloc] 
-    initWithFrame:CGRectMake(0, 0, 5 + 60 + 5 + 300 + 5 + + 60 + 5, 22)];
+  NSView *progressControl = [[[NSView alloc] 
+    initWithFrame:CGRectMake(0, 0, 5 + 60 + 5 + 300 + 5 + + 60 + 5, 22)] autorelease];
   // Progress Bar
-  progressSlider_ = [[Slider alloc] initWithFrame:CGRectMake(5 + 60 + 5, 0, 300, 22)];
+  self.progressSlider = [[[Slider alloc] initWithFrame:CGRectMake(5 + 60 + 5, 0, 300, 22)] autorelease];
   [progressSlider_ setContinuous:YES];
   [progressSlider_ setTarget:self];
   [progressSlider_ setAction:@selector(progressClicked:)];
@@ -567,7 +568,7 @@ static NSString *GetWindowTitle(Track *t) {
   [progressSlider_ setMinValue:0.0];
   [progressSlider_ setDoubleValue:0.0];
 
-  elapsedText_ = [[NSTextField alloc] initWithFrame:CGRectMake(5, 3, 60, 15)];
+  self.elapsedText = [[[NSTextField alloc] initWithFrame:CGRectMake(5, 3, 60, 15)] autorelease];
   elapsedText_.font = [NSFont systemFontOfSize:9.0];
   elapsedText_.stringValue = @"";
   elapsedText_.autoresizingMask = NSViewMaxXMargin;
@@ -577,7 +578,7 @@ static NSString *GetWindowTitle(Track *t) {
   [elapsedText_ setBordered:NO];
   [progressControl addSubview:elapsedText_];
 
-  durationText_ = [[NSTextField alloc] initWithFrame:CGRectMake(5 + 60 + 5 + 300 + 5, 3, 60, 15)];
+  self.durationText = [[[NSTextField alloc] initWithFrame:CGRectMake(5 + 60 + 5 + 300 + 5, 3, 60, 15)] autorelease];
   durationText_.font = [NSFont systemFontOfSize:9.0];
   durationText_.stringValue = @"";
   durationText_.autoresizingMask = NSViewMinXMargin;
@@ -589,7 +590,7 @@ static NSString *GetWindowTitle(Track *t) {
 
   [progressControl addSubview:progressSlider_];
   progressControl.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
-  progressSliderItem_ = [[NSToolbarItem alloc] initWithItemIdentifier:kProgressControl];
+  self.progressSliderItem = [[[NSToolbarItem alloc] initWithItemIdentifier:kProgressControl] autorelease];
   [progressSliderItem_ setEnabled:YES];
   [progressSliderItem_ setView:progressControl];
 
@@ -599,7 +600,7 @@ static NSString *GetWindowTitle(Track *t) {
   [progressSliderItem_ setMaxSize:NSMakeSize(1000, 22)];
   [progressSliderItem_ setMinSize:NSMakeSize(400, 22)];
 
-  searchField_ = [[NSSearchField alloc] initWithFrame:CGRectMake(0, 0, 100, 22)];
+  self.searchField = [[[NSSearchField alloc] initWithFrame:CGRectMake(0, 0, 100, 22)] autorelease];
   searchField_.font = [NSFont systemFontOfSize:12.0];
   searchField_.autoresizingMask = NSViewMinXMargin;
   searchField_.target = self;
@@ -607,10 +608,10 @@ static NSString *GetWindowTitle(Track *t) {
 
   [searchField_ setRecentsAutosaveName:@"recentSearches"];
 
-  searchItem_ = [[NSToolbarItem alloc] initWithItemIdentifier:kSearchControl];
+  self.searchItem = [[[NSToolbarItem alloc] initWithItemIdentifier:kSearchControl] autorelease];
   [searchItem_ setView:searchField_];
 
-  toolbar_ = [[NSToolbar alloc] initWithIdentifier:@"md0toolbar"];
+  self.toolbar = [[[NSToolbar alloc] initWithIdentifier:@"md0toolbar"] autorelease];
   [toolbar_ setDelegate:self];
   [toolbar_ setDisplayMode:NSToolbarDisplayModeIconOnly];
   [toolbar_ insertItemWithItemIdentifier:kPlayButton atIndex:0];
@@ -684,8 +685,6 @@ static NSString *GetWindowTitle(Track *t) {
   self.tracks = [NSMutableArray array];
   self.appleCoverArtClient = [[[AppleCoverArtClient alloc] init] autorelease];
   self.allTracks = [NSMutableArray array];
-
-
   self.localLibrary = [[[LocalLibrary alloc] initWithPath:LibraryPath()] autorelease];
   self.library = self.localLibrary;
   self.movie = nil;
@@ -697,7 +696,7 @@ static NSString *GetWindowTitle(Track *t) {
   [self setupSharing];
   [self setupRAOP]; 
 
-  [localLibrary_ prune];
+  [self.localLibrary prune];
   [self setupWindow];
   [self setupToolbar];
   [self setupTrackTable];
@@ -705,7 +704,7 @@ static NSString *GetWindowTitle(Track *t) {
   [self setupLibrarySelect];
   [self setupMenu];
 
-  sortFields_ = [[NSMutableArray array] retain];
+  self.sortFields = [NSMutableArray array];
 
   for (NSString *key in [NSArray arrayWithObjects:kArtist, kAlbum, kTrackNumber, kTitle, kURL, nil]) { 
     SortField *s = [[[SortField alloc] initWithKey:key direction:Ascending comparator:NaturalComparison] autorelease];
@@ -724,7 +723,7 @@ static NSString *GetWindowTitle(Track *t) {
   [self setupPlugins];
   [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
 
-  [self.localLibrary scan:self.pathsToAutomaticallyScan];
+  //[self.localLibrary scan:self.pathsToAutomaticallyScan];
 }
 
 - (void)setupRAOP { 
@@ -755,7 +754,7 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)setupPlugins {
-  plugins_ = [[NSMutableArray array] retain];
+  self.plugins = [NSMutableArray array];
   NSString *resourceDir = [NSBundle mainBundle].resourcePath;
   NSString *pluginsDir = [resourceDir stringByAppendingPathComponent:@"Plugins"];
   NSArray *pluginDirs = GetSubDirectories([NSArray arrayWithObjects:pluginsDir, nil]);
@@ -1071,6 +1070,7 @@ static NSString *GetWindowTitle(Track *t) {
     needsLibraryRefresh_ = YES;
   }
   if (needsLibraryRefresh_) {
+    NSLog(@"refreshing library");
     @synchronized(allTracks_) { 
       [allTracks_ removeAllObjects];
       [library_ each:^(Track *t) {
@@ -1145,11 +1145,42 @@ static NSString *GetWindowTitle(Track *t) {
       }
     }
   }
-  // load the cover art:
-  //[appleCoverArtClient_ queryTrack:track_ block:^(NSString *coverArtURL) {
-  //  track_.coverArtURL = coverArtURL;
-  //  [localLibrary_ save:track_];
-  //}];
+  // Load the cover art if it isn't loaded already.
+  [self loadCoverArt:self.track];
+}
+
+- (void)loadCoverArt:(Track *)track {
+  NSLog(@"load cover art: %@", track);
+  if (!track)
+    return;
+  if (track.coverArtURL && track.coverArtURL.length)
+    return;
+  if (!track.artist.length || !track.album.length) 
+    return;
+  NSString *term = [NSString stringWithFormat:@"%@ %@", track.artist, track.album];
+  [appleCoverArtClient_ search:term withArtworkData:^(NSData *data) { 
+    if (!data || !data.length)
+      return;
+    NSString *covertArtDir = CoverArtPath();
+    mkdir(covertArtDir.UTF8String, 0755);
+    NSString *path = [covertArtDir stringByAppendingPathComponent:term.sha1];
+    if (![data writeToFile:path atomically:YES]) {
+      NSLog(@"failed to write to %@", path);
+      return;
+    }
+         
+    NSString *url = [[NSURL fileURLWithPath:path] absoluteString];
+    @synchronized(allTracks_) { 
+      for (Track *t in allTracks_) {
+        if ([t.artist isEqualToString:track.artist] 
+            && [t.album isEqualToString:track.album] 
+            && (!t.coverArtURL || !t.coverArtURL.length)) {
+          t.coverArtURL = url;
+          [self.localLibrary save:t];
+        }
+      }
+    }
+  }];
 }
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)aTableView { 

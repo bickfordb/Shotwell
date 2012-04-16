@@ -66,8 +66,12 @@ using namespace std;
     self.scanLoop = [[[Loop alloc] init] autorelease];
     void *weakSelf = (void*)self;
     [pruneLoop_ onTimeout:1000000 with:^(Event *e, short flags) {
-      [((LocalLibrary *)weakSelf) pruneQueued]; 
-      ((LocalLibrary *)weakSelf)->pruneRequested_ = false;
+      LocalLibrary *self0 = (LocalLibrary *)weakSelf;
+      if (self0.pruneRequested) {
+        NSLog(@"pruning");
+        self0.pruneRequested = false;
+        [self0 pruneQueued]; 
+      }
       [e add:1000000];
     }];
     [scanLoop_ onTimeout:1000000 with:^(Event *e, short flags) {
