@@ -38,7 +38,7 @@
   NSArray *args = [NSArray arrayWithObjects:track, nil];
   id window = [webView_ windowScriptObject];
   [window callWebScriptMethod:@"onTrackStarted" withArguments:args];
-  [window setValue:Block_copy(^(NSString *s) { NSLog(@"logit: %@", s); }) forKey:@"logit"];
+  [window setValue:Block_copy(^(NSString *s) { DEBUG(@"logit: %@", s); }) forKey:@"logit"];
 }
 
 - (void)trackSaved:(NSMutableDictionary *)track { 
@@ -129,19 +129,24 @@
   else
     split = [delegate contentHorizontalSplit];
   CGRect frame = NSZeroRect;
+  CGRect firstFrame = [[split.subviews objectAtIndex:0] frame];
   if (isVertical) {
     frame.size.height = split.frame.size.height;
     frame.size.width = size;
+    firstFrame.size.width -= size;
+    frame.size.height = firstFrame.size.height;
   } else { 
     frame.size.height = size;
-    frame.size.width = split.frame.size.width;
+    frame.size.width = firstFrame.size.width;
+    firstFrame.size.height -= size;
   }
   content_.frame = frame;
+  [[split.subviews objectAtIndex:0] setFrame:firstFrame];
   [split addSubview:content_];
 }
 
 - (void)log:(NSString *)something {
-  NSLog(@"%@", something);
+  DEBUG(@"%@", something);
 }
 
 - (void)hideTrackTable {

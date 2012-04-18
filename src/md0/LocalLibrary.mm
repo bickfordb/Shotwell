@@ -68,7 +68,7 @@ using namespace std;
     [pruneLoop_ onTimeout:1000000 with:^(Event *e, short flags) {
       LocalLibrary *self0 = (LocalLibrary *)weakSelf;
       if (self0.pruneRequested) {
-        NSLog(@"pruning");
+        INFO(@"pruning");
         self0.pruneRequested = false;
         [self0 pruneQueued]; 
       }
@@ -168,17 +168,19 @@ using namespace std;
   NSString *url = track.url;
   if (!url || !url.length) 
     return;
+  bool isNew = false;
   if (!track.id) {
     track.id = [trackTable_ nextID];
+    isNew = true;
   }
   [urlTable_ put:track.id forKey:track.url];
   [trackTable_ put:track forKey:track.id];
-  [[NSNotificationCenter defaultCenter]
-    postNotificationName:TrackSavedLibraryNotification 
-    object:self
-    userInfo:[NSDictionary dictionaryWithObjectsAndKeys:track, @"track", nil]];
+  if (isNew)
+    self.onAdded(self, track);
+  self.onSaved(self, track);
   self.lastUpdatedAt = Now();
 }
+
 
 - (Track *)get:(NSNumber *)trackID {
   return [trackTable_ get:trackID]; 
@@ -194,8 +196,8 @@ using namespace std;
   if (track.url) 
     [urlTable_ delete:track.url];
   self.lastUpdatedAt = Now();
+  self.onDeleted(self, track);
 }
-
 
 - (int)count { 
   return trackTable_.count;

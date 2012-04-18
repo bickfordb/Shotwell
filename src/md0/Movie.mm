@@ -51,7 +51,7 @@
 }
 
 - (void)seek:(int64_t)usecs { 
-  NSLog(@"seek: %lld", usecs);
+  DEBUG(@"seek: %lld", usecs);
   [source_ seek:usecs];
   [sink_ flush];
 }

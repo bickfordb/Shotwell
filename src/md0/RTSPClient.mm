@@ -139,7 +139,7 @@ void RSAEncrypt(
   evbuffer_add(buf, request.body.bytes, request.body.length);
    
   // write buffer
-  //NSLog(@"sending request: %@", [[NSString alloc] initWithCString:(const char *)evbuffer_pullup(buf, evbuffer_get_length(buf)) length:evbuffer_get_length(buf)]);
+  //DEBUG(@"sending request: %@", [[NSString alloc] initWithCString:(const char *)evbuffer_pullup(buf, evbuffer_get_length(buf)) length:evbuffer_get_length(buf)]);
 
   [loop_ writeBuffer:buf fd:fd_ with:^(int succ) {
       if (succ == 0) {
@@ -227,7 +227,7 @@ void RSAEncrypt(
     close(fd_);
   fd_ = socket(AF_INET, SOCK_STREAM, 0);
   if (fd_ < 0) {
-    ERROR("error creating socket");
+    ERROR(@"error creating socket");
     return false;
   }
   struct sockaddr_in addr;
@@ -235,7 +235,7 @@ void RSAEncrypt(
   addr.sin_port = htons(port_);
   inet_aton(address_.UTF8String, &addr.sin_addr);
   if (connect(fd_, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-    ERROR("Failed to connect: %d", errno);
+    ERROR(@"Failed to connect: %d", errno);
     return false;
   }
   fcntl(fd_, F_SETFL, fcntl(fd_, F_GETFL, 0) | O_NONBLOCK);
@@ -245,25 +245,25 @@ void RSAEncrypt(
 - (void)connect:(OnStatus)block {
   block = [block copy];
   if (![self connectSocket]) {
-    ERROR("failed to setup control socket");
+    ERROR(@"failed to setup control socket");
     block(-1);
     return;
   }
   [self announce:^(int st) {
     if (st != 200) { 
-      ERROR("Failed to announce");
+      ERROR(@"Failed to announce");
       block(st);
       return;
     }
     [self setup:^(int st) { 
       if (st != 200) {
-        ERROR("Failed to setup");
+        ERROR(@"Failed to setup");
         block(st);
         return;
       }
       [self record:^(int st) {
         if (st != 200) {
-          ERROR("Failed to record");
+          ERROR(@"Failed to record");
           block(st);
           return;
         } else { 
@@ -329,7 +329,7 @@ void RSAEncrypt(
     [response.headers enumerateKeysAndObjectsUsingBlock:^(id key, id val, BOOL *stop) {
       if ([((NSString *)key) caseInsensitiveCompare:@"session"] == 0) 
         self.sessionID = (NSString *)val;
-        //NSLog(@"got session ID: %@", self.sessionID);
+        //DEBUG(@"got session ID: %@", self.sessionID);
     }];
     block(response ? response.status : -1);
   })];
@@ -371,7 +371,7 @@ void RSAEncrypt(
 static OnResponse ToStatus(OnStatus block) {
    block = [block copy];
    return Block_copy(^(RTSPResponse *response) {
-      //NSLog(@"got response: %@", response);
+      //DEBUG(@"got response: %@", response);
       block(response ? response.status : 0);
    });
 }

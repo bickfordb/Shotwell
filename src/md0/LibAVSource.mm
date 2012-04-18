@@ -86,12 +86,12 @@ static AVPacket flushPacket;
   formatContext_ = avformat_alloc_context();
   err = avformat_open_input(&formatContext_, url_.UTF8String, NULL, NULL);
   if (err != 0) {
-    ERROR("could not open: %d", err);
+    ERROR(@"could not open: %d", err);
     return false;
   } 
   err = avformat_find_stream_info(formatContext_, NULL);
   if (err < 0) {
-    ERROR("could not find stream info");
+    ERROR(@"could not find stream info");
     return false;
   } 
   for (int i = 0; i < formatContext_->nb_streams; i++) {
@@ -100,7 +100,7 @@ static AVPacket flushPacket;
     }
   }
   if (audioStreamIndex_ < 0) {
-    ERROR("couldnt locate audio stream index");
+    ERROR(@"couldnt locate audio stream index");
     return false;
   }  
   timeBase_ = formatContext_->streams[audioStreamIndex_]->time_base;
@@ -133,7 +133,7 @@ static AVPacket flushPacket;
   if (seekTo_ >= 0) {
     int seekRet = av_seek_frame(formatContext_, -1, seekTo_, 0);
     if (seekRet < 0) {
-      ERROR("Failed to seek (%d) to %ld, %f", seekRet, seekTo_, (double)(seekTo_ / ((double)AV_TIME_BASE)));
+      ERROR(@"Failed to seek (%d) to %ld, %f", seekRet, seekTo_, (double)(seekTo_ / ((double)AV_TIME_BASE)));
     }
     for (int i = 0; i < formatContext_->nb_streams; i++) {
       avcodec_flush_buffers(formatContext_->streams[i]->codec);
@@ -146,7 +146,7 @@ static AVPacket flushPacket;
     int read = av_read_frame(formatContext_, packet);
     if (read < 0) { 
       if (read != -5) {// eof
-        ERROR("read packet fail (%d)", read);
+        ERROR(@"read packet fail (%d)", read);
       } 
       state_ = kEOFAudioSourceState;
       return false;
@@ -221,7 +221,7 @@ static AVPacket flushPacket;
     if (amtDecoded < 0) {
       char error[256];
       av_strerror(amtDecoded, error, 256);
-      ERROR("decode error: %s", error);
+      ERROR(@"decode error: %s", error);
       // skip this packet.
       currAudioPacketAdj_.size = 0;
       continue;

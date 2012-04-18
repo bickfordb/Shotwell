@@ -185,6 +185,10 @@
 - (void)setupWindow;
 - (void)updateTableColumnHeaders;
 - (void)loadCoverArt:(Track *)track;
+- (void)library:(Library *)l addedTrack:(Track *)t;
+- (void)library:(Library *)l savedTrack:(Track *)t;
+- (void)library:(Library *)l deletedTrack:(Track *)t;
+
 @end
 
 #endif

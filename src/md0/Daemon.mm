@@ -116,21 +116,21 @@ static void OnRequest(evhttp_request *r, void *ctx) {
   int64_t trackID = (int64_t)[[NSString stringWithUTF8String:track_path.c_str()] longLongValue];
   Track *track = [library_ get:[NSNumber numberWithLongLong:trackID]];
   if (!track) {
-    DEBUG("no track");
+    DEBUG(@"no track");
     [request respondNotFound];
     return true;
   }
   
   int fd = open(track.url.UTF8String, O_RDONLY);
   if (fd < 0) {
-    DEBUG("missing fd");
+    DEBUG(@"missing fd");
     [request respondNotFound];
     return true;
   }
 
   struct stat the_stat;
   if (fstat(fd, &the_stat) < 0) {
-    DEBUG("stat failed");
+    DEBUG(@"stat failed");
     [request respondNotFound];
     return true;
   }

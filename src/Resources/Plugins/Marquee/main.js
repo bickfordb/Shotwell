@@ -8,7 +8,7 @@ var builtinWallpapers = [
 function onTrackStarted(track) {
   window.playing = track;
   //if (plugin.hidden())
-    plugin.showSize_isVertical_(300, true); 
+  plugin.showSize_isVertical_(150, false); 
   renderPlaying(); 
 }
 
@@ -36,8 +36,8 @@ function renderPlaying() {
     if (!coverArtURL) {
       coverArtURL = builtinWallpapers[i];
     }
-    $("body").css("background-image", "url(" + coverArtURL + ")");
-    fixBackgroundSize(); 
+    $("img.cover-art").attr("src", coverArtURL);
+    $("background").css("background-image", "url(" + coverArtURL + ")");
   }
 }
 
@@ -61,6 +61,6 @@ $(function() {
     search($(el).text());
     return false;
   });
-  $(window).resize(fixBackgroundSize);
-
+  //$(window).resize(fixBackgroundSize);
 })
+

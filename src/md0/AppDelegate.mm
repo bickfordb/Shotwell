@@ -4,6 +4,7 @@
 #include <sys/utsname.h>
 
 #import "md0/AppDelegate.h"
+#import "md0/Log.h"
 #import "md0/NSNetServiceAddress.h"
 #import "md0/NSNumberTimeFormat.h"
 #import "md0/NSStringDigest.h"
@@ -82,7 +83,6 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize elapsedText = elapsedText_;
 @synthesize emptyImage = emptyImage_;
 @synthesize lastLibraryRefresh = lastLibraryRefresh_;
-@synthesize library = library_;
 @synthesize libraryPopUp = libraryPopUp_;
 @synthesize localLibrary = localLibrary_;
 @synthesize mainWindow = mainWindow_;
@@ -217,7 +217,7 @@ static NSString *GetWindowTitle(Track *t) {
   @synchronized(allTracks_) {
     [allTracks_ removeObjectsInArray:tracks_];
   }
-  for (Track *o in allTracks_) {
+  for (Track *o in tracks) {
     [localLibrary_ delete:o];
     needsReload_ = YES;
   }
@@ -376,14 +376,13 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)librarySelected:(id)sender { 
-  NSLog(@"library selected");
+  DEBUG(@"library selected");
   int i = [sender indexOfSelectedItem];
   if (i >= 0 && i < self.libraries.count) {
     self.selectedLibrary = [self.libraries objectAtIndex:[sender indexOfSelectedItem]];
   }
   if (self.selectedLibrary) {
     self.library = [self.selectedLibrary objectForKey:@"library"];
-    self.needsLibraryRefresh = YES;
   }
 }
 
@@ -622,33 +621,6 @@ static NSString *GetWindowTitle(Track *t) {
   [NSApp setApplicationIconImage:[NSImage imageNamed:@"md0dock"]];
 }
 
-- (void)onTrackDeleted:(NSNotification *)notification {
-  Track *t = [notification.userInfo objectForKey:@"track"];
-  @synchronized (plugins_) {
-    for (Plugin *p in plugins_) {
-      [p trackDeleted:t];
-    }
-  }
-}
-
-- (void)onTrackAdded:(NSNotification *)notification {
-  Track *t = [notification.userInfo objectForKey:@"track"];
-  @synchronized (plugins_) {
-    for (Plugin *p in plugins_) {
-      [p trackAdded:t];
-    }
-  }
-}
-
-- (void)onTrackSaved:(NSNotification *)notification {
-  Track *t = [notification.userInfo objectForKey:@"track"];
-  @synchronized (plugins_) {
-    for (Plugin *p in plugins_) {
-      [p trackSaved:t];
-    }
-  }
-}
-
 - (NSArray *)pathsToAutomaticallyScan {
   return [[NSUserDefaults standardUserDefaults] arrayForKey:kPathsToScan];
 }
@@ -670,22 +642,16 @@ static NSString *GetWindowTitle(Track *t) {
   self.audioOutputs = [NSMutableArray array];
   self.libraries = [NSMutableArray array];
 
-  [[NSNotificationCenter defaultCenter]
-    addObserver:self selector:@selector(onTrackSaved:) name:TrackSavedLibraryNotification object:nil];
-  [[NSNotificationCenter defaultCenter]
-    addObserver:self selector:@selector(onTrackAdded:) name:TrackAddedLibraryNotification object:nil];
-  [[NSNotificationCenter defaultCenter]
-    addObserver:self selector:@selector(onTrackDeleted:) name:TrackDeletedLibraryNotification object:nil];
-
-  trackEnded_ = NO;
-  requestPrevious_ = NO;
-  requestTogglePlay_ = NO;
-  requestNext_ = NO;
-  needsLibraryRefresh_ = NO;
+  self.trackEnded = NO;
+  self.requestPrevious = NO;
+  self.requestTogglePlay = NO;
+  self.requestNext = NO;
+  self.needsLibraryRefresh = NO;
   self.tracks = [NSMutableArray array];
   self.appleCoverArtClient = [[[AppleCoverArtClient alloc] init] autorelease];
   self.allTracks = [NSMutableArray array];
   self.localLibrary = [[[LocalLibrary alloc] initWithPath:LibraryPath()] autorelease];
+  
   self.library = self.localLibrary;
   self.movie = nil;
   self.track = nil;
@@ -714,7 +680,7 @@ static NSString *GetWindowTitle(Track *t) {
   predicateChanged_ = YES;
   sortChanged_ = YES;
 
-  requestPlayTrackAtIndex_ = -1;
+  self.requestPlayTrackAtIndex = -1;
   pollMovieTimer_ = [NSTimer timerWithTimeInterval:.15 target:self selector:@selector(onPollMovieTimer:) userInfo:nil repeats:YES];
 
   [[NSRunLoop mainRunLoop] addTimer:pollMovieTimer_ forMode:NSDefaultRunLoopMode];
@@ -1063,26 +1029,20 @@ static NSString *GetWindowTitle(Track *t) {
     playButton_.image = startImage_;
   }
 
-  if (lastLibraryRefresh_ == 0) {
-    needsLibraryRefresh_ = YES;
-  } else if ((library_.lastUpdatedAt > lastLibraryRefresh_)
-      && (lastLibraryRefresh_ < (Now() - kLibraryRefreshInterval))) {
-    needsLibraryRefresh_ = YES;
-  }
-  if (needsLibraryRefresh_) {
-    NSLog(@"refreshing library");
+  if (self.needsLibraryRefresh) {
+    INFO(@"refreshing library");
     @synchronized(allTracks_) { 
       [allTracks_ removeAllObjects];
       [library_ each:^(Track *t) {
         [allTracks_ addObject:t];
       }];
     }
-    needsLibraryRefresh_ = NO;
-    predicateChanged_ = YES;
-    sortChanged_ = YES;
-    needsReload_ = YES;
-    sortChanged_ = YES;
-    lastLibraryRefresh_ = Now(); 
+    self.needsLibraryRefresh = NO;
+    self.predicateChanged = YES;
+    self.sortChanged = YES;
+    self.needsReload = YES;
+    self.sortChanged = YES;
+    self.lastLibraryRefresh = Now(); 
   }
   if (sortChanged_) { 
     [self executeSort];
@@ -1105,6 +1065,90 @@ static NSString *GetWindowTitle(Track *t) {
     [trackTableView_ scrollRowToVisible:seekToRow_];
     seekToRow_ = -1; 
   } 
+}
+
+- (Library *)library { 
+  return library_;
+}
+
+- (void)setLibrary:(Library *)library { 
+  __block AppDelegate *weakSelf = self;
+  library.onAdded = ^(Library *l, Track *t) {
+    [weakSelf library:l addedTrack:t];
+  };
+  library.onDeleted = ^(Library *l, Track *t) {
+    [weakSelf library:l deletedTrack:t];
+  };
+  library.onSaved = ^(Library *l, Track *t) {
+    [weakSelf library:l savedTrack:t];
+  };
+  @synchronized(self) {
+    Library *o = library_;
+    library_.onDeleted = nil;
+    library_.onAdded = nil;
+    library_.onSaved = nil;
+    library_ = [library retain];
+    [o autorelease];
+  }
+  self.needsLibraryRefresh = YES;
+};
+
+- (void)library:(Library *)l addedTrack:(Track *)t {
+  if (l != library_)
+    return;
+  @synchronized(allTracks_) {
+    [allTracks_ addObject:t];
+  }
+    
+  self.sortChanged = YES;
+  self.predicateChanged = YES;
+}
+
+- (void)library:(Library *)l savedTrack:(Track *)t {
+  if (l != library_) {
+    DEBUG(@"other library");
+    return;
+  }
+  @synchronized(allTracks_) {
+    int i = 0;
+    int n = allTracks_.count;
+    while (i < n) { 
+      Track *o = [allTracks_ objectAtIndex:i];
+      if (o.id.intValue == t.id.intValue) {
+        [allTracks_ removeObjectAtIndex:i];
+        n--;
+      } else { 
+        i++;
+      }
+    }
+    [allTracks_ addObject:t];
+  }
+  self.sortChanged = YES;
+  self.predicateChanged = YES;
+  @synchronized (plugins_) {
+    for (Plugin *p in plugins_) {
+      [p trackSaved:t];
+    }
+  }
+}
+
+- (void)library:(Library *)l deletedTrack:(Track *)t {
+  if (l != library_)
+    return;
+  @synchronized(allTracks_) {
+    int i = 0;
+    int n = allTracks_.count;
+    while (i < n) { 
+      Track *o = [allTracks_ objectAtIndex:i];
+      if (o.id.intValue == t.id.intValue) {
+        [allTracks_ removeObjectAtIndex:i];
+        n--;
+      } else { 
+        i++;
+      }
+    }
+  }
+  self.predicateChanged = YES;
 }
 
 - (void)onPollLibraryTimer:(id)sender { 
@@ -1150,7 +1194,6 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)loadCoverArt:(Track *)track {
-  NSLog(@"load cover art: %@", track);
   if (!track)
     return;
   if (track.coverArtURL && track.coverArtURL.length)
@@ -1165,20 +1208,24 @@ static NSString *GetWindowTitle(Track *t) {
     mkdir(covertArtDir.UTF8String, 0755);
     NSString *path = [covertArtDir stringByAppendingPathComponent:term.sha1];
     if (![data writeToFile:path atomically:YES]) {
-      NSLog(@"failed to write to %@", path);
+      DEBUG(@"failed to write to %@", path);
       return;
     }
          
     NSString *url = [[NSURL fileURLWithPath:path] absoluteString];
+    NSMutableArray *tracksToUpdate = [NSMutableArray array];
     @synchronized(allTracks_) { 
       for (Track *t in allTracks_) {
         if ([t.artist isEqualToString:track.artist] 
             && [t.album isEqualToString:track.album] 
             && (!t.coverArtURL || !t.coverArtURL.length)) {
-          t.coverArtURL = url;
-          [self.localLibrary save:t];
+          [tracksToUpdate addObject:t];
         }
       }
+    }
+    for (Track *t in tracksToUpdate) {
+      t.coverArtURL = url;
+      [localLibrary_ save:t];
     }
   }];
 }
@@ -1262,17 +1309,17 @@ row:(NSInteger)rowIndex {
 }
 
 - (void)playClicked:(id)sender { 
-  NSLog(@"play clicked");
+  DEBUG(@"play clicked");
   requestTogglePlay_ = YES;
 }
 
 - (void)nextClicked:(id)sender { 
-  NSLog(@"next clicked");
+  DEBUG(@"next clicked");
   requestNext_ = YES;
 }
 
 - (void)previousClicked:(id)sender { 
-  NSLog(@"previous clicked");
+  DEBUG(@"previous clicked");
   requestPrevious_ = YES;
 }
 

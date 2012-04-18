@@ -2,7 +2,7 @@
 #import "Log.h"
 #define CHECK_RESULT(msg) \
     if (result != noErr) { \
-        ERROR("Core Audio Initialization Failed"); \
+        ERROR(@"Core Audio Initialization Failed"); \
         return; \
     }
 
@@ -77,7 +77,7 @@ static OSStatus GetAudioCallback(void *context,
 
   comp = FindNextComponent(NULL, &desc);
   if (comp == NULL) {
-    ERROR("Failed to start CoreAudio: FindNextComponent returned NULL");
+    ERROR(@"Failed to start CoreAudio: FindNextComponent returned NULL");
     return;
   }
   result = OpenAComponent(comp, &outputAudioUnit_);
@@ -114,7 +114,7 @@ static OSStatus GetAudioCallback(void *context,
   OSStatus status = AudioUnitSetParameter(outputAudioUnit_, 
       kHALOutputParam_Volume, kAudioUnitScope_Output, 0, (AudioUnitParameterValue)pct, 0);
   if (status != 0) 
-    ERROR("failed to set volume (%d)", status);
+    ERROR(@"failed to set volume (%d)", status);
 }
 
 - (void)stop { 

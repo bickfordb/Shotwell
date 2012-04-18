@@ -84,7 +84,7 @@ static NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv) {
   evhttp_cmd_type cmdType = EVHTTP_REQ_GET; 
   int st = evhttp_make_request(conn, req, cmdType, request.uri.UTF8String);
   if (st != 0) {
-    ERROR("failed to create request");
+    ERROR(@"failed to create request");
     evhttp_connection_free(conn);
     evhttp_request_free(req);
     return false;

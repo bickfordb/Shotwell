@@ -2,13 +2,19 @@
 #import "md0/Track.h"
 
 
-extern NSString * const TrackSavedLibraryNotification;
-extern NSString * const TrackAddedLibraryNotification;
-extern NSString * const TrackDeletedLibraryNotification;
+@class Library;
+typedef void (^OnTrackChange)(Library *, Track *t);
 
 @interface Library : NSObject {
   int64_t lastUpdatedAt_;
+  OnTrackChange onAdded_;
+  OnTrackChange onSaved_;
+  OnTrackChange onDeleted_;
 }
+
+@property (copy) OnTrackChange onAdded;
+@property (copy) OnTrackChange onSaved;
+@property (copy) OnTrackChange onDeleted;
 
 - (void)each:(void (^)(Track *))block; 
 - (int)count;

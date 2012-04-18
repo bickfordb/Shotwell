@@ -88,7 +88,7 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
     BitsWrite(&bp, 0, 8, &bpos);
   }
   if ((bsize - count) > 0) {
-    ERROR("added %d bytes of silence", (bsize - count) * 4);
+    ERROR(@"added %d bytes of silence", (bsize - count) * 4);
   } 
   int out_len = (bpos ? 1 : 0 ) + bp - alac;
   evbuffer_add(out, (void *)alac, out_len);
@@ -151,7 +151,7 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
 - (void)start { 
   [rtsp_ connect:^(int status) {
     if (status != 200) {
-      NSLog(@"failed to connect to RTSP: %d", status);
+      DEBUG(@"failed to connect to RTSP: %d", status);
       return;
     }
     [self.rtsp sendVolume:volume_ with:^(int st) { }]; 
@@ -180,11 +180,11 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
   addr.sin_family = AF_INET;
   addr.sin_port = htons(6000);
   if (!inet_aton(address_.UTF8String, &addr.sin_addr)) {
-    NSLog(@"failed to parse address: %@", address_);
+    DEBUG(@"failed to parse address: %@", address_);
   }
   int ret = connect(fd_, (struct sockaddr *)&addr, sizeof(addr));
   if (ret < 0) {
-    ERROR("unable to connect to data port");
+    ERROR(@"unable to connect to data port");
     return false;
   }
   fcntl(fd_, F_SETFL, fcntl(fd_, F_GETFL, 0) | O_NONBLOCK);
@@ -194,11 +194,11 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
     ctrlAddr.sin_family = AF_INET;
     ctrlAddr.sin_port = htons(6001);
     if (!inet_aton(address_.UTF8String, &ctrlAddr.sin_addr)) {
-      NSLog(@"failed to parse address: %@", address_);
+      DEBUG(@"failed to parse address: %@", address_);
     }
     int ret = connect(controlFd_, (struct sockaddr *)&ctrlAddr, sizeof(ctrlAddr));
     if (ret < 0) {
-      ERROR("unable to connect to control port");
+      ERROR(@"unable to connect to control port");
       return false;
     }
     fcntl(fd_, F_SETFL, fcntl(fd_, F_GETFL, 0) | O_NONBLOCK); 
@@ -228,7 +228,7 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
 
   void *weakSelf = (void *)self;
   int64_t sleepInterval = (numFrames * 1000000) / 44100;
-  //NSLog(@"write: %d", (int)evbuffer_get_length(rtp));
+  //DEBUG(@"write: %d", (int)evbuffer_get_length(rtp));
   [loop_ writeBuffer:rtp fd:fd_ with:^(int succ) { 
     if (succ == 0) {
       if (((RAOPSink *)weakSelf).raopVersion == RAOPV1) {
@@ -239,7 +239,7 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
         }];
       }
     } else {
-      NSLog(@"failed to write: %d", succ);
+      DEBUG(@"failed to write: %d", succ);
       [self stop];
     }
   }];

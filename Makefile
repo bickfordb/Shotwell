@@ -5,21 +5,21 @@ all:
 	@echo "\tgdb-memory  -- Run the application (w/ gdb) w/ malloc checking hooks turned on"
 
 APPNAME = MD0
-APP = build/$(APPNAME).app
 BUILD = build
-SRCS := src/md0/*.mm
-HDRS := src/md0/*.h
-LD = ld
+APP_DIR = $(BUILD)/$(APPNAME).app
+IBTOOL ?= ibtool
+
+PROG = $(APP_DIR)/Contents/MacOS/$(APPNAME)
 
 CXX = clang
 VENDOR = $(BUILD)/vendor.stamp
 CXXFLAGS += -iquote src
 CXXFLAGS += -Werror
 CXXFLAGS += -ferror-limit=2
-CXXFLAGS += -Ibuild/vendor/include
+CXXFLAGS += -I$(BUILD)/vendor/include
 CXXFLAGS += -ggdb 
 CXXFLAGS += -O0
-LDFLAGS += -Lbuild/vendor/lib
+LDFLAGS += -L$(BUILD)/vendor/lib
 LDFLAGS += -lleveldb
 LDFLAGS += -ljansson
 LDFLAGS += -levent
@@ -55,109 +55,83 @@ LDFLAGS += -framework VideoDecodeAcceleration
 LDFLAGS += -framework QuartzCore
 LDFLAGS += -framework WebKit 
 #LDFLAGS += -lffi
-DST_RES := $(APP)/Contents/Resources
-SRC_RES := src/md0/res
+
+RESOURCES_DIR := $(APP_DIR)/Contents/Resources
+
+
+SRC_RES := src/Resources
 SRC_RESOURCES = $(wildcard $(SRC_RES)/*.png $(SRC_RES)/*.pdf $(SRC_RES)/*.js)
-RESOURCETARGETS := $(foreach f, $(SRC_RESOURCES), $(addprefix $(DST_RES)/, $(notdir $(f)))) 
-OBJS := $(patsubst src/md0/%, build/objs/%, $(patsubst %.mm, %.o, $(wildcard src/md0/*.mm))) 
-DEPS := $(patsubst src/md0/%, build/deps/%, $(patsubst %.mm, %.d, $(wildcard src/md0/*.mm))) 
+#SRC_RESOURCES = $(wildcard $(SRC_RES)/**/**/**)
+DST_RESOURCES := $(patsubst src/Resources/%, $(APP_DIR)/Contents/Resources/%, $(wildcard src/Resources/*.* src/Resources/**/*.* src/Resources/**/**/*.*))
+OBJS := $(patsubst src/md0/%, $(BUILD)/objs/%, $(patsubst %.mm, %.o, $(wildcard src/md0/*.mm))) 
+DEPS := $(patsubst src/md0/%, $(BUILD)/deps/%, $(patsubst %.mm, %.d, $(wildcard src/md0/*.mm))) 
 
-.PHONY: buildit
-all: buildit
+.PHONY: program
+all: program
 
-PROJ = $(CURDIR)
+$(RESOURCES_DIR)/%: $(SRC_RES)/%
+	if [ ! -d "$<" ]; \
+	then \
+		mkdir -p $$(dirname $@); \
+		install $< $@; \
+	fi 
 
-APPDIRS = $(APP) $(APP)/Contents/MacOS $(APP/Contents) $(APP)/Contents/Resources
+# Convert the XIB into a nib.
+program: $(RESOURCES_DIR)/en.lproj/MainMenu.nib
 
-$(APPDIRS): 
-	mkdir -p $@
 
-$(DST_RES)/Plugins:
-	mkdir -p $@
-buildit: $(DST_RES)/Plugins
+$(BUILD)/objs:
+	mkdir -p $(BUILD)/objs
 
-$(DST_RES)/Plugins/Marquee:
-	mkdir -p $@
-buildit: $(DST_RES)/Plugins/Marquee
+$(BUILD)/deps: 
+	mkdir -p $(BUILD)/deps
 
-$(DST_RES)/Plugins/Marquee/main.js: $(SRC_RES)/Plugins/Marquee/main.js
-	cp $+ $@
-buildit: $(DST_RES)/Plugins/Marquee/main.js
+$(BUILD)/deps/%.d: src/md0/%.mm
+	mkdir -p $(BUILD)/deps
+	$(CXX) $(CXXFLAGS) -MM $< |sed -e 's/^\([a-z0-9A-Z]\)/$(BUILD)\/objs\/\1/' >$@
 
-$(DST_RES)/Plugins/Marquee/main.css: $(SRC_RES)/Plugins/Marquee/main.css
-	cp $+ $@
-buildit: $(DST_RES)/Plugins/Marquee/main.css
-
-$(DST_RES)/Plugins/Marquee/jquery-1.7.2.min.js: $(SRC_RES)/Plugins/Marquee/jquery-1.7.2.min.js
-	cp $+ $@
-buildit: $(DST_RES)/Plugins/Marquee/jquery-1.7.2.min.js
-
-$(DST_RES)/Plugins/Marquee/index.html: $(SRC_RES)/Plugins/Marquee/index.html
-	cp $+ $@
-buildit: $(DST_RES)/Plugins/Marquee/index.html
-
-buildit: $(APP)/Contents/MacOS/MD0
-
-build/objs:
-	mkdir -p build/objs
-
-build/deps: 
-	mkdir -p build/deps
-
-#build/objs/%.o: $(VENDOR)
-
-build/deps/%.d: src/md0/%.mm
-	mkdir -p build/deps
-	$(CXX) $(CXXFLAGS) -MM $< |sed -e 's/^\([a-z0-9A-Z]\)/build\/objs\/\1/' >$@
-
+# This will force the .d files to build.
 -include $(DEPS)
 
-build/objs/%.o: src/md0/%.mm
-	mkdir -p build/objs
+$(BUILD)/objs/%.o: src/md0/%.mm
+	mkdir -p $(BUILD)/objs
 	$(CXX) $(CXXFLAGS) -c -o $@ $<	
 
-$(APP)/Contents/MacOS/MD0: $(OBJS) $(HDRS) $(VENDOR) $(APPDIRS)
-	$(LD) $(OBJS) /usr/lib/crt1.o $(LDFLAGS) -o $@
-
-$(APP)/Contents/Info.plist: src/md0/Info.plist $(APP)/Contents
-	cp $< $@
-buildit: $(APP)/Contents/Info.plist
-
-run: buildit
-	$(APP)/Contents/MacOS/$(APPNAME)
-
-gdb: buildit
-	echo break malloc_error_break >build/gdb-commands
-	echo run >>build/gdb-commands
-	gdb -f -x build/gdb-commands $(APP)/Contents/MacOS/$(APPNAME) 
-
-gdb-memory: buildit
-	echo run >build/gdb-commands
-	MallocScribbling=1 MallocGuardEdges=1 NSDebugEnabled=YES MallocStackLoggingNoCompact=YES gdb -f -x build/gdb-commands $(APP)/Contents/MacOS/$(APPNAME) 
-
-$(DST_RES)/en.lproj:
+$(APP_DIR)/Contents/MacOS:
 	mkdir -p $@
-buildit: $(DST_RES)/en.lproj
 
-$(DST_RES)/en.lproj/MainMenu.nib: $(SRC_RES)/en.lproj/MainMenu.xib 
-	ibtool --compile $@ $+
-buildit: $(DST_RES)/en.lproj/MainMenu.nib
+$(PROG): $(APP_DIR)/Contents/MacOS
 
-$(RESOURCETARGETS): $(DST_RES)/%: $(SRC_RES)/% 
+$(PROG): $(OBJS) $(VENDOR) $(APPDIRS)
+	$(CXX) $(OBJS) $(LDFLAGS) -o $@
+program: $(PROG)
+
+$(APP_DIR)/Contents/Info.plist: src/md0/Info.plist $(APP_DIR)/Contents
 	cp $< $@
+program: $(APP_DIR)/Contents/Info.plist
 
-buildit: $(RESOURCETARGETS)
+run: program
+	$(PROG)
 
-build/test-runner: $(TESTSRCS) $(LIBSRCS) $(LIBHDRS) $(VENDOR) $(PROTOSRCS) 
-	$(CXX) $(CXXFLAGS) $(TESTCFLAGS) $(LIBSRCS) $(GTESTSRCS) $(TESTSRCS) -o $@ $(LDFLAGS) $(TESTLDFLAGS)
+gdb: program
+	echo break malloc_error_break >$(BUILD)/gdb-commands
+	echo run >>$(BUILD)/gdb-commands
+	gdb -f -x $(BUILD)/gdb-commands $(PROG)
 
-test: build/test-runner
-	build/test-runner
+gdb-memory: program
+	echo break malloc_error_break >$(BUILD)/gdb-commands
+	echo run >>$(BUILD)/gdb-commands
+	MallocScribbling=1 MallocGuardEdges=1 NSDebugEnabled=YES MallocStackLoggingNoCompact=YES gdb -f -x $(BUILD)/gdb-commands $(APP_DIR)/Contents/MacOS/$(APPNAME) 
+
+%.nib: %.xib
+	$(IBTOOL) --compile $@ $+
+
+program: $(DST_RESOURCES)
 
 clean:
+	rm -rf $(BUILD)/$(APPNAME).app
 	rm -rf $(BUILD)/objs
 	rm -rf $(BUILD)/deps
-
 .PHONY: clean
 
 #4158281448
@@ -166,12 +140,12 @@ clean:
 $(VENDOR):
 	./vendor.sh
 
-test-gdb: build/test-runner
-	gdb build/test-runner
+test-gdb: $(BUILD)/test-runner
+	gdb $(BUILD)/test-runner
 
 TAGS:
-	ctags -r src/md0/* $$(find build/vendor/include)
+	ctags -r src/md0/* $$(find $(BUILD)/vendor/include)
 	
 cscope:
-	cscope -b $$(find -E src -type f -regex '.+[.](cc|mm|m|h|c)') $$(find build/vendor/include -type f)
+	cscope -b $$(find -E src -type f -regex '.+[.](cc|mm|m|h|c)') $$(find $(BUILD)/vendor/include -type f)
 

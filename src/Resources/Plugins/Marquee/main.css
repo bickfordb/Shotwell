@@ -3,17 +3,16 @@ body {
   margin: 0;
   padding: 0;
   background: black;
-  background-size: 300px 300px;
 }
 
 div.track-info-container { 
   border-bottom: solid 1px black;
+  border-bottom: solid 1px rgba(107, 118, 125, 0.9);
+  background-image: -webkit-linear-gradient(top, rgb(67, 78, 85), rgb(7, 18, 25));
+  opacity: 0.9;
 }
 div.track-info { 
   padding: 5px; 
-  opacity: 0.9;
-  border-bottom: solid 1px rgba(107, 118, 125, 0.9);
-  background-image: -webkit-linear-gradient(top, rgb(67, 78, 85), rgb(7, 18, 25));
 }
 
 p.track-field {  
@@ -40,3 +39,19 @@ p.track-field:hover {
   text-decoration: underline; 
   cursor: pointer;
 }
+
+div.cover-art-container { 
+  float: left;
+  margin: 5px 5px 5px 10px; 
+  border: solid black 1px;
+}
+
+div.track-info {
+  float: left;
+}
+
+img.cover-art {
+  width: 150px;
+  height: 150px;
+}
+
