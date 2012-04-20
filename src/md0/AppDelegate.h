@@ -1,6 +1,3 @@
-#ifndef _APPDELEGATE_H_
-#define _APPDELEGATE_H_
-
 #import <Cocoa/Cocoa.h>
 
 #import "md0/AppleCoverArtClient.h"
@@ -29,6 +26,8 @@
   Library *library_;
   LocalLibrary *localLibrary_;
   Movie *movie_;
+  NSSet *artists_;
+  NSSet *albums_;
   NSButton *nextButton_;
   NSButton *playButton_;
   NSButton *previousButton_;
@@ -68,6 +67,7 @@
   NSTableView *trackTableView_;
   NSTextField *durationText_;
   NSTextField *elapsedText_;
+  NSTextField *statusBarText_;
   NSTimer *pollLibraryTimer_;
   NSTimer *pollMovieTimer_;
   NSToolbar *toolbar_;
@@ -89,6 +89,7 @@
   int requestPlayTrackAtIndex_;
   int seekToRow_;
   int64_t lastLibraryRefresh_;
+  NSTimer *pollStatsTimer_;
 }
 
 @property (retain) AppleCoverArtClient *appleCoverArtClient;
@@ -131,12 +132,16 @@
 @property (retain) NSMutableDictionary *selectedLibrary;
 @property (retain) NSScrollView *trackTableScrollView;
 @property (retain) NSSearchField *searchField;
+@property (retain) NSSet *albums;
+@property (retain) NSSet *artists;
 @property (retain) NSString *searchQuery;
 @property (retain) NSTableView *trackTableView;
 @property (retain) NSTextField *durationText;
 @property (retain) NSTextField *elapsedText;
+@property (retain) NSTextField *statusBarText;
 @property (retain) NSTimer *pollLibraryTimer;
 @property (retain) NSTimer *pollMovieTimer;
+@property (retain) NSTimer *pollStatsTimer;
 @property (retain) NSToolbar *toolbar;
 @property (retain) NSToolbarItem *nextButtonItem;
 @property (retain) NSToolbarItem *playButtonItem;
@@ -164,6 +169,7 @@
 @property int requestPlayTrackAtIndex;
 @property int seekToRow;
 @property int64_t lastLibraryRefresh;
+@property BOOL isITunesImported;
 
 - (NSArray *)cutTracksAtIndices:(NSIndexSet *)indices;
 - (void)displayElapsed:(int64_t)elapsed duration:(int64_t)duration;
@@ -191,4 +197,3 @@
 
 @end
 
-#endif

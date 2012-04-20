@@ -175,9 +175,10 @@ using namespace std;
   }
   [urlTable_ put:track.id forKey:track.url];
   [trackTable_ put:track forKey:track.id];
-  if (isNew)
+  if (isNew && self.onAdded)
     self.onAdded(self, track);
-  self.onSaved(self, track);
+  else if (self.onSaved)
+    self.onSaved(self, track);
   self.lastUpdatedAt = Now();
 }
 
@@ -196,7 +197,8 @@ using namespace std;
   if (track.url) 
     [urlTable_ delete:track.url];
   self.lastUpdatedAt = Now();
-  self.onDeleted(self, track);
+  if (self.onDeleted)
+    self.onDeleted(self, track);
 }
 
 - (int)count { 

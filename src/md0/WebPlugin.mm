@@ -23,7 +23,7 @@
 }
 
 - (BOOL)hidden { 
-  return self.content.superview != nil;
+  return !(self.content.superview);
 }
 
 - (AppDelegate *)controller  {
@@ -39,6 +39,13 @@
   id window = [webView_ windowScriptObject];
   [window callWebScriptMethod:@"onTrackStarted" withArguments:args];
   [window setValue:Block_copy(^(NSString *s) { DEBUG(@"logit: %@", s); }) forKey:@"logit"];
+}
+
+- (void)openBrowser:(NSString *)url {
+  DEBUG(@"openBrowser: %@", url);
+  NSURL *url0 = [NSURL URLWithString:url];
+  if (url0) 
+    [[NSWorkspace sharedWorkspace] openURL:url0];
 }
 
 - (void)trackSaved:(NSMutableDictionary *)track { 

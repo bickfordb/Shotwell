@@ -16,5 +16,6 @@
 - (void)hide;
 - (void)hideTrackTable;
 - (void)log:(NSString *)msg;
+- (void)openBrowser:(NSString *)url;
 
 @end

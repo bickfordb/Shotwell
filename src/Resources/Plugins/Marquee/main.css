@@ -1,57 +1,73 @@
-* { font-family: lucida grande;}
+* { font-family: lucida grande; }
+*
 body { 
   margin: 0;
   padding: 0;
   background: black;
 }
 
+img, div { margin: 0; padding: 0; }
+ul, li { list-style-type: none; margin: 0; padding: 0; }
+
 div.track-info-container { 
-  border-bottom: solid 1px black;
-  border-bottom: solid 1px rgba(107, 118, 125, 0.9);
   background-image: -webkit-linear-gradient(top, rgb(67, 78, 85), rgb(7, 18, 25));
-  opacity: 0.9;
-}
-div.track-info { 
-  padding: 5px; 
 }
 
-p.track-field {  
+div.track-info {
+  padding: 7px;
+  font-size:8pt;
   color: #ffffff;
+  overflow-x: hidden;
+}
+
+div.info-field, div.track-field { 
   text-shadow: 0 -1px 0 rgba(0, 0, 0, 1.0);
+}
+
+div.track-field {  
   text-align: center;
   margin-top: 3px;
   margin-bottom: 3px; 
   font-style: normal;
-  font-size: 10pt;
+  font-size: 9pt;
   text-align: center;
 }
 
-p.title {
+div.info-field {  
+  text-align: center;
+  margin-top: 3px;
+  margin-bottom: 3px; 
+  font-style: normal;
+  font-size: 8pt;
+  text-align: left;
+}
+
+a { color: white; }
+a:visited {  color: white; }
+
+div.title {
   font-weight: bold;
   font-size: 12pt;
 }
 
-p.url { 
-  font-size: 8pt;
+div.url { 
+  font-size: 7pt;
 }
 
-p.track-field:hover {
+div.track-field:hover {
   text-decoration: underline; 
   cursor: pointer;
 }
 
 div.cover-art-container { 
-  float: left;
-  margin: 5px 5px 5px 10px; 
-  border: solid black 1px;
+  margin: 0;
+  margin: 0;
+  padding: 0;
 }
 
-div.track-info {
-  float: left;
-}
 
 img.cover-art {
-  width: 150px;
-  height: 150px;
+  margin: 0;
+  padding: 0;
 }
 

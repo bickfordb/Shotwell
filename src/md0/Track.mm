@@ -68,20 +68,20 @@ static NSDictionary *tagKeyToTrackKey;
 @synthesize year = year_;
 
 - (void)dealloc { 
-  [album_ release];
-  [artist_ release];
-  [coverArtURL_ release];
-  [duration_ release];
-  [genre_ release];
-  [id_ release];
-  [isVideo_ release];
-  [lastPlayedAt_ release];
-  [publisher_ release];
-  [title_ release];
-  [trackNumber_ release];
-  [updatedAt_ release];
-  [url_ release];
-  [year_ release];
+  self.album = nil;
+  self.artist = nil;
+  self.coverArtURL = nil;
+  self.duration = nil;
+  self.genre = nil;
+  self.id = nil;
+  self.isVideo = nil;
+  self.lastPlayedAt = nil;
+  self.publisher = nil;
+  self.title = nil;
+  self.trackNumber = nil;
+  self.updatedAt = nil;
+  self.url = nil;
+  self.year = nil;
   [super dealloc];
 }
 

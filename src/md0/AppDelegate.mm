@@ -4,10 +4,12 @@
 #include <sys/utsname.h>
 
 #import "md0/AppDelegate.h"
+#import "md0/ITunesScan.h"
 #import "md0/Log.h"
 #import "md0/NSNetServiceAddress.h"
 #import "md0/NSNumberTimeFormat.h"
 #import "md0/NSStringDigest.h"
+#import "md0/Pthread.h"
 #import "md0/RAOP.h"
 #import "md0/RemoteLibrary.h"
 #import "md0/Util.h"
@@ -15,7 +17,8 @@
 
 static const int64_t kLibraryRefreshInterval = 2 * 1000000;
 static const int kDefaultPort = 6226;
-static NSSize kStartupSize = {1100, 600};
+static NSSize kStartupSize = {1300, 650};
+static NSString * const kIsITunesImported = @"IsItunesImported";
 static NSString * const kMD0ServiceType = @"_md0._tcp.";
 static NSString * const kRAOPServiceType = @"_raop._tcp.";
 static NSString * const kNextButton = @"NextButton";
@@ -127,6 +130,7 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize sortChanged = sortChanged_;
 @synthesize sortFields = sortFields_;
 @synthesize startImage = startImage_;
+@synthesize statusBarText = statusBarText_;
 @synthesize stopImage = stopImage_;
 @synthesize stopMenuItem = stopMenuItem_;
 @synthesize toolbar = toolbar_;
@@ -140,6 +144,9 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize volumeControl = volumeControl_;
 @synthesize volumeItem = volumeItem_;
 @synthesize volumeSlider = volumeSlider_;
+@synthesize pollStatsTimer = pollStatsTimer_;
+@synthesize artists = artists_;
+@synthesize albums = albums_;
 
 - (void)dealloc { 
   self.tracks = nil;
@@ -167,6 +174,7 @@ static NSString *GetWindowTitle(Track *t) {
   [mainMenu removeItem:viewMenuItem];
   NSMenu *fileMenu = [fileMenuItem submenu];
   [fileMenu removeAllItems];
+  // Edit Menu:
   NSMenu *editMenu = [editMenuItem submenu];
   [editMenu removeAllItems];
 
@@ -174,8 +182,6 @@ static NSString *GetWindowTitle(Track *t) {
   self.selectAllMenuItem.target = trackTableView_;
   self.selectNoneMenuItem = [editMenu addItemWithTitle:@"Select None" action:@selector(selectNone:) keyEquivalent:@"A"];
   self.selectNoneMenuItem.target = trackTableView_;
-  self.addToLibraryMenuItem = [fileMenu addItemWithTitle:@"Add to Library" action:@selector(addToLibrary:) keyEquivalent:@"o"];
-  self.addToLibraryMenuItem.target = self;
   self.cutMenuItem = [editMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
   self.cutMenuItem.target = self;
   self.copyMenuItem = [editMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
@@ -185,6 +191,12 @@ static NSString *GetWindowTitle(Track *t) {
   self.deleteMenuItem.target = self;
   self.pasteMenuItem = [editMenu addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
   self.pasteMenuItem.target = self;
+
+  // File Menu
+  self.addToLibraryMenuItem = [fileMenu addItemWithTitle:@"Add to Library" action:@selector(addToLibrary:) keyEquivalent:@"o"];
+  self.addToLibraryMenuItem.target = self;
+
+  // 
 }
 
 - (void)addToLibrary:(id)sender { 
@@ -205,18 +217,17 @@ static NSString *GetWindowTitle(Track *t) {
   if (library_ != localLibrary_)
     return;
   NSIndexSet *indices = [trackTableView_ selectedRowIndexes];
-  [self cutTracksAtIndices:indices];  
+  ForkWith(^{
+    [self cutTracksAtIndices:indices];  
+  });
 }
 
 - (NSArray *)cutTracksAtIndices:(NSIndexSet *)indices { 
   NSArray *tracks = [NSArray array];
   @synchronized (tracks_) {
     tracks = [tracks_ objectsAtIndexes:indices];
-    [tracks_ removeObjectsAtIndexes:indices];
   }
-  @synchronized(allTracks_) {
-    [allTracks_ removeObjectsInArray:tracks_];
-  }
+    
   for (Track *o in tracks) {
     [localLibrary_ delete:o];
     needsReload_ = YES;
@@ -284,7 +295,7 @@ static NSString *GetWindowTitle(Track *t) {
 }
 - (void)setupWindow {
   self.mainWindow = [[[NSWindow alloc] 
-    initWithContentRect:CGRectMake(150, 150, kStartupSize.width, kStartupSize.height)
+    initWithContentRect:CGRectMake(50, 50, kStartupSize.width, kStartupSize.height)
     styleMask:NSClosableWindowMask | NSTitledWindowMask | NSResizableWindowMask | NSMiniaturizableWindowMask 
     backing:NSBackingStoreBuffered
     defer:YES] autorelease];
@@ -319,6 +330,30 @@ static NSString *GetWindowTitle(Track *t) {
   contentVerticalSplit_.dividerColor = [NSColor blackColor];
   contentVerticalSplit_.dividerThickness = 1;
   [contentHorizontalSplit_ addSubview:contentVerticalSplit_];
+}
+
+- (void)setupStatusBarText { 
+  CGRect frame;
+  int windowWidth = ((NSView *)[mainWindow_ contentView]).bounds.size.width;
+  int w = 300;
+  int x = (windowWidth / 2.0) - (300.0 / 2.0) + 5.0;
+
+  self.statusBarText = [[[NSTextField alloc] initWithFrame:CGRectMake(x, 3, w, 18)] autorelease];
+  self.statusBarText.stringValue = @"booting up!";
+  self.statusBarText.editable = NO;
+  self.statusBarText.selectable = NO;
+  self.statusBarText.bordered = NO;
+  self.statusBarText.bezeled = NO;
+  self.statusBarText.backgroundColor = [NSColor clearColor];
+  self.statusBarText.autoresizingMask = NSViewWidthSizable;
+  self.statusBarText.alignment = NSCenterTextAlignment;
+
+  NSTextFieldCell *cell = (NSTextFieldCell *)[self.statusBarText cell];
+  cell.font = [NSFont systemFontOfSize:11.0];
+  cell.font = [NSFont systemFontOfSize:11.0];
+  [cell setControlSize:NSSmallControlSize];
+  [cell setBackgroundStyle:NSBackgroundStyleRaised];
+  [[mainWindow_ contentView] addSubview:self.statusBarText];
 }
 
 - (void)setupAudioSelect { 
@@ -668,6 +703,7 @@ static NSString *GetWindowTitle(Track *t) {
   [self setupTrackTable];
   [self setupAudioSelect];
   [self setupLibrarySelect];
+  [self setupStatusBarText];
   [self setupMenu];
 
   self.sortFields = [NSMutableArray array];
@@ -677,8 +713,8 @@ static NSString *GetWindowTitle(Track *t) {
     [sortFields_ addObject:s];
   }
   [self updateTableColumnHeaders];
-  predicateChanged_ = YES;
-  sortChanged_ = YES;
+  self.predicateChanged = YES;
+  self.sortChanged = YES;
 
   self.requestPlayTrackAtIndex = -1;
   pollMovieTimer_ = [NSTimer timerWithTimeInterval:.15 target:self selector:@selector(onPollMovieTimer:) userInfo:nil repeats:YES];
@@ -686,11 +722,48 @@ static NSString *GetWindowTitle(Track *t) {
   [[NSRunLoop mainRunLoop] addTimer:pollMovieTimer_ forMode:NSDefaultRunLoopMode];
   pollLibraryTimer_ = [NSTimer timerWithTimeInterval:10.0 target:self selector:@selector(onPollLibraryTimer:) userInfo:nil repeats:YES];
   [[NSRunLoop mainRunLoop] addTimer:pollLibraryTimer_ forMode:NSDefaultRunLoopMode];
+  self.pollStatsTimer = [NSTimer timerWithTimeInterval:5.0 target:self selector:@selector(onPollStatsTimer:) userInfo:nil repeats:YES];
+  [[NSRunLoop mainRunLoop] addTimer:self.pollStatsTimer forMode:NSDefaultRunLoopMode];
   [self setupPlugins];
   [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
 
-  //[self.localLibrary scan:self.pathsToAutomaticallyScan];
+  // FIXME: Defer this until a minute after startup
+  [self.localLibrary scan:self.pathsToAutomaticallyScan];
+
+  if (!self.isITunesImported) {
+    NSMutableArray *paths = [NSMutableArray array];
+      GetITunesTracks(^(Track *t) {
+      [paths addObject:t.url];
+    });
+    [self.localLibrary scan:paths];
+  }
 }
+
+- (void)onPollStatsTimer:(NSTimer *)timer { 
+  NSMutableSet *artists = [NSMutableSet set];
+  NSMutableSet *albums = [NSMutableSet set];
+
+  @synchronized(tracks_) {
+    for (Track *t in tracks_) {
+      if (t.artist)
+        [artists addObject:t.artist];
+      if (t.album) 
+        [albums addObject:t.album];
+    }
+  }
+  self.artists = artists;
+  self.albums = albums;
+} 
+
+- (BOOL)isITunesImported { 
+  return [[NSUserDefaults standardUserDefaults] boolForKey:kIsITunesImported];
+}
+
+- (void)setIsITunesImported:(BOOL)st { 
+  [[NSUserDefaults standardUserDefaults] setBool:st forKey:kIsITunesImported];
+  [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
 
 - (void)setupRAOP { 
   self.raopServiceBrowser = [[[NSNetServiceBrowser alloc] init] autorelease];
@@ -975,6 +1048,11 @@ static NSString *GetWindowTitle(Track *t) {
   }
 
   mainWindow_.title = GetWindowTitle(track_);
+  int numTracks = 0;
+  @synchronized (tracks_) {
+    numTracks = tracks_.count;
+  }
+  self.statusBarText.stringValue = [NSString stringWithFormat:@"%d Tracks, %d Artists, %d Albums", numTracks, self.artists.count, self.albums.count]; 
 
   if (movie_ && ([movie_ state] == kEOFAudioSourceState)) {
     requestNext_ = YES;
@@ -1041,19 +1119,18 @@ static NSString *GetWindowTitle(Track *t) {
     self.predicateChanged = YES;
     self.sortChanged = YES;
     self.needsReload = YES;
-    self.sortChanged = YES;
     self.lastLibraryRefresh = Now(); 
   }
-  if (sortChanged_) { 
+  if (self.sortChanged) { 
     [self executeSort];
-    predicateChanged_ = YES;
-    needsReload_ = YES;
-    sortChanged_ = NO; 
+    self.predicateChanged = YES;
+    self.needsReload = YES;
+    self.sortChanged = NO; 
   } 
-  if (predicateChanged_) { 
+  if (self.predicateChanged) { 
     [self executeSearch]; 
-    predicateChanged_ = NO; 
-    needsReload_ = YES; 
+    self.predicateChanged = NO; 
+    self.needsReload = YES; 
   } 
 
   if (needsReload_) { 
@@ -1100,8 +1177,9 @@ static NSString *GetWindowTitle(Track *t) {
     [allTracks_ addObject:t];
   }
     
-  self.sortChanged = YES;
-  self.predicateChanged = YES;
+  //self.sortChanged = YES;
+  //self.predicateChanged = YES;
+  self.needsReload = YES;
 }
 
 - (void)library:(Library *)l savedTrack:(Track *)t {
@@ -1171,7 +1249,7 @@ static NSString *GetWindowTitle(Track *t) {
     }
   }
   @synchronized(tracks_) {
-    self.track = (index > 0 && index < tracks_.count) ? [tracks_ objectAtIndex:index] : nil;
+    self.track = (index >= 0 && index < tracks_.count) ? [tracks_ objectAtIndex:index] : nil;
   }
   NSNetService *netService = [self.selectedAudioOutput objectForKey:@"service"];
 

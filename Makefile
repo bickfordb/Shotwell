@@ -62,7 +62,7 @@ RESOURCES_DIR := $(APP_DIR)/Contents/Resources
 SRC_RES := src/Resources
 SRC_RESOURCES = $(wildcard $(SRC_RES)/*.png $(SRC_RES)/*.pdf $(SRC_RES)/*.js)
 #SRC_RESOURCES = $(wildcard $(SRC_RES)/**/**/**)
-DST_RESOURCES := $(patsubst src/Resources/%, $(APP_DIR)/Contents/Resources/%, $(wildcard src/Resources/*.* src/Resources/**/*.* src/Resources/**/**/*.*))
+DST_RESOURCES := $(patsubst src/Resources/%, $(APP_DIR)/Contents/Resources/%, $(wildcard src/Resources/*.* src/Resources/**/*.* src/Resources/**/**/*.* src/Resources/**/**/**/*.* src/Resources/**/**/**/**/*.*))
 OBJS := $(patsubst src/md0/%, $(BUILD)/objs/%, $(patsubst %.mm, %.o, $(wildcard src/md0/*.mm))) 
 DEPS := $(patsubst src/md0/%, $(BUILD)/deps/%, $(patsubst %.mm, %.d, $(wildcard src/md0/*.mm))) 
 
@@ -133,8 +133,6 @@ clean:
 	rm -rf $(BUILD)/objs
 	rm -rf $(BUILD)/deps
 .PHONY: clean
-
-#4158281448
 
 # build vendor libraries
 $(VENDOR):
