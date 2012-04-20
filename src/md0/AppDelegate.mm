@@ -14,6 +14,7 @@
 #import "md0/RemoteLibrary.h"
 #import "md0/Util.h"
 #import "md0/WebPlugin.h"
+#import "md0/TableView.h"
 
 static const int64_t kLibraryRefreshInterval = 2 * 1000000;
 static const int kDefaultPort = 6226;
@@ -149,11 +150,12 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize albums = albums_;
 
 - (void)dealloc { 
-  self.tracks = nil;
   self.allTracks = nil;
   self.appleCoverArtClient = nil;
   self.contentView = nil;
   self.mainWindow = nil;
+  self.trackTableView = nil;
+  self.tracks = nil;
   [super dealloc];
 }
 
@@ -196,7 +198,19 @@ static NSString *GetWindowTitle(Track *t) {
   self.addToLibraryMenuItem = [fileMenu addItemWithTitle:@"Add to Library" action:@selector(addToLibrary:) keyEquivalent:@"o"];
   self.addToLibraryMenuItem.target = self;
 
-  // 
+
+  // Playback Menu
+
+  NSMenuItem *playbackItem = [mainMenu insertItemWithTitle:@"Playback" action:nil keyEquivalent:@"" atIndex:3];
+  playbackItem.submenu = [[[NSMenu alloc] initWithTitle:@"Playback"] autorelease];
+  NSMenu *playbackMenu = playbackItem.submenu;
+
+  NSMenuItem *playItem = [playbackMenu addItemWithTitle:@"Play" action:@selector(playClicked:) keyEquivalent:@" "];
+  [playItem setKeyEquivalentModifierMask:0];
+  NSString *leftArrow = [NSString stringWithFormat:@"%C", 0xF702];
+  NSString *rightArrow = [NSString stringWithFormat:@"%C", 0xF703];
+  NSMenuItem *previousItem = [playbackMenu addItemWithTitle:@"Previous" action:@selector(previousClicked:) keyEquivalent:leftArrow];
+  NSMenuItem *nextItem = [playbackMenu addItemWithTitle:@"Next" action:@selector(nextClicked:) keyEquivalent:rightArrow];
 }
 
 - (void)addToLibrary:(id)sender { 
@@ -451,7 +465,15 @@ static NSString *GetWindowTitle(Track *t) {
   trackTableScrollView_.autoresizesSubviews = YES;
   trackTableScrollView_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
   trackTableScrollView_.focusRingType = NSFocusRingTypeNone;
-  trackTableView_ = [[NSTableView alloc] initWithFrame:CGRectMake(0, 0, 364, 200)];
+  self.trackTableView = [[[TableView alloc] initWithFrame:CGRectMake(0, 0, 364, 200)] autorelease];
+  __block AppDelegate *weakSelf = self;
+  self.trackTableView.onKeyDown = ^(NSEvent *e) {
+    if (e.keyCode == 49) {
+      [weakSelf playClicked:nil];
+      return false;
+    }
+    return true;
+  };
   [trackTableView_ setUsesAlternatingRowBackgroundColors:YES];
   [trackTableView_ setGridStyleMask:NSTableViewSolidVerticalGridLineMask];
   [trackTableView_ setAllowsMultipleSelection:YES];

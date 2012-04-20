@@ -11,6 +11,7 @@
 #import "md0/SplitView.h"
 #import "md0/Track.h"
 #import "md0/Plugin.h"
+#import "md0/TableView.h"
 
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSNetServiceBrowserDelegate, NSNetServiceDelegate, NSTableViewDataSource, NSTableViewDelegate, NSToolbarDelegate> {
   AppleCoverArtClient *appleCoverArtClient_;
@@ -64,7 +65,7 @@
   NSScrollView *trackTableScrollView_;
   NSSearchField *searchField_;
   NSString *searchQuery_;
-  NSTableView *trackTableView_;
+  TableView *trackTableView_;
   NSTextField *durationText_;
   NSTextField *elapsedText_;
   NSTextField *statusBarText_;
@@ -135,7 +136,7 @@
 @property (retain) NSSet *albums;
 @property (retain) NSSet *artists;
 @property (retain) NSString *searchQuery;
-@property (retain) NSTableView *trackTableView;
+@property (retain) TableView *trackTableView;
 @property (retain) NSTextField *durationText;
 @property (retain) NSTextField *elapsedText;
 @property (retain) NSTextField *statusBarText;
@@ -194,6 +195,6 @@
 - (void)library:(Library *)l addedTrack:(Track *)t;
 - (void)library:(Library *)l savedTrack:(Track *)t;
 - (void)library:(Library *)l deletedTrack:(Track *)t;
-
+- (void)playClicked:(id)sender;
 @end
 
