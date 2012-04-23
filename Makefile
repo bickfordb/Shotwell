@@ -25,8 +25,6 @@ LDFLAGS += -ljansson
 LDFLAGS += -levent
 LDFLAGS += -levent_pthreads
 LDFLAGS += -lstdc++
-LDFLAGS += -lpcrecpp
-LDFLAGS += -lpcre
 LDFLAGS += -lpthread
 LDFLAGS += -licuuc
 LDFLAGS += -licudata
@@ -48,13 +46,11 @@ LDFLAGS += -framework CoreAudio
 LDFLAGS += -framework CoreServices 
 LDFLAGS += -framework CoreFoundation 
 LDFLAGS += -framework Foundation 
-LDFLAGS += -framework JavaScriptCore 
 LDFLAGS += -framework IOKit 
-#LDFLAGS += -framework OpenGL 
-LDFLAGS += -framework VideoDecodeAcceleration 
+LDFLAGS += -framework JavaScriptCore 
 LDFLAGS += -framework QuartzCore
+LDFLAGS += -framework VideoDecodeAcceleration 
 LDFLAGS += -framework WebKit 
-#LDFLAGS += -lffi
 
 RESOURCES_DIR := $(APP_DIR)/Contents/Resources
 
@@ -86,7 +82,8 @@ $(BUILD)/objs:
 $(BUILD)/deps: 
 	mkdir -p $(BUILD)/deps
 
-$(BUILD)/deps/%.d: src/md0/%.mm
+
+$(BUILD)/deps/%.d: src/md0/%.mm $(VENDOR)
 	mkdir -p $(BUILD)/deps
 	$(CXX) $(CXXFLAGS) -MM $< |sed -e 's/^\([a-z0-9A-Z]\)/$(BUILD)\/objs\/\1/' >$@
 
@@ -141,9 +138,11 @@ $(VENDOR):
 test-gdb: $(BUILD)/test-runner
 	gdb $(BUILD)/test-runner
 
-TAGS:
-	ctags -r src/md0/* $$(find $(BUILD)/vendor/include)
-	
+TAGS: src/md0/*.mm src/md0/*.h
+	#ctags -r src/md0/* $$(find $(BUILD)/vendor/include)
+	etags --language=objc -o TAGS src/md0/*.h src/md0/*.mm
+
 cscope:
 	cscope -b $$(find -E src -type f -regex '.+[.](cc|mm|m|h|c)') $$(find $(BUILD)/vendor/include -type f)
+
 

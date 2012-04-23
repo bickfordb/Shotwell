@@ -1,0 +1,20 @@
+
+Navigation
+
+Try to expose as many operations as possible through keyword search and URLs
+Avoid odd filtering experiences like the iTunes artist/album filter tables.  It requires keyboard/mouse coordination to unselect items/groups of items.  A user is likely only interested in one artist/album at a time so it doesn't make sense to constantly offer a list of choices.   
+Display history
+Use breadcrumbs to navigate through collections.  E.g. Local Library -> Artists -> Atlas Sound -> Parallax
+
+Displaying information
+
+Add web content wherever possible
+Add opportunities to share 
+Add album art wherever possible
+
+Sharing
+
+Passively share your listening.
+Share your listening stats.
+Actively share things you're interested in.
+

@@ -1,8 +1,6 @@
 
 #import "Slider.h"
 
-NSString *kSliderIsUpNotification = @"SliderIsUpNotification";
-
 @implementation Slider
 
 - (id)initWithFrame:(NSRect)frame { 
@@ -17,7 +15,9 @@ NSString *kSliderIsUpNotification = @"SliderIsUpNotification";
   isMouseDown_ = YES;
   [super mouseDown:event];
   isMouseDown_ = NO;
-  [[NSNotificationCenter defaultCenter] postNotificationName:kSliderIsUpNotification object:self];
+  // call action again
+  if (self.target)
+    [self.target performSelector:self.action withObject:self]; 
 }
 
 - (BOOL)isMouseDown {

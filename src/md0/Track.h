@@ -8,6 +8,7 @@ extern NSString * const kCreatedAt;
 extern NSString * const kDuration;
 extern NSString * const kGenre;
 extern NSString * const kID;
+extern NSString * const kIsAudio;
 extern NSString * const kIsVideo;
 extern NSString * const kLastPlayedAt;
 extern NSString * const kPublisher;
@@ -23,6 +24,7 @@ extern NSArray *allTrackKeys;
   NSNumber *duration_;
   NSNumber *id_;
   NSNumber *isVideo_;
+  NSNumber *isAudio_;
   NSNumber *lastPlayedAt_;
   NSNumber *updatedAt_;
   NSString *album_;
@@ -35,6 +37,8 @@ extern NSArray *allTrackKeys;
   NSString *url_;
   NSString *year_;
 }
+
+- (bool)isAudioOrVideo;
 
 /* Read the ID3 tag stored at URL */
 - (int)readTag;
@@ -49,11 +53,13 @@ extern NSArray *allTrackKeys;
 @property (retain, atomic) NSString *url;
 @property (retain, atomic) NSString *year;
 @property (retain, atomic) NSNumber *isVideo;
+@property (retain, atomic) NSNumber *isAudio;
 @property (retain, atomic) NSNumber *createdAt;
 @property (retain, atomic) NSNumber *duration;
 @property (retain, atomic) NSNumber *id;
 @property (retain, atomic) NSNumber *lastPlayedAt;
 @property (retain, atomic) NSNumber *updatedAt;
+- (bool)isLocalMediaURL;
 @end
  
 // vim: filetype=objcpp

@@ -3,7 +3,6 @@
 #include <event2/http.h>
 #include <pthread.h>
 #include <event2/buffer.h>
-#include <pcrecpp.h>
 #import "LocalLibrary.h"
 #import "Loop.h"
 
@@ -13,9 +12,6 @@ extern const int kDaemonDefaultPort;
 @interface Daemon : NSObject {
   LocalLibrary *library_;
   struct evhttp *eventHTTP_;
-  pcrecpp::RE *rootPattern_;
-  pcrecpp::RE *trackPattern_;
-  pcrecpp::RE *libraryPattern_;
   Loop *loop_;
 }
 

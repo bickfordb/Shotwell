@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <xlocale.h>
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations" 
 
 #import "md0/AES.h"
 #import "md0/Base64.h"

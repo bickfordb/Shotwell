@@ -20,7 +20,7 @@ typedef NSComparisonResult (*ComparisonFunc)(id left, id right);
 - (id)initWithKey:(NSString *)key direction:(Direction)direction comparator:(ComparisonFunc)comparator;
 @end
 
+NSComparator GetSortComparatorFromSortFields(NSArray *sortFields);
 NSComparisonResult NaturalComparison(id left, id right);
-NSComparisonResult CompareWithSortFields(id l, id r, void *ctx);
 
 // vim filetype=objcpp

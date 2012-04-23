@@ -38,6 +38,7 @@ NSString * const kCoverArtURL = @"coverArtURL";
 NSString * const kDuration = @"duration";
 NSString * const kGenre = @"genre";
 NSString * const kID = @"id";
+NSString * const kIsAudio = @"isAudio";
 NSString * const kIsVideo = @"isVideo";
 NSString * const kLastPlayedAt = @"lastPlayedAt";
 NSString * const kPublisher = @"publisher";
@@ -49,6 +50,7 @@ NSString * const kYear = @"year";
 
 NSArray *allTrackKeys = nil;
 static NSDictionary *tagKeyToTrackKey; 
+static NSArray *mediaExtensions = nil;
 
 @implementation Track
 @synthesize album = album_;
@@ -58,6 +60,7 @@ static NSDictionary *tagKeyToTrackKey;
 @synthesize duration = duration_;
 @synthesize genre = genre_;
 @synthesize id = id_;
+@synthesize isAudio = isAudio_;
 @synthesize isVideo = isVideo_;
 @synthesize lastPlayedAt = lastPlayedAt_;
 @synthesize title = title_;
@@ -74,6 +77,7 @@ static NSDictionary *tagKeyToTrackKey;
   self.duration = nil;
   self.genre = nil;
   self.id = nil;
+  self.isAudio = nil;
   self.isVideo = nil;
   self.lastPlayedAt = nil;
   self.publisher = nil;
@@ -85,8 +89,11 @@ static NSDictionary *tagKeyToTrackKey;
   [super dealloc];
 }
 
+
 + (void)initialize {
   AVInit(); 
+  mediaExtensions = [[NSArray arrayWithObjects:@".mp3", @".ogg", @".m4a", @".aac", @".avi", @".mp4", @".fla", @".flc", @".mov", @".m4a", @".mkv", @".mpg", nil] retain];
+
   allTrackKeys = [[NSArray arrayWithObjects:
     kAlbum,
     kArtist,
@@ -95,6 +102,7 @@ static NSDictionary *tagKeyToTrackKey;
     kDuration,
     kGenre,
     kID, 
+    kIsAudio,
     kIsVideo,
     kLastPlayedAt,
     kPublisher,
@@ -142,6 +150,18 @@ static NSDictionary *tagKeyToTrackKey;
   return [id_ hash];
 }
 
+- (bool)isLocalMediaURL {
+  NSString *s = self.url;
+  s = s.lowercaseString;
+  if (!s || !s.length)
+    return false;
+  for (NSString *ext in mediaExtensions) {
+    if ([s hasSuffix:ext]) 
+      return true;
+  }
+  return false;
+}
+
 - (int)readTag {
   int ret = 0;
   AVFormatContext *c = NULL;
@@ -149,9 +169,14 @@ static NSDictionary *tagKeyToTrackKey;
   AVDictionary *d = NULL;
   AVDictionaryEntry *tag = NULL;
   int audioStreamIndex = -1;
+  int format_ret = -1;
 
   if (!url_ || !url_.length) 
     return -1;
+
+  if (!self.isLocalMediaURL)
+    return -1;
+
   memset(&st, 0, sizeof(st));
   if (stat(url_.UTF8String, &st) < 0) {
     ret = -2;
@@ -180,7 +205,11 @@ static NSDictionary *tagKeyToTrackKey;
   for (int i = 0; i < c->nb_streams; i++) {
     if (c->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
       self.isVideo = [NSNumber numberWithBool:YES];
-      break;
+      continue;
+    }
+    if (c->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
+      self.isAudio = [NSNumber numberWithBool:YES];
+      continue;
     }
   } 
 
@@ -202,6 +231,14 @@ done:
   return ret;
 }
 
+- (bool)isAudioOrVideo { 
+  if (self.isVideo) {
+    return (bool)(self.isVideo.boolValue ? true : false);
+  } else if (self.isAudio) {
+    return (bool)(self.isAudio.boolValue ? true : false);
+  }
+  return false;
+}
 
 - (json_t *)getJSON {
   NSDictionary *data = [self dictionaryWithValuesForKeys:allTrackKeys];

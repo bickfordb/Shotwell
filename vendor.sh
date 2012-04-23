@@ -22,36 +22,6 @@ export CPPFLAGS="-I${INSTALL_PREFIX}/include"
 export LDFLAGS="-L${INSTALL_PREFIX}/lib"
 export PATH="${INSTALL_PREFIX}/bin:$PATH"
 
-if [ ! -e "${BUILDROOT}/zlib.stamp" ];
-then
-    echo "building zlib"
-    rm -rf ${SCRATCH}
-    mkdir -p ${SCRATCH}
-    cd ${SCRATCH}
-    tar xzvf ${VENDOR}/zlib-1.2.6.tar.gz
-    cd zlib-1.2.6
-    ./configure --prefix=${INSTALL_PREFIX} --static
-    #make clean
-    make
-    make install
-    touch ${BUILDROOT}/zlib.stamp
-fi  
-
-if [ ! -e "${BUILDROOT}/openssl.stamp" ];
-then
-    echo "building openssl"
-    rm -rf ${SCRATCH}
-    mkdir -p ${SCRATCH}
-    cd ${SCRATCH}
-    tar xzvf ${VENDOR}/openssl-1.0.0g.tar.gz
-    cd openssl-1.0.0g
-    ./Configure --prefix=${INSTALL_PREFIX} --openssldir=${INSTALL_PREFIX}/openssl darwin64-x86_64-cc
-    make clean
-    make
-    make install
-    touch ${BUILDROOT}/openssl.stamp
-fi  
-
 if [ ! -e "${BUILDROOT}/libav.stamp" ];
 then
     echo "building libav"
@@ -85,19 +55,19 @@ then
    touch ${BUILDROOT}/gtest.stamp
 fi  
 
-if [ ! -e "${BUILDROOT}/pcre.stamp" ];
-then
-    echo "building pcre"
-    rm -rf ${SCRATCH}
-    mkdir -p ${SCRATCH}
-    cd ${SCRATCH}
-    tar xzvf ${VENDOR}/pcre-8.30.tar.gz
-    cd pcre-8.30
-    ./configure --prefix=${INSTALL_PREFIX} --disable-shared
-    make
-    make install
-    touch ${BUILDROOT}/pcre.stamp
-fi  
+##if [ ! -e "${BUILDROOT}/pcre.stamp" ];
+##then
+##    echo "building pcre"
+##    rm -rf ${SCRATCH}
+##    mkdir -p ${SCRATCH}
+##    cd ${SCRATCH}
+##    tar xzvf ${VENDOR}/pcre-8.30.tar.gz
+##    cd pcre-8.30
+##    ./configure --prefix=${INSTALL_PREFIX} --disable-shared
+##    make
+##    make install
+##    touch ${BUILDROOT}/pcre.stamp
+##fi  
 
 if [ ! -e "${BUILDROOT}/leveldb.stamp" ];
 then
@@ -157,16 +127,16 @@ then
   touch ${BUILDROOT}/icu.stamp
 fi
 
-if [ ! -e "${BUILDROOT}/jscocoa.stamp" ]
-then
-  rm -rf ${SCRATCH}
-  mkdir -p ${SCRATCH}
-  cd ${SCRATCH}
-  tar xzvf ${VENDOR}/jscocoa-32a49dc6b3020.tar.gz
-  rm -rf ${INSTALL_PREFIX}/share/jscocoa
-  install -d ${INSTALL_PREFIX}/share/jscocoa
-  cd jscocoa-32a49dc6b3020/JSCocoa
-  install *.h *.m ${INSTALL_PREFIX}/share/jscocoa
-  touch ${BUILDROOT}/jscocoa.stamp
-fi
+##if [ ! -e "${BUILDROOT}/jscocoa.stamp" ]
+##then
+##  rm -rf ${SCRATCH}
+##  mkdir -p ${SCRATCH}
+##  cd ${SCRATCH}
+##  tar xzvf ${VENDOR}/jscocoa-32a49dc6b3020.tar.gz
+##  rm -rf ${INSTALL_PREFIX}/share/jscocoa
+##  install -d ${INSTALL_PREFIX}/share/jscocoa
+##  cd jscocoa-32a49dc6b3020/JSCocoa
+##  install *.h *.m ${INSTALL_PREFIX}/share/jscocoa
+##  touch ${BUILDROOT}/jscocoa.stamp
+##fi
 touch ${BUILDROOT}/vendor.stamp

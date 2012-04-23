@@ -1,10 +1,12 @@
+#include <Security/SecKey.h>
 #include <arpa/inet.h>
-#include <openssl/aes.h>
-#include <openssl/rsa.h>
-#include <event2/buffer.h>
 #include <errno.h>
+#include <event2/buffer.h>
+#include <openssl/aes.h>
 #include <openssl/rand.h>
+#include <openssl/rsa.h>
 #include <stdlib.h>
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations" 
 
 #import "md0/Base64.h"
 #import "md0/Log.h"

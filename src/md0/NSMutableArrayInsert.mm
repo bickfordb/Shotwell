@@ -18,7 +18,7 @@ static NSUInteger Insert(NSMutableArray *a, id obj, NSComparator comparator, NSU
 @implementation NSMutableArray (Insert)
 
 - (void)insert:(id)obj sortedWithComparator:(NSComparator)c {
-  if (self.count == 0) {
+  if (self.count == 0 || !c) {
     [self addObject:obj];
     return;
   }

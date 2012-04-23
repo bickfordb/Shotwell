@@ -76,7 +76,7 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 
 @implementation Daemon
 - (bool)handleHomeRequest:(Request *)r { 
-  if (!rootPattern_->FullMatch(r.path.UTF8String))
+  if (![r.path isEqualToString:@"/"])
     return false;
   [r addResponseHeader:@"Content-Type" value:@"application/json"];
   struct utsname uname_data;
@@ -90,7 +90,7 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 }
 
 - (bool)handleLibraryRequest:(Request *)r {
-  if (!libraryPattern_->FullMatch(r.path.UTF8String))
+  if (![r.path isEqualToString:@"/library"])
     return false;
   [r addResponseHeader:@"Content-Type" value:@"application/json"];
   NSMutableArray *tracks = [NSMutableArray array];
@@ -108,12 +108,17 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 }
 
 - (bool)handleTrackRequest:(Request *)request { 
-  string track_path;
-  if (!trackPattern_->FullMatch(request.path.UTF8String, &track_path)) {
+  NSScanner *scanner = [NSScanner scannerWithString:request.path];
+  NSString *s = nil;
+  if (![scanner scanString:@"/tracks/" intoString:&s]) {
+    return false;  
+  }
+  int trackID = -1;
+  if (![scanner scanInt:&trackID]) {
     return false;
   }
+
   // make sure it's a real track
-  int64_t trackID = (int64_t)[[NSString stringWithUTF8String:track_path.c_str()] longLongValue];
   Track *track = [library_ get:[NSNumber numberWithLongLong:trackID]];
   if (!track) {
     DEBUG(@"no track");
@@ -164,9 +169,9 @@ static void OnRequest(evhttp_request *r, void *ctx) {
   self = [super init];
   if (self) { 
     library_ = [library retain];
-    rootPattern_ = new pcrecpp::RE("^/$");
-    trackPattern_ = new pcrecpp::RE("^/tracks/([^/]+)$");
-    libraryPattern_ = new pcrecpp::RE("^/library$");
+    //rootPattern_ = new pcrecpp::RE("^/$");
+    //trackPattern_ = new pcrecpp::RE("^/tracks/([^/]+)$");
+    //libraryPattern_ = new pcrecpp::RE("^/library$");
     loop_ = [[Loop alloc] init];
     eventHTTP_ = evhttp_new(loop_.base);
     evhttp_bind_socket(eventHTTP_, host.UTF8String, port);
@@ -178,9 +183,9 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 - (void)dealloc { 
   [loop_ release];
   [library_ release];
-  delete rootPattern_;
-  delete trackPattern_;
-  delete libraryPattern_;
+  //delete rootPattern_;
+  //delete trackPattern_;
+  //delete libraryPattern_;
   evhttp_free(eventHTTP_);
   [super dealloc];
 }

@@ -4,6 +4,7 @@
 #include <sys/uio.h>
 #include <unistd.h>
 #include <openssl/rand.h>
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations" 
 
 @implementation NSData (Random)
 + (NSData *)randomDataWithLength:(size_t)length  {

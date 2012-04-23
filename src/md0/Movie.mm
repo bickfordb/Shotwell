@@ -16,6 +16,7 @@
 
 - (id)initWithURL:(NSString *)url address:(NSString *)address port:(uint16_t)port {
   self = [super init];
+
   if (self) { 
     self.url = url;
     self.source = [[((LibAVSource *)[LibAVSource alloc]) initWithURL:url_] autorelease];

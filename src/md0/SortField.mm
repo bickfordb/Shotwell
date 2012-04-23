@@ -23,23 +23,26 @@
 }
 @end
 
-NSComparisonResult CompareWithSortFields(id l, id r, void *ctx) {
-  NSArray *sortFields = (NSArray *)ctx;
-  NSObject *left = (NSObject *)l;
-  NSObject *right = (NSObject *)r;
-  NSComparisonResult cmp = NSOrderedSame;
-  for (SortField *f in sortFields) {
-    NSString *key = f.key;
-    Direction d = f.direction;
-    id leftValue = [left valueForKey:key];
-    id rightValue = [right valueForKey:key];
-    cmp = f.comparator(leftValue, rightValue);
-    if (f.direction == Descending) 
+NSComparator GetSortComparatorFromSortFields(NSArray *sortFields) {
+  NSComparator comparator = ^(id l, id r) {
+      NSObject *left = (NSObject *)l;
+      NSObject *right = (NSObject *)r;
+      NSComparisonResult cmp = NSOrderedSame;
+      for (SortField *f in sortFields) {
+      NSString *key = f.key;
+      Direction d = f.direction;
+      id leftValue = [left valueForKey:key];
+      id rightValue = [right valueForKey:key];
+      cmp = f.comparator(leftValue, rightValue);
+      if (f.direction == Descending) 
       cmp *= -1;
-    if (cmp != NSOrderedSame) 
+      if (cmp != NSOrderedSame) 
       break;
-  }
-  return cmp;
+    }
+    return cmp;
+  };
+  comparator = [comparator copy];
+  return comparator;
 }
 
 NSComparisonResult NaturalComparison(id left, id right) {

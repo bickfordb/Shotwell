@@ -8,6 +8,7 @@
 #import "md0/Log.h"
 #import "md0/NSNetServiceAddress.h"
 #import "md0/NSNumberTimeFormat.h"
+#import "md0/NSMutableArrayInsert.h"
 #import "md0/NSStringDigest.h"
 #import "md0/Pthread.h"
 #import "md0/RAOP.h"
@@ -19,22 +20,50 @@
 static const int64_t kLibraryRefreshInterval = 2 * 1000000;
 static const int kDefaultPort = 6226;
 static NSSize kStartupSize = {1300, 650};
+static NSString * const kDefaultWindowTitle = @"MD0";
 static NSString * const kIsITunesImported = @"IsItunesImported";
 static NSString * const kMD0ServiceType = @"_md0._tcp.";
-static NSString * const kRAOPServiceType = @"_raop._tcp.";
 static NSString * const kNextButton = @"NextButton";
+static NSString * const kPath = @"Path";
+static NSString * const kPathsToScan = @"PathsToScan";
 static NSString * const kPlayButton = @"PlayButton";
 static NSString * const kPreviousButton = @"PreviousButton";
 static NSString * const kProgressControl = @"ProgressControl";
+static NSString * const kRAOPServiceType = @"_raop._tcp.";
 static NSString * const kSearchControl = @"SearchControl";
 static NSString * const kStatus = @"status";
-static NSString * const kDefaultWindowTitle = @"MD0";
 static NSString * const kVolumeControl = @"VolumeControl";
-static NSString * const kPathsToScan = @"PathsToScan";
 static  const int kBottomEdgeMargin = 25;
-static NSString * LibraryDir();
-static NSString * LibraryPath();
-static NSString *GetString(const string &s);
+static NSString *LibraryDir();
+static NSString *LibraryPath();
+static NSPredicate *ParseSearchQuery(NSString *query);
+
+static NSPredicate *ParseSearchQuery(NSString *query) {
+  NSPredicate *ret = nil;
+  if (query && query.length) {
+    NSArray *tokens = [query 
+      componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    for (NSString *token in tokens)  {
+      if (token.length == 0)
+        continue;
+      NSPredicate *predicate = [NSPredicate 
+        predicateWithFormat:
+          @"(artist CONTAINS[cd] %@)"
+          " OR (album CONTAINS[cd] %@)"
+          " OR (title CONTAINS[cd] %@)"
+          " OR (url CONTAINS[cd] %@)"
+          " OR (year CONTAINS[cd] %@)"
+          " OR (genre CONTAINS[cd] %@)",
+        token, token, token, token, token, token, nil];
+      if (!ret)
+        ret = predicate;
+      else
+        ret = [NSCompoundPredicate andPredicateWithSubpredicates:[NSArray 
+          arrayWithObjects:predicate, ret, nil]];
+    }
+  }
+  return ret;
+}
 
 static NSString *LibraryDir() { 
   NSArray *paths = NSSearchPathForDirectoriesInDomains(
@@ -73,9 +102,9 @@ static NSString *GetWindowTitle(Track *t) {
 
 @implementation AppDelegate
 @synthesize addToLibraryMenuItem = addToLibraryMenuItem_;
-@synthesize allTracks = allTracks_;
 @synthesize appleCoverArtClient = appleCoverArtClient_;
 @synthesize audioOutputPopUp = audioOutputPopUp_;
+@synthesize automaticallyScanPathsButton = automaticallyScanPathsButton_;
 @synthesize contentHorizontalSplit = contentHorizontalSplit_;
 @synthesize contentVerticalSplit = contentVerticalSplit_;
 @synthesize contentView = contentView_;
@@ -83,10 +112,7 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize cutMenuItem = cutMenuItem_;
 @synthesize daemon = daemon_;
 @synthesize deleteMenuItem = deleteMenuItem_;
-@synthesize durationText = durationText_;
-@synthesize elapsedText = elapsedText_;
 @synthesize emptyImage = emptyImage_;
-@synthesize lastLibraryRefresh = lastLibraryRefresh_;
 @synthesize libraryPopUp = libraryPopUp_;
 @synthesize localLibrary = localLibrary_;
 @synthesize mainWindow = mainWindow_;
@@ -100,6 +126,7 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize nextButtonItem = nextButtonItem_;
 @synthesize nextMenuItem = nextMenuItem_;
 @synthesize pasteMenuItem = pasteMenuItem_;
+@synthesize pathsToAutomaticallyScan = pathsToAutomaticallyScan_;
 @synthesize playButton = playButton_;
 @synthesize playButtonItem = playButtonItem_;
 @synthesize playImage = playImage_;
@@ -108,11 +135,12 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize pollLibraryTimer = pollLibraryTimer_;
 @synthesize pollMovieTimer = pollMovieTimer_;
 @synthesize predicateChanged = predicateChanged_;
+@synthesize preferencesWindow = preferencesWindow_;
 @synthesize prevMenuItem = prevMenuItem_;
 @synthesize previousButton = previousButton_;
 @synthesize previousButtonItem = previousButtonItem_;
-@synthesize progressSlider = progressSlider_;
 @synthesize progressSliderItem = progressSliderItem_;
+@synthesize progressControl = progressControl_;
 @synthesize raopServiceBrowser = raopServiceBrowser_;
 @synthesize audioOutputs = audioOutputs_;
 @synthesize requestClearSelection = requestClearSelection_;
@@ -120,15 +148,14 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize requestPlayTrackAtIndex = requestPlayTrackAtIndex_;
 @synthesize requestPrevious = requestPrevious_;
 @synthesize requestTogglePlay = requestTogglePlay_;
+@synthesize scanPathsTable = scanPathsTable_;
 @synthesize searchField = searchField_;
 @synthesize searchItem = searchItem_;
-@synthesize searchQuery = searchQuery_;
 @synthesize seekToRow = seekToRow_;
 @synthesize selectAllMenuItem = selectAllMenuItem_;
 @synthesize selectedAudioOutput = selectedAudioOutput_;
 @synthesize selectedLibrary = selectedLibrary_;
 @synthesize selectNoneMenuItem = selectNoneMenuItem_;
-@synthesize sortChanged = sortChanged_;
 @synthesize sortFields = sortFields_;
 @synthesize startImage = startImage_;
 @synthesize statusBarText = statusBarText_;
@@ -139,21 +166,21 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize trackEnded = trackEnded_;
 @synthesize trackTableFont = trackTableFont_;
 @synthesize trackTablePlayingFont = trackTablePlayingFont_;
-@synthesize trackTableScrollView = trackTableScrollView_;
 @synthesize trackTableView = trackTableView_;
 @synthesize tracks = tracks_;
 @synthesize volumeControl = volumeControl_;
 @synthesize volumeItem = volumeItem_;
-@synthesize volumeSlider = volumeSlider_;
 @synthesize pollStatsTimer = pollStatsTimer_;
 @synthesize artists = artists_;
 @synthesize albums = albums_;
+@synthesize requestReloadPathsTable = requestReloadPathsTable_;
 
 - (void)dealloc { 
-  self.allTracks = nil;
   self.appleCoverArtClient = nil;
   self.contentView = nil;
   self.mainWindow = nil;
+  self.preferencesWindow = nil;
+  self.progressControl = nil;
   self.trackTableView = nil;
   self.tracks = nil;
   [super dealloc];
@@ -161,9 +188,10 @@ static NSString *GetWindowTitle(Track *t) {
 
 - (void)search:(NSString *)term {
   self.searchField.stringValue = term;
-  self.searchQuery = term;
-  self.predicateChanged = YES;
-  self.needsReload = YES;
+  ForkWith(^{
+    self.tracks.predicate = ParseSearchQuery(term);
+    self.needsReload = true;
+  });
 }
 
 - (void)setupMenu {
@@ -180,24 +208,31 @@ static NSString *GetWindowTitle(Track *t) {
   NSMenu *editMenu = [editMenuItem submenu];
   [editMenu removeAllItems];
 
-  self.selectAllMenuItem = [editMenu addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
-  self.selectAllMenuItem.target = trackTableView_;
-  self.selectNoneMenuItem = [editMenu addItemWithTitle:@"Select None" action:@selector(selectNone:) keyEquivalent:@"A"];
-  self.selectNoneMenuItem.target = trackTableView_;
   self.cutMenuItem = [editMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
   self.cutMenuItem.target = self;
   self.copyMenuItem = [editMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
   self.copyMenuItem.target = self;
+  self.pasteMenuItem = [editMenu addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
+  self.pasteMenuItem.target = self;
   self.deleteMenuItem = [editMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:[NSString stringWithFormat:@"%C", NSBackspaceCharacter]];
   [self.deleteMenuItem setKeyEquivalentModifierMask:0];
   self.deleteMenuItem.target = self;
-  self.pasteMenuItem = [editMenu addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
-  self.pasteMenuItem.target = self;
+  self.selectAllMenuItem = [editMenu addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
+  self.selectAllMenuItem.target = trackTableView_;
+  self.selectNoneMenuItem = [editMenu addItemWithTitle:@"Select None" action:@selector(selectNone:) keyEquivalent:@"A"];
+  self.selectNoneMenuItem.target = trackTableView_;
 
   // File Menu
   self.addToLibraryMenuItem = [fileMenu addItemWithTitle:@"Add to Library" action:@selector(addToLibrary:) keyEquivalent:@"o"];
   self.addToLibraryMenuItem.target = self;
 
+  NSMenuItem *appMenu = [mainMenu itemAtIndex:0];
+  NSMenuItem *preferences = [appMenu.submenu 
+    insertItemWithTitle:@"Preferences"
+    action:@selector(onPreferences:) 
+    keyEquivalent:@"," 
+    atIndex:1];
+  preferences.target = self;
 
   // Playback Menu
 
@@ -213,18 +248,38 @@ static NSString *GetWindowTitle(Track *t) {
   NSMenuItem *nextItem = [playbackMenu addItemWithTitle:@"Next" action:@selector(nextClicked:) keyEquivalent:rightArrow];
 }
 
+- (void)onPreferences:(id)sender { 
+  [self.preferencesWindow makeKeyAndOrderFront:sender];
+};
+
 - (void)addToLibrary:(id)sender { 
   // Create the File Open Dialog class.
   NSOpenPanel *openPanel = [NSOpenPanel openPanel];
   [openPanel setCanChooseFiles:YES];
   [openPanel setCanChooseDirectories:YES];
+  [openPanel setAllowsMultipleSelection:YES];
+
   NSMutableArray *paths = [NSMutableArray array];
   if ([openPanel runModal] == NSOKButton) {
     for (NSURL *p in [openPanel URLs]) { 
-      [paths addObject:[p path]];
+      [paths addObject:p.path];
+      [self noteAddedPath:p.path];
     }
   }
   [localLibrary_ scan:paths];
+}
+
+- (void)noteAddedPath:(NSString *)aPath {
+  struct stat status;
+  if (stat(aPath.UTF8String, &status) == 0 && status.st_mode & S_IFDIR) {
+    NSArray *curr = self.pathsToAutomaticallyScan;
+    NSMutableArray *a = [NSMutableArray array];
+    if (curr)
+      [a addObjectsFromArray:curr];
+    if (![a containsObject:aPath]) 
+      [a addObject:aPath];
+    self.pathsToAutomaticallyScan = a;
+  }
 }
 
 - (void)delete:(id)sender { 
@@ -237,14 +292,10 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (NSArray *)cutTracksAtIndices:(NSIndexSet *)indices { 
-  NSArray *tracks = [NSArray array];
-  @synchronized (tracks_) {
-    tracks = [tracks_ objectsAtIndexes:indices];
-  }
-    
+  NSArray *tracks = [self.tracks getMany:indices];
   for (Track *o in tracks) {
-    [localLibrary_ delete:o];
-    needsReload_ = YES;
+    [self.localLibrary delete:o];
+    self.needsReload = true;
   }
   return tracks;
 }
@@ -273,14 +324,10 @@ static NSString *GetWindowTitle(Track *t) {
     NSPasteboard *pb = [NSPasteboard generalPasteboard];
     [pb clearContents];
     [pb declareTypes:[NSArray arrayWithObject:NSURLPboardType] owner:nil];
-    while (i != NSNotFound) {
-      if (i >= [tracks_ count])
-        continue;
-      Track *t = [tracks_ objectAtIndex:i];
+    for (Track *t in [self.tracks getMany:indices]) {
       NSURL *url = [NSURL fileURLWithPath:t.url];
       [urls addObject:url];
-      i = [indices indexLessThanIndex:i];
-      requestClearSelection_ = YES;
+      self.requestClearSelection = true;
     }
     [pb writeObjects:urls];
   }
@@ -303,10 +350,129 @@ static NSString *GetWindowTitle(Track *t) {
     for (NSString *i in paths) {
       [urls addObject:[NSURL fileURLWithPath:i]];
     }
-    requestClearSelection_ = YES;
+    requestClearSelection_ = true;
     [pb writeObjects:urls];
   }
 }
+- (void)setupPreferencesWindow {
+  const int kSpace = 5;
+  //CGSize windowSize = CGSizeMake(500, 600);
+  CGSize buttonSize = CGSizeMake(25, 23);
+  CGSize labelSize = CGSizeMake(480, 23);
+  //CGSize scrollSize = CGSizeMake(windowSize.width - (10 * 2), windowSize.height - buttonSize.height - labelSize.height - 15);
+  CGSize scrollSize = CGSizeMake(480, 300);
+  CGSize windowSize = CGSizeMake(500, kSpace + scrollSize.height + kSpace + labelSize.height + kSpace + buttonSize.height + kSpace);
+
+  CGRect removeRect = CGRectMake(10, 10, buttonSize.width, buttonSize.height);
+  CGRect addRect = removeRect;
+  addRect.origin.x += addRect.size.width;
+  CGRect scrollRect = CGRectMake(10, buttonSize.height + removeRect.origin.y + 5, scrollSize.width, scrollSize.height);
+  CGRect labelRect = CGRectMake(10, scrollRect.origin.y + scrollRect.size.height, labelSize.width, labelSize.height);
+  CGRect windowRect = CGRectMake(100, 100, windowSize.width, windowSize.height);
+
+
+  self.preferencesWindow = [[[NSWindow alloc] 
+    initWithContentRect:windowRect
+    styleMask:NSClosableWindowMask | NSTitledWindowMask | NSResizableWindowMask | NSMiniaturizableWindowMask 
+    backing:NSBackingStoreBuffered
+    defer:YES] autorelease];
+  self.preferencesWindow.releasedWhenClosed = NO;
+  [self.preferencesWindow setAutorecalculatesKeyViewLoop:YES];
+
+
+  self.preferencesWindow.title = @"Preferences";
+  self.scanPathsTable = [[[TableView alloc] initWithFrame:CGRectMake(0, 0, 300, 300)] autorelease];
+  [self.scanPathsTable setAllowsMultipleSelection:YES];
+  self.scanPathsTable.focusRingType = NSFocusRingTypeNone;
+  NSTableColumn *pathColumn = [[[NSTableColumn alloc] initWithIdentifier:kPath] autorelease];
+  //[pathColumn setResizingMask:NSTableColumnAutoresizingMask];
+  [pathColumn setWidth:480];
+  [[pathColumn headerCell] setStringValue:@"Path"];
+  [[pathColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
+  [[pathColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
+
+  [self.scanPathsTable addTableColumn:pathColumn];
+  [self.scanPathsTable setDelegate:self];
+  [self.scanPathsTable setDataSource:self];
+  [self.scanPathsTable setColumnAutoresizingStyle:NSTableViewFirstColumnOnlyAutoresizingStyle];
+  [self.scanPathsTable registerForDraggedTypes:[NSArray arrayWithObjects:NSURLPboardType, NSFilenamesPboardType, nil]];
+  NSScrollView *sv = [[[NSScrollView alloc] initWithFrame:scrollRect] autorelease];
+  sv.focusRingType = NSFocusRingTypeNone;
+  sv.autoresizesSubviews = YES;
+  sv.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+  [sv setHasVerticalScroller:YES];
+  [sv setHasHorizontalScroller:YES];
+  sv.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+  sv.focusRingType = NSFocusRingTypeNone;
+  [self.preferencesWindow.contentView addSubview:sv];
+  [sv setDocumentView:self.scanPathsTable]; 
+
+  NSTextField *label = [[[NSTextField alloc] initWithFrame:labelRect] autorelease];
+  label.stringValue = @"Watch these folders:";
+  label.font = [NSFont systemFontOfSize:12.0];
+  label.editable = NO;
+  label.selectable = NO;
+  label.bordered = NO;
+  label.bezeled = NO;
+  label.backgroundColor = [NSColor clearColor];
+  label.autoresizingMask = NSViewMaxXMargin | NSViewMinYMargin;
+  [[label cell] setBackgroundStyle:NSBackgroundStyleRaised];
+
+  [self.preferencesWindow.contentView addSubview:label];
+
+  CGRect buttonFrame = CGRectMake(10, sv.frame.origin.y - 32, 23, 25);
+  NSButton *addButton = [[[NSButton alloc] initWithFrame:addRect] autorelease];
+  addButton.image = [NSImage imageNamed:@"NSAddTemplate"];
+  addButton.buttonType = NSMomentaryPushInButton;
+  addButton.autoresizingMask = NSViewMaxXMargin | NSViewMaxYMargin;
+  addButton.target = self;
+  addButton.action = @selector(addScanPath:);
+  addButton.bezelStyle = NSSmallSquareBezelStyle;
+  [self.preferencesWindow.contentView addSubview:addButton];
+
+  buttonFrame.origin.x += buttonFrame.size.width;
+  NSButton *removeButton = [[[NSButton alloc] initWithFrame:removeRect] autorelease];
+  removeButton.buttonType = NSMomentaryPushInButton;
+  removeButton.image = [NSImage imageNamed:@"NSRemoveTemplate"];
+  removeButton.autoresizingMask = NSViewMaxXMargin | NSViewMaxYMargin;
+  removeButton.target = self;
+  removeButton.action = @selector(removeScanPath:);
+  removeButton.bezelStyle = NSSmallSquareBezelStyle;
+  [self.preferencesWindow.contentView addSubview:removeButton];
+}
+
+- (void)removeScanPath:(id)sender { 
+  NSIndexSet *iset = self.scanPathsTable.selectedRowIndexes;
+  if (!iset)
+    return;
+  NSMutableArray *newPaths = [NSMutableArray array];
+  NSArray *oldPaths = self.pathsToAutomaticallyScan;
+  if (oldPaths)
+    [newPaths addObjectsFromArray:oldPaths];
+  [newPaths removeObjectsAtIndexes:iset];
+  self.pathsToAutomaticallyScan = newPaths;
+  self.requestReloadPathsTable = true;
+}
+
+- (void)addScanPath:(id)sender { 
+  NSIndexSet *iset = self.scanPathsTable.selectedRowIndexes;
+  if (!iset)
+    return;
+// Create the File Open Dialog class.
+  NSOpenPanel *openPanel = [NSOpenPanel openPanel];
+  [openPanel setCanChooseFiles:NO];
+  [openPanel setCanChooseDirectories:YES];
+  [openPanel setAllowsMultipleSelection:YES];
+  NSMutableArray *paths = [NSMutableArray array];
+  if ([openPanel runModal] == NSOKButton) {
+    for (NSURL *p in [openPanel URLs]) { 
+      [self noteAddedPath:p.path];
+    }
+  }
+  [self.localLibrary scan:paths];
+  self.requestReloadPathsTable = true;
+}
+
 - (void)setupWindow {
   self.mainWindow = [[[NSWindow alloc] 
     initWithContentRect:CGRectMake(50, 50, kStartupSize.width, kStartupSize.height)
@@ -400,7 +566,7 @@ static NSString *GetWindowTitle(Track *t) {
   if (output) {
     self.selectedAudioOutput = output;
     @synchronized (tracks_) {
-      self.requestPlayTrackAtIndex = [tracks_ indexOfObject:track_];
+      self.requestPlayTrackAtIndex = [tracks_ index:track_];
     }
   }
 }
@@ -460,11 +626,11 @@ static NSString *GetWindowTitle(Track *t) {
 - (void)setupTrackTable {
   self.trackTableFont = [NSFont systemFontOfSize:11.0];
   self.trackTablePlayingFont = [NSFont boldSystemFontOfSize:11.0];
-  self.trackTableScrollView = [[[NSScrollView alloc] initWithFrame:CGRectMake(0, kBottomEdgeMargin, 
+  NSScrollView *sv = [[[NSScrollView alloc] initWithFrame:CGRectMake(0, kBottomEdgeMargin, 
       contentView_.frame.size.width, contentView_.frame.size.height - kBottomEdgeMargin)] autorelease];
-  trackTableScrollView_.autoresizesSubviews = YES;
-  trackTableScrollView_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-  trackTableScrollView_.focusRingType = NSFocusRingTypeNone;
+  sv.autoresizesSubviews = YES;
+  sv.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+  sv.focusRingType = NSFocusRingTypeNone;
   self.trackTableView = [[[TableView alloc] initWithFrame:CGRectMake(0, 0, 364, 200)] autorelease];
   __block AppDelegate *weakSelf = self;
   self.trackTableView.onKeyDown = ^(NSEvent *e) {
@@ -474,6 +640,12 @@ static NSString *GetWindowTitle(Track *t) {
     }
     return true;
   };
+  NSMenu *tableMenu = [[[NSMenu alloc] initWithTitle:@"Track Menu"] autorelease];
+  NSMenuItem *copy = [tableMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
+  NSMenuItem *cut = [tableMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"c"];
+  NSMenuItem *delete_ = [tableMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:@""];
+  self.trackTableView.menu = tableMenu;
+
   [trackTableView_ setUsesAlternatingRowBackgroundColors:YES];
   [trackTableView_ setGridStyleMask:NSTableViewSolidVerticalGridLineMask];
   [trackTableView_ setAllowsMultipleSelection:YES];
@@ -548,14 +720,14 @@ static NSString *GetWindowTitle(Track *t) {
   [trackTableView_ reloadData];
   // embed the table view in the scroll view, and add the scroll view
   // to our window.
-  [trackTableScrollView_ setHasVerticalScroller:YES];
-  [trackTableScrollView_ setHasHorizontalScroller:YES];
-  trackTableScrollView_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+  [sv setHasVerticalScroller:YES];
+  [sv setHasHorizontalScroller:YES];
+  sv.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
   [trackTableView_ setDoubleAction:@selector(trackTableDoubleClicked:)];
   [trackTableView_ setTarget:self];
-  [contentVerticalSplit_ addSubview:trackTableScrollView_];
-  [trackTableScrollView_ setDocumentView:trackTableView_];
+  [contentVerticalSplit_ addSubview:sv];
+  [sv setDocumentView:trackTableView_];
   [trackTableView_ registerForDraggedTypes:[NSArray arrayWithObjects:NSURLPboardType, NSFilenamesPboardType, nil]];
 }
 
@@ -599,73 +771,38 @@ static NSString *GetWindowTitle(Track *t) {
   [[previousButton_ cell] setImageScaling:0.8];
 
   // Volume
-  self.volumeSlider = [[[Slider alloc] initWithFrame:CGRectMake(0, 0, 100, 22)] autorelease];
-  [volumeSlider_ setContinuous:YES];
-  [volumeSlider_ setTarget:self];
-  [volumeSlider_ setAction:@selector(volumeClicked:)];
-  volumeSlider_.autoresizingMask = 0;
-  [[volumeSlider_ cell] setControlSize: NSSmallControlSize];
-  [volumeSlider_ setMaxValue:1.0];
-  [volumeSlider_ setMinValue:0.0];
-  [volumeSlider_ setDoubleValue:0.5];
+  self.volumeControl = [[[VolumeControl alloc] init] autorelease];
+  __block AppDelegate *weakSelf = self;
+  self.volumeControl.onVolume = ^(double amt) {
+    if (weakSelf.movie) 
+      [weakSelf.movie setVolume:amt];
+  };
   self.volumeItem = [[[NSToolbarItem alloc] initWithItemIdentifier:kVolumeControl] autorelease];
-  [volumeItem_ setView:volumeSlider_];
+  [self.volumeItem setView:self.volumeControl.view];
 
-  NSView *progressControl = [[[NSView alloc] 
+  self.progressControl = [[[ProgressControl alloc]
     initWithFrame:CGRectMake(0, 0, 5 + 60 + 5 + 300 + 5 + + 60 + 5, 22)] autorelease];
   // Progress Bar
-  self.progressSlider = [[[Slider alloc] initWithFrame:CGRectMake(5 + 60 + 5, 0, 300, 22)] autorelease];
-  [progressSlider_ setContinuous:YES];
-  [progressSlider_ setTarget:self];
-  [progressSlider_ setAction:@selector(progressClicked:)];
-  progressSlider_.autoresizingMask = NSViewWidthSizable;
-  [[progressSlider_ cell] setControlSize: NSSmallControlSize];
-  [progressSlider_ setMaxValue:1.0];
-  [progressSlider_ setMinValue:0.0];
-  [progressSlider_ setDoubleValue:0.0];
 
-  self.elapsedText = [[[NSTextField alloc] initWithFrame:CGRectMake(5, 3, 60, 15)] autorelease];
-  elapsedText_.font = [NSFont systemFontOfSize:9.0];
-  elapsedText_.stringValue = @"";
-  elapsedText_.autoresizingMask = NSViewMaxXMargin;
-  elapsedText_.alignment = NSRightTextAlignment;
-  [elapsedText_ setDrawsBackground: NO];
-  [elapsedText_ setEditable: NO];
-  [elapsedText_ setBordered:NO];
-  [progressControl addSubview:elapsedText_];
+  self.progressControl.onElapsed = ^(int64_t amt) {
+    [self.movie seek:amt];
+  };
 
-  self.durationText = [[[NSTextField alloc] initWithFrame:CGRectMake(5 + 60 + 5 + 300 + 5, 3, 60, 15)] autorelease];
-  durationText_.font = [NSFont systemFontOfSize:9.0];
-  durationText_.stringValue = @"";
-  durationText_.autoresizingMask = NSViewMinXMargin;
-  durationText_.alignment = NSLeftTextAlignment;
-  [durationText_ setDrawsBackground: NO];
-  [durationText_ setBordered:NO];
-  [durationText_ setEditable: NO];
-  [progressControl addSubview:durationText_];
-
-  [progressControl addSubview:progressSlider_];
-  progressControl.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
   self.progressSliderItem = [[[NSToolbarItem alloc] initWithItemIdentifier:kProgressControl] autorelease];
   [progressSliderItem_ setEnabled:YES];
-  [progressSliderItem_ setView:progressControl];
-
-  [[NSNotificationCenter defaultCenter] 
-    addObserver:self selector:@selector(progressSliderIsUp:) name:kSliderIsUpNotification object:progressSlider_];
-
+  [progressSliderItem_ setView:self.progressControl.view];
   [progressSliderItem_ setMaxSize:NSMakeSize(1000, 22)];
   [progressSliderItem_ setMinSize:NSMakeSize(400, 22)];
 
-  self.searchField = [[[NSSearchField alloc] initWithFrame:CGRectMake(0, 0, 100, 22)] autorelease];
-  searchField_.font = [NSFont systemFontOfSize:12.0];
-  searchField_.autoresizingMask = NSViewMinXMargin;
-  searchField_.target = self;
-  searchField_.action = @selector(onSearch:);
-
-  [searchField_ setRecentsAutosaveName:@"recentSearches"];
+  self.searchField = [[[NSSearchField alloc] initWithFrame:CGRectMake(0, 0, 300, 22)] autorelease];
+  self.searchField.font = [NSFont systemFontOfSize:12.0];
+  self.searchField.autoresizingMask = NSViewMinXMargin;
+  self.searchField.target = self;
+  self.searchField.action = @selector(onSearch:);
+  [self.searchField setRecentsAutosaveName:@"recentSearches"];
 
   self.searchItem = [[[NSToolbarItem alloc] initWithItemIdentifier:kSearchControl] autorelease];
-  [searchItem_ setView:searchField_];
+  [searchItem_ setView:self.searchField];
 
   self.toolbar = [[[NSToolbar alloc] initWithIdentifier:@"md0toolbar"] autorelease];
   [toolbar_ setDelegate:self];
@@ -684,8 +821,10 @@ static NSString *GetWindowTitle(Track *t) {
 
 - (void)setPathsToAutomaticallyScan:(NSArray *)paths {
   NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
+  paths = [paths sortedArrayUsingSelector:@selector(compare:)];
   [d setObject:paths forKey:kPathsToScan];
   [d synchronize];
+  self.requestReloadPathsTable = true;
 }
 
 - (void)parseDefaults { 
@@ -699,22 +838,21 @@ static NSString *GetWindowTitle(Track *t) {
   self.audioOutputs = [NSMutableArray array];
   self.libraries = [NSMutableArray array];
 
-  self.trackEnded = NO;
-  self.requestPrevious = NO;
-  self.requestTogglePlay = NO;
-  self.requestNext = NO;
-  self.needsLibraryRefresh = NO;
-  self.tracks = [NSMutableArray array];
+  self.trackEnded = false;
+  self.requestPrevious = false;
+  self.requestTogglePlay = false;
+  self.requestNext = false;
+  self.needsLibraryRefresh = false;
+  self.requestReloadPathsTable = true;
+  self.tracks = [[[SortedSeq alloc] init] autorelease];
   self.appleCoverArtClient = [[[AppleCoverArtClient alloc] init] autorelease];
-  self.allTracks = [NSMutableArray array];
   self.localLibrary = [[[LocalLibrary alloc] initWithPath:LibraryPath()] autorelease];
   
   self.library = self.localLibrary;
   self.movie = nil;
   self.track = nil;
   self.seekToRow = -1;
-  self.needsReload = NO;
-  self.lastLibraryRefresh = 0;
+  self.needsReload = false;
 
   [self setupSharing];
   [self setupRAOP]; 
@@ -727,6 +865,7 @@ static NSString *GetWindowTitle(Track *t) {
   [self setupLibrarySelect];
   [self setupStatusBarText];
   [self setupMenu];
+  [self setupPreferencesWindow];
 
   self.sortFields = [NSMutableArray array];
 
@@ -735,8 +874,8 @@ static NSString *GetWindowTitle(Track *t) {
     [sortFields_ addObject:s];
   }
   [self updateTableColumnHeaders];
-  self.predicateChanged = YES;
-  self.sortChanged = YES;
+  self.tracks.comparator = GetSortComparatorFromSortFields(self.sortFields);
+  self.needsReload = true;
 
   self.requestPlayTrackAtIndex = -1;
   pollMovieTimer_ = [NSTimer timerWithTimeInterval:.15 target:self selector:@selector(onPollMovieTimer:) userInfo:nil repeats:YES];
@@ -749,40 +888,45 @@ static NSString *GetWindowTitle(Track *t) {
   [self setupPlugins];
   [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
 
-  // FIXME: Defer this until a minute after startup
-  [self.localLibrary scan:self.pathsToAutomaticallyScan];
+  ForkWith(^{
+    // FIXME: Defer this until a minute after startup
+    usleep(2000);
+    [self.localLibrary scan:self.pathsToAutomaticallyScan];
+  });
 
-  if (!self.isITunesImported) {
-    NSMutableArray *paths = [NSMutableArray array];
-      GetITunesTracks(^(Track *t) {
-      [paths addObject:t.url];
-    });
-    [self.localLibrary scan:paths];
-  }
+  ForkWith(^{
+    usleep(1000);
+    if (!self.isITunesImported) {
+      NSMutableArray *paths = [NSMutableArray array];
+        GetITunesTracks(^(Track *t) {
+        [paths addObject:t.url];
+      });
+      [self.localLibrary scan:paths];
+      self.isITunesImported = true;
+    }
+  });
 }
 
 - (void)onPollStatsTimer:(NSTimer *)timer { 
   NSMutableSet *artists = [NSMutableSet set];
   NSMutableSet *albums = [NSMutableSet set];
 
-  @synchronized(tracks_) {
-    for (Track *t in tracks_) {
-      if (t.artist)
-        [artists addObject:t.artist];
-      if (t.album) 
-        [albums addObject:t.album];
-    }
+  for (Track *t in self.tracks.array) {
+    if (t.artist)
+      [artists addObject:t.artist];
+    if (t.album) 
+      [albums addObject:t.album];
   }
   self.artists = artists;
   self.albums = albums;
 } 
 
-- (BOOL)isITunesImported { 
+- (bool)isITunesImported { 
   return [[NSUserDefaults standardUserDefaults] boolForKey:kIsITunesImported];
 }
 
-- (void)setIsITunesImported:(BOOL)st { 
-  [[NSUserDefaults standardUserDefaults] setBool:st forKey:kIsITunesImported];
+- (void)setIsITunesImported:(bool)st { 
+  [[NSUserDefaults standardUserDefaults] setBool:(BOOL)st forKey:kIsITunesImported];
   [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
@@ -850,10 +994,10 @@ static NSString *GetWindowTitle(Track *t) {
         NSMutableSet *pset = [NSMutableSet setWithArray:pathsToAutomaticallyScan];
         [pset addObject:p];
         self.pathsToAutomaticallyScan = pset.allObjects;
+        self.requestReloadPathsTable = true;
       }
     }
   }
-
   return [paths count] ? YES : NO;
 }
 
@@ -891,6 +1035,8 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)tableView:(NSTableView *)tableView didClickTableColumn:(NSTableColumn *)tableColumn {
+  if (tableView != self.trackTableView)
+    return;
   NSString *ident = tableColumn.identifier;
   if (!ident || ident == kStatus) { 
     return;
@@ -926,8 +1072,9 @@ static NSString *GetWindowTitle(Track *t) {
       s.direction = s.direction == Ascending ? Descending : Ascending;
     }
   }
-  sortChanged_ = YES;
   [self updateTableColumnHeaders];
+  self.tracks.comparator = GetSortComparatorFromSortFields(self.sortFields);
+  self.needsReload = true;
 }
 
 - (void)updateTableColumnHeaders {
@@ -978,92 +1125,17 @@ static NSString *GetWindowTitle(Track *t) {
 - (void)toolbarWillRemoveItem:(NSNotification *)notification {
 }
 
-- (NSPredicate *)parseSearch { 
-  NSPredicate *ret = nil;
-  if (searchQuery_ ) {
-    NSArray *tokens = [searchQuery_ 
-      componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    for (NSString *token in tokens)  {
-      if (token.length == 0)
-        continue;
-      NSPredicate *predicate = [NSPredicate 
-        predicateWithFormat:
-          @"(artist CONTAINS[cd] %@)"
-          " OR (album CONTAINS[cd] %@)"
-          " OR (title CONTAINS[cd] %@)"
-          " OR (url CONTAINS[cd] %@)"
-          " OR (year CONTAINS[cd] %@)"
-          " OR (genre CONTAINS[cd] %@)",
-        token, token, token, token, token, token, nil];
-      if (!ret)
-        ret = predicate;
-      else
-        ret = [NSCompoundPredicate andPredicateWithSubpredicates:[NSArray 
-          arrayWithObjects:predicate, ret, nil]];
-    }
-  }
-  return ret;
-}
-
-- (void)executeSearch { 
-  NSPredicate *predicate = [self parseSearch];
-
-  @synchronized(allTracks_) {
-    [tracks_ removeAllObjects];
-    @synchronized(tracks_) {
-      for (id t in allTracks_) {
-        if (!predicate || [predicate evaluateWithObject:t]) {
-          [tracks_ addObject:t];
-        }
-      } 
-    }
-  }
-  needsReload_ = YES;
-}
-
 - (void)onSearch:(id)sender { 
-  [self search:searchField_.stringValue];
-}
-
-- (void)volumeClicked:(id)sender { 
-  [self setVolume:volumeSlider_.doubleValue]; 
-}
-
-- (void)setVolume:(double)pct { 
-  // FIXME: Store volume pref here.
-  if (movie_) 
-    [movie_ setVolume:pct];
-}
-
-- (void)progressSliderIsUp:(NSNotification *)notification {
-  if (movie_)
-    [movie_ seek:progressSlider_.doubleValue * movie_.duration];
-}
-
-- (void)progressClicked:(id)sender { 
-  if (movie_) {
-    [self displayElapsed:(progressSlider_.doubleValue * movie_.duration) duration:movie_.duration];
-  }
-}
-
-- (void)displayElapsed:(int64_t)elapsed duration:(int64_t)duration {
-  [progressSlider_ setEnabled:YES];
-  double pct = duration > 0 ? ((long double)elapsed) / ((long double)duration) : 0;
-  durationText_.stringValue = [[NSNumber numberWithLongLong:duration] formatSeconds];
-  elapsedText_.stringValue = [[NSNumber numberWithLongLong:elapsed] formatSeconds];
-  if (![progressSlider_ isMouseDown] && ![movie_ isSeeking])
-    [progressSlider_ setDoubleValue:pct];
-}
-
-- (void)executeSort { 
-  @synchronized(self) {
-    @synchronized (allTracks_) {
-      [allTracks_ sortUsingFunction:CompareWithSortFields context:sortFields_];   
-    }
-  }
+  [self search:[sender stringValue]];
 }
 
 - (void)onPollMovieTimer:(id)sender { 
+
+  if (self.requestReloadPathsTable) {
+    [self.scanPathsTable reloadData];
+    self.requestReloadPathsTable = false;
+  }
+
   if (requestPlayTrackAtIndex_ >= 0) {
     [self playTrackAtIndex:requestPlayTrackAtIndex_];
     requestPlayTrackAtIndex_ = -1;
@@ -1077,22 +1149,22 @@ static NSString *GetWindowTitle(Track *t) {
   self.statusBarText.stringValue = [NSString stringWithFormat:@"%d Tracks, %d Artists, %d Albums", numTracks, self.artists.count, self.albums.count]; 
 
   if (movie_ && ([movie_ state] == kEOFAudioSourceState)) {
-    requestNext_ = YES;
+    requestNext_ = true;
   }
 
   if (requestNext_) {
     [self playNextTrack];
-    requestNext_ = NO;
+    requestNext_ = false;
   }
 
   if (requestPrevious_) {
     [self playPreviousTrack];
-    requestPrevious_ = NO;
+    requestPrevious_ = false;
   }
 
   if (requestClearSelection_) { 
     [trackTableView_ deselectAll:self];
-    requestClearSelection_ = NO;
+    requestClearSelection_ = false;
   }
 
   if (requestTogglePlay_) {
@@ -1107,62 +1179,46 @@ static NSString *GetWindowTitle(Track *t) {
       } else { 
         [self playNextTrack]; 
       } 
-      requestTogglePlay_ = NO; 
+      requestTogglePlay_ = false; 
     } 
   }
 
   if (movie_ != NULL) {
-    if (!progressSlider_.isMouseDown && !movie_.isSeeking) {
-      [self displayElapsed:movie_ ? movie_.elapsed : 0 
-        duration:movie_ ? movie_.duration : 0];
-    } 
+    self.progressControl.isEnabled = true;
+    self.progressControl.duration = movie_.duration;
+    if (!movie_.isSeeking)
+      self.progressControl.elapsed = movie_.elapsed;
+
     if (movie_.state == kPlayingAudioSourceState)  {
       playButton_.image = stopImage_;
     } else {
       playButton_.image = startImage_;
     } 
   } else {
-    [progressSlider_ setEnabled:NO];
-    [progressSlider_ setDoubleValue:0];
-    durationText_.stringValue = @"";
-    elapsedText_.stringValue = @"";
+    self.progressControl.duration = 0;
+    self.progressControl.elapsed = 0;
+    self.progressControl.isEnabled = false;
     playButton_.image = startImage_;
   }
 
   if (self.needsLibraryRefresh) {
     INFO(@"refreshing library");
-    @synchronized(allTracks_) { 
-      [allTracks_ removeAllObjects];
+    [self.tracks clear];
       [library_ each:^(Track *t) {
-        [allTracks_ addObject:t];
+        [self.tracks add:t];
       }];
-    }
-    self.needsLibraryRefresh = NO;
-    self.predicateChanged = YES;
-    self.sortChanged = YES;
-    self.needsReload = YES;
-    self.lastLibraryRefresh = Now(); 
+    self.needsLibraryRefresh = false;
+    self.needsReload = true;
   }
-  if (self.sortChanged) { 
-    [self executeSort];
-    self.predicateChanged = YES;
-    self.needsReload = YES;
-    self.sortChanged = NO; 
-  } 
-  if (self.predicateChanged) { 
-    [self executeSearch]; 
-    self.predicateChanged = NO; 
-    self.needsReload = YES; 
-  } 
-
-  if (needsReload_) { 
-    [trackTableView_ reloadData]; 
-    needsReload_ = NO; 
+   
+  if (self.needsReload) { 
+    [self.trackTableView reloadData]; 
+    self.needsReload = false;
   }
 
-  if (seekToRow_ >= 0) { 
-    [trackTableView_ scrollRowToVisible:seekToRow_];
-    seekToRow_ = -1; 
+  if (self.seekToRow >= 0) { 
+    [self.trackTableView scrollRowToVisible:seekToRow_];
+    self.seekToRow = -1; 
   } 
 }
 
@@ -1189,19 +1245,14 @@ static NSString *GetWindowTitle(Track *t) {
     library_ = [library retain];
     [o autorelease];
   }
-  self.needsLibraryRefresh = YES;
+  self.needsLibraryRefresh = true;
 };
 
 - (void)library:(Library *)l addedTrack:(Track *)t {
   if (l != library_)
     return;
-  @synchronized(allTracks_) {
-    [allTracks_ addObject:t];
-  }
-    
-  //self.sortChanged = YES;
-  //self.predicateChanged = YES;
-  self.needsReload = YES;
+  [self.tracks add:t];
+  self.needsReload = true;
 }
 
 - (void)library:(Library *)l savedTrack:(Track *)t {
@@ -1209,22 +1260,9 @@ static NSString *GetWindowTitle(Track *t) {
     DEBUG(@"other library");
     return;
   }
-  @synchronized(allTracks_) {
-    int i = 0;
-    int n = allTracks_.count;
-    while (i < n) { 
-      Track *o = [allTracks_ objectAtIndex:i];
-      if (o.id.intValue == t.id.intValue) {
-        [allTracks_ removeObjectAtIndex:i];
-        n--;
-      } else { 
-        i++;
-      }
-    }
-    [allTracks_ addObject:t];
-  }
-  self.sortChanged = YES;
-  self.predicateChanged = YES;
+  [self.tracks remove:t];
+  [self.tracks add:t];
+  self.needsReload = true;
   @synchronized (plugins_) {
     for (Plugin *p in plugins_) {
       [p trackSaved:t];
@@ -1235,20 +1273,8 @@ static NSString *GetWindowTitle(Track *t) {
 - (void)library:(Library *)l deletedTrack:(Track *)t {
   if (l != library_)
     return;
-  @synchronized(allTracks_) {
-    int i = 0;
-    int n = allTracks_.count;
-    while (i < n) { 
-      Track *o = [allTracks_ objectAtIndex:i];
-      if (o.id.intValue == t.id.intValue) {
-        [allTracks_ removeObjectAtIndex:i];
-        n--;
-      } else { 
-        i++;
-      }
-    }
-  }
-  self.predicateChanged = YES;
+  [self.tracks remove:t];
+  self.needsReload = true;
 }
 
 - (void)onPollLibraryTimer:(id)sender { 
@@ -1270,21 +1296,19 @@ static NSString *GetWindowTitle(Track *t) {
       }
     }
   }
-  @synchronized(tracks_) {
-    self.track = (index >= 0 && index < tracks_.count) ? [tracks_ objectAtIndex:index] : nil;
-  }
+  self.track = [self.tracks get:index];
   NSNetService *netService = [self.selectedAudioOutput objectForKey:@"service"];
 
-  self.movie = track_ ? [[[Movie alloc] initWithURL:track_.url
+  self.movie = self.track ? [[[Movie alloc] initWithURL:self.track.url
     address:netService.ipv4Address port:netService.port] autorelease] : nil;
-  self.movie.volume = self.volumeSlider.doubleValue;
+  self.movie.volume = self.volumeControl.level;
   [self.movie start];
 
   self.seekToRow = index;
-  self.needsReload = YES;
-  if (track_) {
-    @synchronized(plugins_) {
-      for (Plugin *p in plugins_) {
+  self.needsReload = true;
+  if (self.track) {
+    @synchronized(self.plugins) {
+      for (Plugin *p in self.plugins) {
         [p trackStarted:track_];
       }
     }
@@ -1314,15 +1338,14 @@ static NSString *GetWindowTitle(Track *t) {
          
     NSString *url = [[NSURL fileURLWithPath:path] absoluteString];
     NSMutableArray *tracksToUpdate = [NSMutableArray array];
-    @synchronized(allTracks_) { 
-      for (Track *t in allTracks_) {
-        if ([t.artist isEqualToString:track.artist] 
-            && [t.album isEqualToString:track.album] 
-            && (!t.coverArtURL || !t.coverArtURL.length)) {
-          [tracksToUpdate addObject:t];
-        }
+    for (Track *t in [self.tracks all]) {
+      if ([t.artist isEqualToString:track.artist] 
+          && [t.album isEqualToString:track.album] 
+          && (!t.coverArtURL || !t.coverArtURL.length)) {
+        [tracksToUpdate addObject:t];
       }
     }
+    
     for (Track *t in tracksToUpdate) {
       t.coverArtURL = url;
       [localLibrary_ save:t];
@@ -1331,8 +1354,10 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)aTableView { 
-  @synchronized (tracks_) {
-    return tracks_.count;
+  if (aTableView == trackTableView_) {
+    return self.tracks.count;
+  } else { 
+    return self.pathsToAutomaticallyScan.count;
   }
 }
 
@@ -1374,53 +1399,58 @@ static NSString *GetWindowTitle(Track *t) {
 
 - (id)tableView:(NSTableView *)aTableView objectValueForTableColumn:(NSTableColumn *)aTableColumn
 row:(NSInteger)rowIndex { 
-  Track *t = nil;
-  @synchronized(tracks_) { 
-    if (rowIndex < tracks_.count) 
-      t = [tracks_ objectAtIndex:rowIndex];
-  }
-  NSString *identifier = aTableColumn.identifier;
-  id result = nil;
-  NSString *s = nil;
-  bool isPlaying = movie_ && [t isEqual:track_];
-  if (identifier == kDuration) 
-    s = [((NSNumber *)[t valueForKey:kDuration]) formatSeconds];
-  else if (identifier == kStatus) {
-    if (isPlaying) {
-      result = playImage_;
-      [[aTableColumn dataCell] setImageScaling:0.5];
-    }
-  } else if (identifier == kArtist
-      || identifier == kAlbum
-      || identifier == kGenre
-      || identifier == kURL 
-      || identifier == kTitle
-      || identifier == kYear
-      || identifier == kTrackNumber) {
-    s = [t valueForKey:identifier];
-  }
-  if (s) {
-    result = s;
-    [[aTableColumn dataCell] setFont:isPlaying ? trackTablePlayingFont_ : trackTableFont_];
-  } else { 
+  if (aTableView == trackTableView_)  {
+    Track *t = [self.tracks get:rowIndex];;
 
+    NSString *identifier = aTableColumn.identifier;
+    id result = nil;
+    NSString *s = nil;
+    bool isPlaying = movie_ && [t isEqual:track_];
+    if (identifier == kDuration) 
+      s = [((NSNumber *)[t valueForKey:kDuration]) formatSeconds];
+    else if (identifier == kStatus) {
+      if (isPlaying) {
+        result = playImage_;
+        [[aTableColumn dataCell] setImageScaling:0.5];
+      }
+    } else if (identifier == kArtist
+        || identifier == kAlbum
+        || identifier == kGenre
+        || identifier == kURL 
+        || identifier == kTitle
+        || identifier == kYear
+        || identifier == kTrackNumber) {
+      s = [t valueForKey:identifier];
+    }
+    if (s) {
+      result = s;
+      [[aTableColumn dataCell] setFont:isPlaying ? trackTablePlayingFont_ : trackTableFont_];
+    } else { 
+
+    }
+    return result;
+  } else { 
+    NSArray *p = self.pathsToAutomaticallyScan;
+    if (rowIndex >= 0 && rowIndex < p.count)
+      return [self.pathsToAutomaticallyScan objectAtIndex:rowIndex];
+    else
+      return @"";
   }
-  return result;
 }
 
 - (void)playClicked:(id)sender { 
   DEBUG(@"play clicked");
-  requestTogglePlay_ = YES;
+  requestTogglePlay_ = true;
 }
 
 - (void)nextClicked:(id)sender { 
   DEBUG(@"next clicked");
-  requestNext_ = YES;
+  requestNext_ = true;
 }
 
 - (void)previousClicked:(id)sender { 
   DEBUG(@"previous clicked");
-  requestPrevious_ = YES;
+  requestPrevious_ = true;
 }
 
 - (BOOL)tableView:(NSTableView *)aTableView shouldEditTableColumn:(NSTableColumn *)aTableColumn row:(NSInteger)rowIndex {

@@ -7,6 +7,7 @@ typedef bool (^EventHandler)(NSEvent *);
 }
 
 @property (copy) EventHandler onKeyDown;
+- (NSMenu *)menuForEvent:(NSEvent *)theEvent;
 
 @end
 

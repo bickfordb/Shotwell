@@ -1,13 +1,8 @@
 
 #include <errno.h>
 #include <fts.h>
-#include <google/protobuf/io/coded_stream.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <pcre.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <sys/stat.h>
-#include <pcrecpp.h>
 #include <string>
 #include <leveldb/slice.h>
 
@@ -18,8 +13,6 @@
 #import "md0/Util.h"
 
 #define GET_URL_KEY(url) (kURLTablePrefix + url) 
-
-using namespace std;
 
 @interface LocalLibrary (P)  
 - (void)scanQueuedPaths;
@@ -68,7 +61,6 @@ using namespace std;
     [pruneLoop_ onTimeout:1000000 with:^(Event *e, short flags) {
       LocalLibrary *self0 = (LocalLibrary *)weakSelf;
       if (self0.pruneRequested) {
-        INFO(@"pruning");
         self0.pruneRequested = false;
         [self0 pruneQueued]; 
       }
@@ -100,46 +92,48 @@ using namespace std;
   if (paths0.count == 0) {
     return;
   }
-  char *paths[paths0.count + 1];
-  memset(paths, 0, paths0.count + 1);
-  int i;
-  for (i = 0; i < paths0.count; i++) {
-    paths[i] = (char *)[[paths0 objectAtIndex:i] UTF8String];
+  int n = paths0.count;
+  char * paths[n + 1];
+  int i = 0;
+  for (NSString *p in paths0) {
+    paths[i] = (char *)p.UTF8String;  
+    i++;
   }
-  i++;
-  paths[i] = NULL; 
+  paths[n + 1] = NULL;
 
+  NSAutoreleasePool *pool = nil;
   FTS *tree = fts_open(paths, FTS_NOCHDIR, 0);
-  if (tree == NULL)
+  if (!tree)
     return;
-  FTSENT *node = NULL;
-  pcrecpp::RE mediaExtensionsPattern("^.*[.](?:mp3|m4a|ogg|avi|mkv|aac|mov)$");
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-  while (tree && (node = fts_read(tree))) {
-    if (node->fts_level > 0 && node->fts_name[0] == '.') {
-      fts_set(tree, node, FTS_SKIP);
-      continue;
+  for (;;) {
+    FTSENT *node = fts_read(tree);
+    if (!node) {
+      if (errno) {
+        ERROR(@"errno: %d", (int)errno);
+      }
+      break;
     }
-    if (!(node->fts_info & FTS_F)) 
-      continue;
-    NSString *filename = [NSString stringWithUTF8String:node->fts_path];
-    if (!filename)
-      continue;
-    if (!mediaExtensionsPattern.FullMatch(node->fts_path)) {
-      continue;
-    }
-    NSNumber *trackID = [urlTable_ get:filename];
-    if (!trackID) {
-      Track *t = [[Track alloc] init];
-      t.url = filename;
-      int st = [t readTag];
-      [self save:t];
-      [t release];
+    [pool release];
+    pool = [[NSAutoreleasePool alloc] init];
+    if (node->fts_info & FTS_F) {
+      NSString *filename = [NSString stringWithUTF8String:node->fts_path];
+      if (!filename)
+        continue;
+      NSNumber *trackID = [urlTable_ get:filename];
+      if (!trackID) {
+        Track *t = [[Track alloc] init];
+        t.url = filename;
+        int st = [t readTag];
+        // Only index things with audio:
+        if (t.isAudio.boolValue) {
+          [self save:t];
+        } 
+        [t release];
+      }
     }
   }
+  fts_close(tree);
   [pool release];
-  if (tree) 
-    fts_close(tree);
 }
 
 - (id)init {
@@ -166,8 +160,9 @@ using namespace std;
 
 - (void)save:(Track *)track { 
   NSString *url = track.url;
-  if (!url || !url.length) 
+  if (!url || !url.length) { 
     return;
+  }
   bool isNew = false;
   if (!track.id) {
     track.id = [trackTable_ nextID];
