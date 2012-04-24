@@ -52,7 +52,6 @@
 }
 
 - (void)seek:(int64_t)usecs { 
-  DEBUG(@"seek: %lld", usecs);
   [source_ seek:usecs];
   [sink_ flush];
 }

@@ -123,7 +123,6 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 }
 
 - (bool)handleTrackRequest:(Request *)request { 
-  DEBUG(@"got headers: %@", request.headers);
 
   NSScanner *scanner = [NSScanner scannerWithString:request.path];
   NSString *s = nil;
@@ -171,7 +170,6 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 
   NSString *rangeHeader = [request.headers objectForKey:@"Range"];
   ParseRangeHeader(rangeHeader, &startByte, &endByte);
-  INFO(@"range start: %d, %d", startByte, endByte);
   int status = 200;
   NSString *msg = @"OK";
   if (startByte >= 0 && endByte >= 0) {
