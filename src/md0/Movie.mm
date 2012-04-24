@@ -5,7 +5,6 @@
 #import "md0/LibAVSource.h"
 #import "md0/Log.h"
 #import "md0/Movie.h"
-#import "md0/NSObjectPThread.h"
 #import "md0/RAOP.h"
 #import "md0/Signals.h"
 
