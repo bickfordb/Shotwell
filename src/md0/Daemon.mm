@@ -10,8 +10,6 @@
 
 const int kDaemonDefaultPort = 6226;
 
-static void *MainThread(void *ctx); 
-
 @interface Request : NSObject { 
   struct evhttp_request *req_;
 }
@@ -41,8 +39,7 @@ static void *MainThread(void *ctx);
     const char *p0 = evhttp_uri_get_path(uri);
     size_t sz = 0;
     char *p = evhttp_uridecode(p0, 1, &sz);
-    NSString *ret = [[[NSString alloc] initWithBytes:p length:sz encoding:NSUTF8StringEncoding] autorelease];
-    free(p);
+    NSString *ret = [[[NSString alloc] initWithBytesNoCopy:p length:sz encoding:NSUTF8StringEncoding freeWhenDone:YES] autorelease];
     return ret;
 }
 
@@ -144,10 +141,9 @@ static void OnRequest(evhttp_request *r, void *ctx) {
     guessContentType = @"audio/mpeg";
   // fill me in
   [request addResponseHeader:@"Content-Type" value:guessContentType];
-  int offset = 0;
-  int length = the_stat.st_size;
   struct evbuffer *buf = evbuffer_new();
-  evbuffer_add_file(buf, fd, offset, length);
+  evbuffer_add_file(buf, fd, 0, the_stat.st_size);
+
   [request respondWithStatus:200 message:@"OK" buffer:buf];
   evbuffer_free(buf);
   return true;
@@ -169,9 +165,6 @@ static void OnRequest(evhttp_request *r, void *ctx) {
   self = [super init];
   if (self) { 
     library_ = [library retain];
-    //rootPattern_ = new pcrecpp::RE("^/$");
-    //trackPattern_ = new pcrecpp::RE("^/tracks/([^/]+)$");
-    //libraryPattern_ = new pcrecpp::RE("^/library$");
     loop_ = [[Loop alloc] init];
     eventHTTP_ = evhttp_new(loop_.base);
     evhttp_bind_socket(eventHTTP_, host.UTF8String, port);
@@ -183,9 +176,6 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 - (void)dealloc { 
   [loop_ release];
   [library_ release];
-  //delete rootPattern_;
-  //delete trackPattern_;
-  //delete libraryPattern_;
   evhttp_free(eventHTTP_);
   [super dealloc];
 }

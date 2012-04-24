@@ -4,6 +4,8 @@
 
 @interface Movie : NSObject {
   NSString *url_;
+  id <AudioSource> source_;
+  id <AudioSink> sink_;
   double volume_;
 }
 

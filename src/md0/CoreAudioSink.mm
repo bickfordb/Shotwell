@@ -121,6 +121,7 @@ static OSStatus GetAudioCallback(void *context,
   if (!opened_)
     return;
   opened_ = false;
+
   AudioOutputUnitStop(outputAudioUnit_);
   struct AURenderCallbackStruct callback;
   callback.inputProc = NULL;

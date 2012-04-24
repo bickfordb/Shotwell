@@ -1,7 +1,9 @@
 #import "md0/Pthread.h"
+#import "md0/Signals.h"
 
 static void *RunBlockInThreadCallback(void *context) {
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  IgnoreSigPIPE();
   ClosedBlock block = (ClosedBlock)context;
   block();
   [block release];

@@ -99,7 +99,7 @@
     paths[i] = (char *)p.UTF8String;  
     i++;
   }
-  paths[n + 1] = NULL;
+  paths[n] = NULL;
 
   NSAutoreleasePool *pool = nil;
   FTS *tree = fts_open(paths, FTS_NOCHDIR, 0);
@@ -117,6 +117,7 @@
     pool = [[NSAutoreleasePool alloc] init];
     if (node->fts_info & FTS_F) {
       NSString *filename = [NSString stringWithUTF8String:node->fts_path];
+      
       if (!filename)
         continue;
       NSNumber *trackID = [urlTable_ get:filename];
@@ -125,6 +126,7 @@
         t.url = filename;
         int st = [t readTag];
         // Only index things with audio:
+        // This will skip JPEG/photo files but allow almost other media files that LibAV can read through.
         if (t.isAudio.boolValue) {
           [self save:t];
         } 

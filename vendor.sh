@@ -10,7 +10,6 @@ BUILDROOT=$projectroot/build
 SCRATCH=${BUILDROOT}/scratch
 VENDOR=$projectroot/vendor
 INSTALL_PREFIX=${BUILDROOT}/vendor
-
 mkdir -p ${BUILDROOT}
 mkdir -p ${INSTALL_PREFIX} \
     ${INSTALL_PREFIX}/bin \
@@ -28,9 +27,9 @@ then
     rm -rf ${SCRATCH}
     mkdir ${SCRATCH}
     cd ${SCRATCH}
-    tar xzvf ${VENDOR}/libav-0.8.tar.gz
-    cd libav-0.8
-    ./configure --prefix=${INSTALL_PREFIX} --disable-shared
+    tar xzvf ${VENDOR}/libav-0.8.1.tar.gz
+    cd libav-0.8.1
+    ./configure --prefix=${INSTALL_PREFIX} --disable-shared --enable-debug=3 --disable-optimizations
     make
     make install
     touch ${BUILDROOT}/libav.stamp

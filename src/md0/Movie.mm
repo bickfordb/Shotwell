@@ -7,6 +7,7 @@
 #import "md0/Movie.h"
 #import "md0/NSObjectPThread.h"
 #import "md0/RAOP.h"
+#import "md0/Signals.h"
 
 
 @implementation Movie
@@ -70,13 +71,15 @@
 }
 
 - (void)stop { 
-  [source_ stop];
+  IgnoreSigPIPE();
   [sink_ stop];
+  [source_ stop];
 }
 
 - (void)start { 
-  [source_ start];
+  IgnoreSigPIPE();
   [sink_ start];
+  [source_ start];
 }
 @end
 

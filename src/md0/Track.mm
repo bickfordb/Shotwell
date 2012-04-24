@@ -174,9 +174,6 @@ static NSArray *mediaExtensions = nil;
   if (!url_ || !url_.length) 
     return -1;
 
-  if (!self.isLocalMediaURL)
-    return -1;
-
   memset(&st, 0, sizeof(st));
   if (stat(url_.UTF8String, &st) < 0) {
     ret = -2;

@@ -4,8 +4,9 @@
 
 #import "md0/Loop.h"
 #import "md0/Log.h"
-#import "md0/NSObjectPthread.h"
 #import "md0/Event.h"
+#import "md0/Signals.h"
+#import "md0/PThread.h"
 
 static NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv);
 static void OnRequestComplete(struct evhttp_request *req, void *context);
@@ -31,7 +32,8 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
     running_ = false;
     started_ = true;
     pendingEvents_ = [[NSMutableSet set] retain];
-    [self runSelectorInThread:@selector(run)];
+    __block Loop *weakSelf = self;
+    ForkWith(^{ [weakSelf run]; });
   }
   return self;
 }
@@ -47,6 +49,7 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
 
 - (void)run { 
   running_ = true;
+  IgnoreSigPIPE();
   struct timeval dispatchInterval;
   dispatchInterval.tv_sec = 0;
   dispatchInterval.tv_usec = kDispatchInterval;

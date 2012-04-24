@@ -25,12 +25,11 @@ int kRefreshInterval = 10000;
     self.loop = [Loop loop];
     self.tracks = nil;
     self.requestRefresh = false;
-    void *weakSelf = (void *)self;
+    __block RemoteLibrary *weakSelf = self;
     [self.loop onTimeout:10000 with:^(Event *event, short flags) {
-      RemoteLibrary *l = (RemoteLibrary *)weakSelf;
-      if (l.requestRefresh) 
-        [l refresh];
-      l.requestRefresh = false;
+      if (weakSelf.requestRefresh) 
+        [weakSelf refresh];
+      weakSelf.requestRefresh = false;
       [event add:10000];
     }];
   }

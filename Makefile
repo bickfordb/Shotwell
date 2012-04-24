@@ -112,6 +112,7 @@ run: program
 
 gdb: program
 	echo break malloc_error_break >$(BUILD)/gdb-commands
+	echo handle SIGPIPE nostop noprint pass >$(BUILD)/gdb-commands
 	echo run >>$(BUILD)/gdb-commands
 	gdb -f -x $(BUILD)/gdb-commands $(PROG)
 

@@ -13,6 +13,7 @@
 #import "md0/Pthread.h"
 #import "md0/RAOP.h"
 #import "md0/RemoteLibrary.h"
+#import "md0/Signals.h"
 #import "md0/Util.h"
 #import "md0/WebPlugin.h"
 #import "md0/TableView.h"
@@ -36,6 +37,7 @@ static NSString * const kVolumeControl = @"VolumeControl";
 static  const int kBottomEdgeMargin = 25;
 static NSString *LibraryDir();
 static NSString *LibraryPath();
+
 static NSPredicate *ParseSearchQuery(NSString *query);
 
 static NSPredicate *ParseSearchQuery(NSString *query) {
@@ -833,6 +835,7 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification *)n {
+
   [self setupDockIcon];
   [self parseDefaults];
   self.audioOutputs = [NSMutableArray array];
@@ -959,6 +962,8 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)setupPlugins {
+  if (true)
+    return;
   self.plugins = [NSMutableArray array];
   NSString *resourceDir = [NSBundle mainBundle].resourcePath;
   NSString *pluginsDir = [resourceDir stringByAppendingPathComponent:@"Plugins"];
@@ -1175,6 +1180,7 @@ static NSString *GetWindowTitle(Track *t) {
     [trackTableView_ deselectAll:self];
     requestClearSelection_ = false;
   }
+  IgnoreSigPIPE();
 
   if (requestTogglePlay_) {
     @synchronized (self) {
@@ -1193,10 +1199,11 @@ static NSString *GetWindowTitle(Track *t) {
   }
 
   if (movie_ != NULL) {
-    self.progressControl.isEnabled = true;
-    self.progressControl.duration = movie_.duration;
-    if (!movie_.isSeeking)
+    if (!movie_.isSeeking) {
+      self.progressControl.isEnabled = true;
+      self.progressControl.duration = movie_.duration;
       self.progressControl.elapsed = movie_.elapsed;
+    }
 
     if (movie_.state == kPlayingAudioSourceState)  {
       playButton_.image = stopImage_;
@@ -1211,11 +1218,10 @@ static NSString *GetWindowTitle(Track *t) {
   }
 
   if (self.needsLibraryRefresh) {
-    INFO(@"refreshing library");
     [self.tracks clear];
-      [library_ each:^(Track *t) {
+    [library_ each:^(Track *t) {
         [self.tracks add:t];
-      }];
+    }];
     self.needsLibraryRefresh = false;
     self.needsReload = true;
   }
@@ -1334,6 +1340,8 @@ static NSString *GetWindowTitle(Track *t) {
   if (!track.artist.length || !track.album.length) 
     return;
   NSString *term = [NSString stringWithFormat:@"%@ %@", track.artist, track.album];
+  if (true) return;
+
   [appleCoverArtClient_ search:term withArtworkData:^(NSData *data) { 
     if (!data || !data.length)
       return;

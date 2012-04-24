@@ -14,6 +14,8 @@
 @synthesize durationTextField = durationTextField_;
 
 - (void)setDuration:(int64_t)duration {
+  if (slider_.isMouseDown)
+    return;
   if (duration < 0)
     duration = 0;
   if (duration_ != duration) {
@@ -27,6 +29,8 @@
 }
 
 - (void)setIsEnabled:(bool)enabled {
+  if (enabled == isEnabled_) 
+    return;
   isEnabled_ = enabled;
   slider_.enabled = enabled ? YES : NO; 
   self.duration = 0;
