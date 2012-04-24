@@ -1,8 +1,8 @@
 #import "md0/HTTP.h"
 #import "md0/Log.h"
-#include <event2/keyvalq_struct.h>
 #include <event2/buffer.h>
 #include <event2/http.h>
+#include <event2/keyvalq_struct.h>
 
 typedef void (^OnResponseBlock)(struct evhttp_request *req); 
 
@@ -17,7 +17,7 @@ static void OnRequestComplete(struct evhttp_request *req, void *context) {
   [pool release];
 }
 
-static NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv) { 
+NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv) { 
   NSMutableDictionary *d = [NSMutableDictionary dictionary];
   if (kv) {
     struct evkeyval *e = kv->tqh_first;

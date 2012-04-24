@@ -3,10 +3,11 @@
 #include <fcntl.h>
 #include <string>
 
-#import "Daemon.h"
-#import "JSON.h"
-#import "Log.h"
-#import "Track.h"
+#import "md0/Daemon.h"
+#import "md0/HTTP.h"
+#import "md0/JSON.h"
+#import "md0/Log.h"
+#import "md0/Track.h"
 
 const int kDaemonDefaultPort = 6226;
 
@@ -18,7 +19,7 @@ const int kDaemonDefaultPort = 6226;
 - (void)respondWithStatus:(int)status message:(NSString *)message body:(NSString *)body;
 - (void)respondWithStatus:(int)status message:(NSString *)message buffer:(struct evbuffer *)buffer;
 - (void)addResponseHeader:(NSString *)key value:(NSString *)value;
-
+- (NSDictionary *)headers;
 @end
 
 @implementation Request 
@@ -43,6 +44,10 @@ const int kDaemonDefaultPort = 6226;
     return ret;
 }
 
+- (NSDictionary *)headers {
+  return FromEvKeyValQ(evhttp_request_get_input_headers(req_));
+}
+
 - (void)respondWithStatus:(int)status message:(NSString *)message body:(NSString *)body {
   struct evbuffer *buffer = evbuffer_new();
   evbuffer_add_printf(buffer, "%s", body.UTF8String);  
@@ -63,6 +68,19 @@ const int kDaemonDefaultPort = 6226;
 }
 
 @end
+
+static void ParseRangeHeader(NSString *s, int *startByte, int *endByte) {
+  *startByte = -1;
+  *endByte = -1;
+  if (!s)
+    return;
+  NSScanner *sc = [NSScanner scannerWithString:s];
+  [sc scanString:@"bytes=" intoString:NULL];
+  if ([sc scanInt:startByte]) {
+    [sc scanString:@"-" intoString:NULL];
+    [sc scanInt:endByte];
+  } 
+}
 
 static void OnRequest(evhttp_request *r, void *ctx) {
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -105,6 +123,8 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 }
 
 - (bool)handleTrackRequest:(Request *)request { 
+  DEBUG(@"got headers: %@", request.headers);
+
   NSScanner *scanner = [NSScanner scannerWithString:request.path];
   NSString *s = nil;
   if (![scanner scanString:@"/tracks/" intoString:&s]) {
@@ -141,10 +161,38 @@ static void OnRequest(evhttp_request *r, void *ctx) {
     guessContentType = @"audio/mpeg";
   // fill me in
   [request addResponseHeader:@"Content-Type" value:guessContentType];
+  [request addResponseHeader:@"Accept-Ranges" value:@"bytes"];
   struct evbuffer *buf = evbuffer_new();
-  evbuffer_add_file(buf, fd, 0, the_stat.st_size);
 
-  [request respondWithStatus:200 message:@"OK" buffer:buf];
+  int offset = 0;
+  int len = the_stat.st_size;
+  int startByte = -1;
+  int endByte = -1;
+
+  NSString *rangeHeader = [request.headers objectForKey:@"Range"];
+  ParseRangeHeader(rangeHeader, &startByte, &endByte);
+  INFO(@"range start: %d, %d", startByte, endByte);
+  int status = 200;
+  NSString *msg = @"OK";
+  if (startByte >= 0 && endByte >= 0) {
+    offset = startByte;
+    len = 1 + (endByte - startByte);
+    status = 206;
+    msg = @"Partial Content";
+  } else if (startByte >= 0) {
+    offset = startByte;
+    len = the_stat.st_size - offset;
+    status = 206;
+    msg = @"Partial Content";
+  }
+  [request 
+    addResponseHeader:@"Content-Range" 
+    value:[NSString stringWithFormat:@"bytes %d-%d/%d",
+            offset,
+            (offset + len - 1),
+            the_stat.st_size]];
+  evbuffer_add_file(buf, fd, offset, len);
+  [request respondWithStatus:status message:msg buffer:buf];
   evbuffer_free(buf);
   return true;
 }
