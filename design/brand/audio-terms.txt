@@ -1,0 +1,154 @@
+Acoustic
+Amp
+Analog
+Angular
+Arco
+Arpeggio
+Audio Jack
+Axe
+B-side
+Band
+Bandcamp 
+Barre
+Bass
+Beat
+Beatnet
+Bebop
+Bell
+Blues
+Brown Sound
+C86
+Cadence
+Cantata
+Capo
+Cartridge
+Cassette
+CD rack
+Chord
+Chromatic
+Coda
+Drne
+Drone
+Drop
+Drum
+Drumbeat
+Dubmx
+Duet
+Elegy
+Etude
+Fermata
+Finale
+Forte
+Fret
+Fugue
+Genre
+Gig
+Groove
+HeadPhones
+Hiphop
+InStereo
+Interval
+Intonation
+Jack
+Jangle
+Jangly
+Jangly
+Jazz
+Jete
+Key
+Korg
+Legato
+Long play
+Madrigal
+Marcato
+Mediakit
+Melody
+Microvox
+Mix
+Mixer
+Modern listening
+Modern rock
+Modulate
+Monitor
+Mono
+Monotron
+Musicpal
+Mute
+Nanovox
+Needle
+Netplug
+Netvoice
+Netvox
+New wave
+Noise
+Notrack
+Octave
+Oscillate
+Oscillator
+Ostinato
+Overtone
+Pentatonic
+Phone
+Phonic
+Phonograph
+Pickup
+Pink Noise
+Pitch
+Pizzicato
+Player
+Playlist
+Plug
+Pop
+Plugin
+Polyphonic
+Postpunk
+Postwave
+Psych
+Punk
+Receiver
+Record collection
+RecordLabel
+Resonance
+Rhythm
+Rhythmdb
+Rhythmhub
+Ring
+Rock
+Sequencer
+Son file
+Song
+Song hub
+Song net
+Song story
+Sonic
+Sonnet
+Soul
+Sound 
+Spiccato
+Springing
+Staccato
+Step
+Stereolife
+Stretto
+Syncopate
+Synth
+Synth
+Synthesizer
+Timbre
+Tonic
+Track
+Treble
+Tremolo
+Tuned
+Tuner
+Tuning
+Turntable
+Vibrato
+Voice
+Voiced
+Voicing
+Voxit
+Voxl
+Wall of sound
+Wave
+White Noise

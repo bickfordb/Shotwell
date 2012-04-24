@@ -6,7 +6,8 @@
 @synthesize direction = direction_;
 @synthesize comparator = comparator_;
 
-- (id)initWithKey:(NSString *)key direction:(Direction)direction comparator:(ComparisonFunc)comparator {
+
+- (id)initWithKey:(NSString *)key direction:(Direction)direction comparator:(NSComparator)comparator {
   self = [super init];
   if (self) { 
     self.key = key;
@@ -18,7 +19,9 @@
 
 - (void)dealloc { 
   self.key = nil;
+  self.comparator = nil;
   [[NSNotificationCenter defaultCenter] removeObserver:self];
+
   [super dealloc];
 }
 @end
@@ -45,7 +48,7 @@ NSComparator GetSortComparatorFromSortFields(NSArray *sortFields) {
   return comparator;
 }
 
-NSComparisonResult NaturalComparison(id left, id right) {
+NSComparator NaturalComparison = ^(id left, id right) {
   NSString *l = left;
   NSString *r = right;
   NSComparisonResult ret;
@@ -56,6 +59,9 @@ NSComparisonResult NaturalComparison(id left, id right) {
   else
     ret = [l naturalCompareCaseInsensitive:r];
   return ret;
-}
+};
 
+NSComparator DefaultComparison = ^(id left, id right) {
+  return [left compare:right]; 
+};
 

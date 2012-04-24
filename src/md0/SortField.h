@@ -6,21 +6,20 @@ typedef enum {
   Descending = 2
 } Direction;
 
-typedef NSComparisonResult (*ComparisonFunc)(id left, id right);
-
 @interface SortField : NSObject { 
   Direction direction_;
   NSString *key_;
-  ComparisonFunc comparator_;
+  NSComparator comparator_;
 }
 
 @property (nonatomic) Direction direction;
 @property (retain, nonatomic) NSString *key;
-@property (nonatomic) ComparisonFunc comparator;
-- (id)initWithKey:(NSString *)key direction:(Direction)direction comparator:(ComparisonFunc)comparator;
+@property (copy, nonatomic) NSComparator comparator;
+- (id)initWithKey:(NSString *)key direction:(Direction)direction comparator:(NSComparator)comparator;
 @end
 
 NSComparator GetSortComparatorFromSortFields(NSArray *sortFields);
-NSComparisonResult NaturalComparison(id left, id right);
+extern NSComparator NaturalComparison;
+extern NSComparator DefaultComparison;
 
 // vim filetype=objcpp

@@ -1034,6 +1034,13 @@ static NSString *GetWindowTitle(Track *t) {
 - (void)netService:(NSNetService *)sender didNotResolve:(NSMutableDictionary *)errorDict {
 }
 
+- (NSComparator)getComparatorForKey:(NSString *)key { 
+  if (key == kDuration)
+    return DefaultComparison;
+  else
+    return NaturalComparison;   
+}
+
 - (void)tableView:(NSTableView *)tableView didClickTableColumn:(NSTableColumn *)tableColumn {
   if (tableView != self.trackTableView)
     return;
@@ -1041,7 +1048,6 @@ static NSString *GetWindowTitle(Track *t) {
   if (!ident || ident == kStatus) { 
     return;
   }
-
   @synchronized(sortFields_) { 
     int found = -1;
     int idx = 0;
@@ -1052,18 +1058,19 @@ static NSString *GetWindowTitle(Track *t) {
       }
       idx++;
     }
+    NSComparator comparator = [self getComparatorForKey:ident];
     if (found < 0) {
       SortField *s = [[[SortField alloc] 
         initWithKey:ident
         direction:Ascending
-        comparator:NaturalComparison] autorelease];
+        comparator:comparator] autorelease];
       [sortFields_ insertObject:s atIndex:0];
     } else if (found > 0) {
       // Pop the field off a non-zero index, set the direction to ascending
       SortField *s = [[[SortField alloc] 
         initWithKey:ident
         direction:Ascending
-        comparator:NaturalComparison] autorelease];
+        comparator:comparator] autorelease];
       [sortFields_ removeObjectAtIndex:found];
       [sortFields_ insertObject:s atIndex:0];
     } else { 
@@ -1073,8 +1080,10 @@ static NSString *GetWindowTitle(Track *t) {
     }
   }
   [self updateTableColumnHeaders];
-  self.tracks.comparator = GetSortComparatorFromSortFields(self.sortFields);
-  self.needsReload = true;
+  ForkWith(^{
+    self.tracks.comparator = GetSortComparatorFromSortFields(self.sortFields);
+    self.needsReload = true;
+  });
 }
 
 - (void)updateTableColumnHeaders {

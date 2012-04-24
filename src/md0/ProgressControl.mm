@@ -32,6 +32,7 @@
   self.duration = 0;
   self.elapsed = 0;
 }
+
 - (int64_t)duration {
   return duration_;
 }
