@@ -1,6 +1,6 @@
 #import <Cocoa/Cocoa.h>
-#import "AudioSink.h"
-#import "AudioSource.h"
+#import "app/AudioSink.h"
+#import "app/AudioSource.h"
 
 @interface Movie : NSObject {
   NSString *url_;

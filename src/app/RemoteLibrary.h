@@ -3,8 +3,8 @@
 #include <stdint.h>
 #include <event2/event.h>
 
-#import "Library.h"
-#import "Loop.h"
+#import "app/Library.h"
+#import "app/Loop.h"
 
 @interface RemoteLibrary : Library { 
   NSNetService *netService_;

@@ -1,4 +1,4 @@
-#import "NSURLAdditions.h"
+#import "app/NSURLAdditions.h"
 
 @implementation NSURL (Additions) 
 - (NSURL *)pushKey:(NSString *)key value:(NSString *)value {

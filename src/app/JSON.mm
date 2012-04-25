@@ -1,4 +1,4 @@
-#import "JSON.h"
+#import "app/JSON.h"
 #include <jansson.h>
 
 id FromJSON(json_t *obj) {

@@ -1,10 +1,7 @@
 #import <Cocoa/Cocoa.h>
 // vim: filetype=objcpp
 
-// copright notice from strnatcmp.c author:
-
-/* -*- mode: c; c-file-style: "k&r" -*-
-
+/* 
   strnatcmp.c -- Perform 'natural order' comparisons of strings in C.
   Copyright (C) 2000, 2004 by Martin Pool <mbp sourcefrog net>
 

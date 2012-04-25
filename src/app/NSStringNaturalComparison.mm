@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-#import "NSStringNaturalComparison.h"
+#import "app/NSStringNaturalComparison.h"
 
 typedef char nat_char;
 
