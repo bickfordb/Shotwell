@@ -4,7 +4,6 @@
 #include <sys/utsname.h>
 
 #import "md0/AppDelegate.h"
-#import "md0/ITunesScan.h"
 #import "md0/Log.h"
 #import "md0/NSNetServiceAddress.h"
 #import "md0/NSNumberTimeFormat.h"
@@ -19,14 +18,10 @@
 #import "md0/TableView.h"
 
 static const int64_t kLibraryRefreshInterval = 2 * 1000000;
-static const int kDefaultPort = 6226;
 static NSSize kStartupSize = {1300, 650};
 static NSString * const kDefaultWindowTitle = @"MD0";
-static NSString * const kIsITunesImported = @"IsItunesImported";
-static NSString * const kMD0ServiceType = @"_md0._tcp.";
 static NSString * const kNextButton = @"NextButton";
 static NSString * const kPath = @"Path";
-static NSString * const kPathsToScan = @"PathsToScan";
 static NSString * const kPlayButton = @"PlayButton";
 static NSString * const kPreviousButton = @"PreviousButton";
 static NSString * const kProgressControl = @"ProgressControl";
@@ -119,16 +114,14 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize localLibrary = localLibrary_;
 @synthesize mainWindow = mainWindow_;
 @synthesize libraries = libraries_;
-@synthesize mdServiceBrowser = mdServiceBrowser_;
+@synthesize daemonBrowser = daemonBrowser_;
 @synthesize movie = movie_;
 @synthesize needsLibraryRefresh = needsLibraryRefresh_;
 @synthesize needsReload = needsReload_; 
-@synthesize netService = netService_;
 @synthesize nextButton = nextButton_;
 @synthesize nextButtonItem = nextButtonItem_;
 @synthesize nextMenuItem = nextMenuItem_;
 @synthesize pasteMenuItem = pasteMenuItem_;
-@synthesize pathsToAutomaticallyScan = pathsToAutomaticallyScan_;
 @synthesize playButton = playButton_;
 @synthesize playButtonItem = playButtonItem_;
 @synthesize playImage = playImage_;
@@ -230,8 +223,7 @@ static NSString *GetWindowTitle(Track *t) {
 
   NSMenuItem *appMenu = [mainMenu itemAtIndex:0];
   NSMenuItem *preferences = [appMenu.submenu 
-    insertItemWithTitle:@"Preferences"
-    action:@selector(onPreferences:) 
+    insertItemWithTitle:@"Preferences" action:@selector(onPreferences:) 
     keyEquivalent:@"," 
     atIndex:1];
   preferences.target = self;
@@ -265,23 +257,9 @@ static NSString *GetWindowTitle(Track *t) {
   if ([openPanel runModal] == NSOKButton) {
     for (NSURL *p in [openPanel URLs]) { 
       [paths addObject:p.path];
-      [self noteAddedPath:p.path];
     }
   }
   [localLibrary_ scan:paths];
-}
-
-- (void)noteAddedPath:(NSString *)aPath {
-  struct stat status;
-  if (stat(aPath.UTF8String, &status) == 0 && status.st_mode & S_IFDIR) {
-    NSArray *curr = self.pathsToAutomaticallyScan;
-    NSMutableArray *a = [NSMutableArray array];
-    if (curr)
-      [a addObjectsFromArray:curr];
-    if (![a containsObject:aPath]) 
-      [a addObject:aPath];
-    self.pathsToAutomaticallyScan = a;
-  }
 }
 
 - (void)delete:(id)sender { 
@@ -448,11 +426,11 @@ static NSString *GetWindowTitle(Track *t) {
   if (!iset)
     return;
   NSMutableArray *newPaths = [NSMutableArray array];
-  NSArray *oldPaths = self.pathsToAutomaticallyScan;
+  NSArray *oldPaths = self.localLibrary.pathsToAutomaticallyScan;
   if (oldPaths)
     [newPaths addObjectsFromArray:oldPaths];
   [newPaths removeObjectsAtIndexes:iset];
-  self.pathsToAutomaticallyScan = newPaths;
+  self.localLibrary.pathsToAutomaticallyScan = newPaths;
   self.requestReloadPathsTable = true;
 }
 
@@ -468,7 +446,7 @@ static NSString *GetWindowTitle(Track *t) {
   NSMutableArray *paths = [NSMutableArray array];
   if ([openPanel runModal] == NSOKButton) {
     for (NSURL *p in [openPanel URLs]) { 
-      [self noteAddedPath:p.path];
+      [paths addObject:p.path];
     }
   }
   [self.localLibrary scan:paths];
@@ -817,17 +795,6 @@ static NSString *GetWindowTitle(Track *t) {
   [NSApp setApplicationIconImage:[NSImage imageNamed:@"md0dock"]];
 }
 
-- (NSArray *)pathsToAutomaticallyScan {
-  return [[NSUserDefaults standardUserDefaults] arrayForKey:kPathsToScan];
-}
-
-- (void)setPathsToAutomaticallyScan:(NSArray *)paths {
-  NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
-  paths = [paths sortedArrayUsingSelector:@selector(compare:)];
-  [d setObject:paths forKey:kPathsToScan];
-  [d synchronize];
-  self.requestReloadPathsTable = true;
-}
 
 - (void)parseDefaults { 
   [[NSUserDefaults standardUserDefaults] setBool:TRUE forKey:@"WebKitDeveloperExtras"];
@@ -835,7 +802,7 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification *)n {
-
+  __block AppDelegate *weakSelf = self;
   [self setupDockIcon];
   [self parseDefaults];
   self.audioOutputs = [NSMutableArray array];
@@ -850,6 +817,10 @@ static NSString *GetWindowTitle(Track *t) {
   self.tracks = [[[SortedSeq alloc] init] autorelease];
   self.appleCoverArtClient = [[[AppleCoverArtClient alloc] init] autorelease];
   self.localLibrary = [[[LocalLibrary alloc] initWithPath:LibraryPath()] autorelease];
+  self.localLibrary.onScanPathsChange = ^{
+    self.requestReloadPathsTable = true;  
+    
+  };
   
   self.library = self.localLibrary;
   self.movie = nil;
@@ -891,23 +862,8 @@ static NSString *GetWindowTitle(Track *t) {
   [self setupPlugins];
   [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
 
-  ForkWith(^{
-    // FIXME: Defer this until a minute after startup
-    usleep(2000);
-    [self.localLibrary scan:self.pathsToAutomaticallyScan];
-  });
-
-  ForkWith(^{
-    usleep(1000);
-    if (!self.isITunesImported) {
-      NSMutableArray *paths = [NSMutableArray array];
-        GetITunesTracks(^(Track *t) {
-        [paths addObject:t.url];
-      });
-      [self.localLibrary scan:paths];
-      self.isITunesImported = true;
-    }
-  });
+  [self.localLibrary checkITunesImport];
+  [self.localLibrary checkAutomaticPaths];
 }
 
 - (void)onPollStatsTimer:(NSTimer *)timer { 
@@ -922,17 +878,7 @@ static NSString *GetWindowTitle(Track *t) {
   }
   self.artists = artists;
   self.albums = albums;
-} 
-
-- (bool)isITunesImported { 
-  return [[NSUserDefaults standardUserDefaults] boolForKey:kIsITunesImported];
 }
-
-- (void)setIsITunesImported:(bool)st { 
-  [[NSUserDefaults standardUserDefaults] setBool:(BOOL)st forKey:kIsITunesImported];
-  [[NSUserDefaults standardUserDefaults] synchronize];
-}
-
 
 - (void)setupRAOP { 
   self.raopServiceBrowser = [[[NSNetServiceBrowser alloc] init] autorelease];
@@ -941,29 +887,16 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)setupSharing { 
-  self.daemon = [[[Daemon alloc] initWithHost:@"0.0.0.0" port:kDefaultPort
+  self.daemon = [[[Daemon alloc] 
+    initWithHost:@"0.0.0.0" 
+    port:kDaemonDefaultPort
     library:self.localLibrary] autorelease];
-
-  struct utsname the_utsname;
-  uname(&the_utsname);
-  NSString *nodeName = [NSString stringWithUTF8String:the_utsname.nodename];
-  self.netService = [[[NSNetService alloc] 
-    initWithDomain:@"local."
-    type:kMD0ServiceType
-    name:nodeName 
-    port:kDefaultPort] autorelease];
-  [netService_ publish];
-  [netService_ scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
-  mdServiceBrowser_ = [[NSNetServiceBrowser alloc] init];
-  [mdServiceBrowser_ setDelegate:self];
-  [mdServiceBrowser_ searchForServicesOfType:kMD0ServiceType inDomain:@"local."];
-
-
+  self.daemonBrowser = [[[NSNetServiceBrowser alloc] init] autorelease];
+  [self.daemonBrowser setDelegate:self];
+  [self.daemonBrowser searchForServicesOfType:kDaemonServiceType inDomain:@"local."];
 }
 
 - (void)setupPlugins {
-  if (true)
-    return;
   self.plugins = [NSMutableArray array];
   NSString *resourceDir = [NSBundle mainBundle].resourcePath;
   NSString *pluginsDir = [resourceDir stringByAppendingPathComponent:@"Plugins"];
@@ -988,21 +921,6 @@ static NSString *GetWindowTitle(Track *t) {
   NSPasteboard *pasteboard = [info draggingPasteboard];
   NSArray *paths = [pasteboard propertyListForType:NSFilenamesPboardType];
   [localLibrary_ scan:paths];
-  
-  for (NSString *p in paths) {
-    struct stat status;
-    if (stat(p.UTF8String, &status) == 0) {
-      if (status.st_mode & S_IFDIR) {
-        NSArray *pathsToAutomaticallyScan = self.pathsToAutomaticallyScan;
-        if (!pathsToAutomaticallyScan)
-          pathsToAutomaticallyScan = [NSArray array];
-        NSMutableSet *pset = [NSMutableSet setWithArray:pathsToAutomaticallyScan];
-        [pset addObject:p];
-        self.pathsToAutomaticallyScan = pset.allObjects;
-        self.requestReloadPathsTable = true;
-      }
-    }
-  }
   return [paths count] ? YES : NO;
 }
 
@@ -1294,7 +1212,7 @@ static NSString *GetWindowTitle(Track *t) {
 
 - (void)onPollLibraryTimer:(id)sender { 
   [raopServiceBrowser_ searchForServicesOfType:kRAOPServiceType inDomain:@"local."];
-  [mdServiceBrowser_ searchForServicesOfType:kMD0ServiceType inDomain:@"local."]; 
+  [self.daemonBrowser searchForServicesOfType:kDaemonServiceType inDomain:@"local."]; 
 }
 
 - (void)trackTableDoubleClicked:(id)sender { 
@@ -1374,7 +1292,7 @@ static NSString *GetWindowTitle(Track *t) {
   if (aTableView == trackTableView_) {
     return self.tracks.count;
   } else { 
-    return self.pathsToAutomaticallyScan.count;
+    return self.localLibrary.pathsToAutomaticallyScan.count;
   }
 }
 
@@ -1447,9 +1365,9 @@ row:(NSInteger)rowIndex {
     }
     return result;
   } else { 
-    NSArray *p = self.pathsToAutomaticallyScan;
+    NSArray *p = self.localLibrary.pathsToAutomaticallyScan;
     if (rowIndex >= 0 && rowIndex < p.count)
-      return [self.pathsToAutomaticallyScan objectAtIndex:rowIndex];
+      return [self.localLibrary.pathsToAutomaticallyScan objectAtIndex:rowIndex];
     else
       return @"";
   }

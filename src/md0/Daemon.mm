@@ -10,6 +10,7 @@
 #import "md0/Track.h"
 
 const int kDaemonDefaultPort = 6226;
+NSString * const kDaemonServiceType = @"_md0._tcp.";
 
 @interface Request : NSObject { 
   struct evhttp_request *req_;
@@ -90,6 +91,8 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 }
 
 @implementation Daemon
+@synthesize netService = netService_;
+
 - (bool)handleHomeRequest:(Request *)r { 
   if (![r.path isEqualToString:@"/"])
     return false;
@@ -215,6 +218,16 @@ static void OnRequest(evhttp_request *r, void *ctx) {
     eventHTTP_ = evhttp_new(loop_.base);
     evhttp_bind_socket(eventHTTP_, host.UTF8String, port);
     evhttp_set_gencb(eventHTTP_, OnRequest, self);
+    struct utsname the_utsname;
+    uname(&the_utsname);
+    NSString *nodeName = [NSString stringWithUTF8String:the_utsname.nodename];
+    self.netService = [[[NSNetService alloc] 
+      initWithDomain:@"local."
+      type:kDaemonServiceType
+      name:nodeName 
+      port:kDaemonDefaultPort] autorelease];
+    [self.netService publish];
+    [self.netService scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
   }
   return self;
 }
@@ -222,6 +235,7 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 - (void)dealloc { 
   [loop_ release];
   [library_ release];
+  [netService_ release];
   evhttp_free(eventHTTP_);
   [super dealloc];
 }

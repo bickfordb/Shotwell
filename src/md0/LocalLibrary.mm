@@ -7,12 +7,16 @@
 #include <leveldb/slice.h>
 
 #import "md0/JSON.h"
+#import "md0/ITunesScan.h"
 #import "md0/LocalLibrary.h"
 #import "md0/Log.h"
+#import "md0/PThread.h"
 #import "md0/Track.h"
 #import "md0/Util.h"
 
 #define GET_URL_KEY(url) (kURLTablePrefix + url) 
+static NSString * const kPathsToScan = @"PathsToScan";
+static NSString * const kIsITunesImported = @"IsItunesImported";
 
 @interface LocalLibrary (P)  
 - (void)scanQueuedPaths;
@@ -46,6 +50,8 @@
 @synthesize pruneRequested = pruneRequested_;
 @synthesize pruneLoop = pruneLoop_;
 @synthesize scanLoop = scanLoop_;
+@synthesize pathsToAutomaticallyScan = pathsToAutomaticallyScan_;
+@synthesize onScanPathsChange = onScanPathsChange_;
 
 - (id)initWithPath:(NSString *)path {  
   self = [super init];
@@ -57,6 +63,7 @@
     self.pruneRequested = false;
     self.pruneLoop = [[[Loop alloc] init] autorelease];
     self.scanLoop = [[[Loop alloc] init] autorelease];
+    self.onScanPathsChange = nil;
     void *weakSelf = (void*)self;
     [pruneLoop_ onTimeout:1000000 with:^(Event *e, short flags) {
       LocalLibrary *self0 = (LocalLibrary *)weakSelf;
@@ -80,6 +87,7 @@
   [pathsToScan_ release];
   [trackTable_ release];
   [urlTable_ release];
+  [onScanPathsChange_ release];
   [super dealloc];
 }
 
@@ -91,6 +99,9 @@
   }
   if (paths0.count == 0) {
     return;
+  }
+  for (NSString *p in paths0) {
+    [self noteAddedPath:p];
   }
   int n = paths0.count;
   char * paths[n + 1];
@@ -217,6 +228,63 @@
 
 - (void)prune { 
   pruneRequested_ = true;
+}
+
+- (void)noteAddedPath:(NSString *)aPath {
+  struct stat status;
+  if (stat(aPath.UTF8String, &status) == 0 && status.st_mode & S_IFDIR) {
+    NSArray *curr = self.pathsToAutomaticallyScan;
+    NSMutableArray *a = [NSMutableArray array];
+    if (curr)
+      [a addObjectsFromArray:curr];
+    if (![a containsObject:aPath]) 
+      [a addObject:aPath];
+    self.pathsToAutomaticallyScan = a;
+  }
+}
+
+- (NSArray *)pathsToAutomaticallyScan {
+  return [[NSUserDefaults standardUserDefaults] arrayForKey:kPathsToScan];
+}
+
+- (void)setPathsToAutomaticallyScan:(NSArray *)paths {
+  NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
+  paths = [paths sortedArrayUsingSelector:@selector(compare:)];
+  [d setObject:paths forKey:kPathsToScan];
+  [d synchronize];
+  OnScanPathsChange c = self.onScanPathsChange;
+  if (c) {
+    c();
+  }
+}
+- (void)checkITunesImport {
+  ForkWith(^{
+    usleep(1000);
+    if (!self.isITunesImported) {
+      NSMutableArray *paths = [NSMutableArray array];
+        GetITunesTracks(^(Track *t) {
+        [paths addObject:t.url];
+      });
+      [self scan:paths];
+      self.isITunesImported = true;
+    }
+  });
+};
+
+- (void)checkAutomaticPaths {
+  ForkWith(^{
+    usleep(2000);
+    [self scan:self.pathsToAutomaticallyScan];
+  });
+}
+
+- (bool)isITunesImported { 
+  return [[NSUserDefaults standardUserDefaults] boolForKey:kIsITunesImported];
+}
+
+- (void)setIsITunesImported:(bool)st { 
+  [[NSUserDefaults standardUserDefaults] setBool:(BOOL)st forKey:kIsITunesImported];
+  [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
 @end

@@ -14,6 +14,8 @@
 }
 @end
 
+typedef void (^OnScanPathsChange)(void);
+
 @interface LocalLibrary : Library { 
   TrackTable *trackTable_;
   URLTable *urlTable_;
@@ -21,6 +23,7 @@
   Loop *scanLoop_;
   bool pruneRequested_;
   NSMutableSet *pathsToScan_;
+  OnScanPathsChange onScanPathsChange_;
 }
 
 @property (retain) TrackTable *trackTable;
@@ -29,6 +32,7 @@
 @property (retain) Loop *scanLoop;
 @property bool pruneRequested;
 @property (retain) NSMutableSet *pathsToScan;
+@property (copy) OnScanPathsChange onScanPathsChange;
 
 - (id)initWithPath:(NSString *)path;
 - (void)save:(Track *)t;
@@ -38,6 +42,11 @@
 - (void)prune;
 - (void)delete:(Track *)track;
 - (void)each:(void (^)(Track *track))block;
-@end
+- (void)checkITunesImport;
+- (void)noteAddedPath:(NSString *)aPath;
+- (void)checkAutomaticPaths;
 
+@property bool isITunesImported;
+@property (copy) NSArray *pathsToAutomaticallyScan;
+@end
 

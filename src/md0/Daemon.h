@@ -7,12 +7,14 @@
 #import "Loop.h"
 
 extern const int kDaemonDefaultPort;
+extern NSString * const kDaemonServiceType;
 
 @class Request;
 @interface Daemon : NSObject {
   LocalLibrary *library_;
   struct evhttp *eventHTTP_;
   Loop *loop_;
+  NSNetService *netService_;
 }
 
 - (bool)handleHomeRequest:(Request *)r;
@@ -21,4 +23,6 @@ extern const int kDaemonDefaultPort;
 - (bool)handleTrackRequest:(Request *)r;
 - (void)handleRequest:(Request *)r;
 - (id)initWithHost:(NSString *)host port:(int)port library:(LocalLibrary *)library;
+@property (retain) NSNetService *netService;
+
 @end

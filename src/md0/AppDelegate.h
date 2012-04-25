@@ -57,8 +57,7 @@
   NSMutableArray *plugins_;
   NSMutableArray *audioOutputs_;
   NSMutableArray *sortFields_;
-  NSNetService *netService_;
-  NSNetServiceBrowser *mdServiceBrowser_;
+  NSNetServiceBrowser *daemonBrowser_;
   NSNetServiceBrowser *raopServiceBrowser_;
   NSPopUpButton *audioOutputPopUp_;
   NSPopUpButton *libraryPopUp_;
@@ -124,8 +123,7 @@
 @property (retain) NSMutableArray *audioOutputs;
 @property (retain) NSMutableArray *sortFields;
 @property (retain) SortedSeq *tracks;
-@property (retain) NSNetService *netService;
-@property (retain) NSNetServiceBrowser *mdServiceBrowser;
+@property (retain) NSNetServiceBrowser *daemonBrowser;
 @property (retain) NSNetServiceBrowser *raopServiceBrowser;
 @property (retain) NSPopUpButton *audioOutputPopUp;
 @property (retain) NSPopUpButton *libraryPopUp;
@@ -164,9 +162,7 @@
 @property bool predicateChanged;
 @property int requestPlayTrackAtIndex;
 @property int seekToRow;
-@property bool isITunesImported;
 @property bool requestReloadPathsTable;
-@property (copy) NSArray *pathsToAutomaticallyScan;
 
 - (NSArray *)cutTracksAtIndices:(NSIndexSet *)indices;
 - (void)playNextTrack;
@@ -189,6 +185,5 @@
 - (void)library:(Library *)l savedTrack:(Track *)t;
 - (void)library:(Library *)l deletedTrack:(Track *)t;
 - (void)playClicked:(id)sender;
-- (void)noteAddedPath:(NSString *)aPath;
 @end
 
