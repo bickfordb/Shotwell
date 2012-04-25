@@ -70,7 +70,7 @@
   NSTextField *statusBarText_;
   NSTimer *pollLibraryTimer_;
   NSTimer *pollMovieTimer_;
-  NSToolbar *toolbar_;
+  NSToolbar *preferenceToolbar_;
   NSToolbarItem *nextButtonItem_;
   NSToolbarItem *playButtonItem_;
   NSToolbarItem *previousButtonItem_;
@@ -138,7 +138,6 @@
 @property (retain) NSTimer *pollLibraryTimer;
 @property (retain) NSTimer *pollMovieTimer;
 @property (retain) NSTimer *pollStatsTimer;
-@property (retain) NSToolbar *toolbar;
 @property (retain) NSToolbarItem *nextButtonItem;
 @property (retain) NSToolbarItem *playButtonItem;
 @property (retain) NSToolbarItem *previousButtonItem;

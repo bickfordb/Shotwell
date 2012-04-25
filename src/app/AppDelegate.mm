@@ -20,6 +20,7 @@
 static const int64_t kLibraryRefreshInterval = 2 * 1000000;
 static NSSize kStartupSize = {1300, 650};
 static NSString * const kDefaultWindowTitle = @"MD0";
+static NSString * const kGeneralPreferenceTab = @"GeneralPreferenceTab";
 static NSString * const kNextButton = @"NextButton";
 static NSString * const kPath = @"Path";
 static NSString * const kPlayButton = @"PlayButton";
@@ -156,7 +157,6 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize statusBarText = statusBarText_;
 @synthesize stopImage = stopImage_;
 @synthesize stopMenuItem = stopMenuItem_;
-@synthesize toolbar = toolbar_;
 @synthesize track = track_;
 @synthesize trackEnded = trackEnded_;
 @synthesize trackTableFont = trackTableFont_;
@@ -343,13 +343,12 @@ static NSString *GetWindowTitle(Track *t) {
   CGSize scrollSize = CGSizeMake(480, 300);
   CGSize windowSize = CGSizeMake(500, kSpace + scrollSize.height + kSpace + labelSize.height + kSpace + buttonSize.height + kSpace);
 
-  CGRect removeRect = CGRectMake(10, 10, buttonSize.width, buttonSize.height);
-  CGRect addRect = removeRect;
-  addRect.origin.x += addRect.size.width;
+  CGRect addRect = CGRectMake(10, 10, buttonSize.width, buttonSize.height);
+  CGRect removeRect = addRect;
+  removeRect.origin.x += addRect.size.width;
   CGRect scrollRect = CGRectMake(10, buttonSize.height + removeRect.origin.y + 5, scrollSize.width, scrollSize.height);
   CGRect labelRect = CGRectMake(10, scrollRect.origin.y + scrollRect.size.height, labelSize.width, labelSize.height);
   CGRect windowRect = CGRectMake(100, 100, windowSize.width, windowSize.height);
-
 
   self.preferencesWindow = [[[NSWindow alloc] 
     initWithContentRect:windowRect
@@ -380,6 +379,7 @@ static NSString *GetWindowTitle(Track *t) {
   sv.focusRingType = NSFocusRingTypeNone;
   sv.autoresizesSubviews = YES;
   sv.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+  sv.borderType = NSBezelBorder;
   [sv setHasVerticalScroller:YES];
   [sv setHasHorizontalScroller:YES];
   sv.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
@@ -419,6 +419,10 @@ static NSString *GetWindowTitle(Track *t) {
   removeButton.action = @selector(removeScanPath:);
   removeButton.bezelStyle = NSSmallSquareBezelStyle;
   [self.preferencesWindow.contentView addSubview:removeButton];
+  
+  NSToolbar  *toolbar = [[[NSToolbar alloc] initWithIdentifier:@"PreferencesToolbar"] autorelease];
+  toolbar.delegate = self;
+  [self.preferencesWindow setToolbar:toolbar];
 }
 
 - (void)removeScanPath:(id)sender { 
@@ -784,11 +788,12 @@ static NSString *GetWindowTitle(Track *t) {
   self.searchItem = [[[NSToolbarItem alloc] initWithItemIdentifier:kSearchControl] autorelease];
   [searchItem_ setView:self.searchField];
 
-  self.toolbar = [[[NSToolbar alloc] initWithIdentifier:@"toolbar"] autorelease];
-  [toolbar_ setDelegate:self];
-  [toolbar_ setDisplayMode:NSToolbarDisplayModeIconOnly];
-  [toolbar_ insertItemWithItemIdentifier:kPlayButton atIndex:0];
-  [mainWindow_ setToolbar:toolbar_];
+  NSToolbar *toolbar = [[[NSToolbar alloc] initWithIdentifier:@"toolbar"] autorelease];
+  [toolbar setDelegate:self];
+  [toolbar setDisplayMode:NSToolbarDisplayModeIconOnly];
+  [toolbar insertItemWithItemIdentifier:kPlayButton atIndex:0];
+  self.mainWindow.toolbar = toolbar;
+
 }
 
 - (void)setupDockIcon {
@@ -1022,28 +1027,48 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (NSToolbarItem *)toolbar:(NSToolbar *)toolbar itemForItemIdentifier:(NSString *)itemIdentifier willBeInsertedIntoToolbar:(BOOL)flag {
+  NSToolbarItem *item;
   if (itemIdentifier == kPlayButton) { 
-    return playButtonItem_;  
+    item = playButtonItem_;  
   } else if (itemIdentifier == kProgressControl) { 
-    return progressSliderItem_;
+    item = progressSliderItem_;
   } else if (itemIdentifier == kVolumeControl) { 
-    return volumeItem_;
+    item = volumeItem_;
   } else if (itemIdentifier == kSearchControl) { 
-    return searchItem_;
+    item = searchItem_;
   } else if (itemIdentifier == kPreviousButton) { 
-    return previousButtonItem_;
+    item = previousButtonItem_;
   } else if (itemIdentifier == kNextButton)  {
-    return nextButtonItem_;
+    item = nextButtonItem_;
+  } else if (itemIdentifier == kGeneralPreferenceTab) { 
+    item = [[[NSToolbarItem alloc] initWithItemIdentifier:kGeneralPreferenceTab] autorelease];
+    item.label = @"General";
+    item.enabled = true;
+    item.target = self;
+    item.action = @selector(generalSelected:);
+    NSImageView *view = [[[NSImageView alloc] initWithFrame:CGRectMake(0, 0, 32, 32)] autorelease];
+    view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    view.image = [NSImage imageNamed:@"NSPreferencesGeneral"];
+    item.view = view;
   }
-  return nil;
+  return item;
+}
+
+- (void)generalSelected:(id)sender { 
+  
 }
 
 - (NSArray *)toolbarAllowedItemIdentifiers:(NSToolbar *)toolbar {
-  return [NSArray arrayWithObjects:kPreviousButton, kPlayButton, kNextButton, kVolumeControl, kProgressControl, kSearchControl, nil];
+  return [self toolbarDefaultItemIdentifiers:toolbar];
 }
 
 - (NSArray *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar { 
-  return [NSArray arrayWithObjects:kPreviousButton, kPlayButton, kNextButton, kVolumeControl, kProgressControl, kSearchControl, nil];
+  NSArray *ret = [NSArray array];
+  if (toolbar == mainWindow_.toolbar)
+    ret = [NSArray arrayWithObjects:kPreviousButton, kPlayButton, kNextButton, kVolumeControl, kProgressControl, kSearchControl, nil];
+  else if (toolbar == preferencesWindow_.toolbar) 
+    ret = [NSArray arrayWithObjects:kGeneralPreferenceTab, nil];
+  return ret;     
 }
 
 - (NSArray *)toolbarSelectableItemIdentifiers:(NSToolbar *)toolbar {
