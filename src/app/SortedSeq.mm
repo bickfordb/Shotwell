@@ -1,5 +1,5 @@
-#import "md0/SortedSeq.h"
-#import "md0/NSMutableArrayInsert.h"
+#import "app/SortedSeq.h"
+#import "app/NSMutableArrayInsert.h"
 
 @implementation SortedSeq
 

@@ -1,4 +1,4 @@
-#import "md0/NSStringDigest.h"
+#import "app/NSStringDigest.h"
 #include <CommonCrypto/CommonDigest.h>
 
 @implementation NSString (Digest)

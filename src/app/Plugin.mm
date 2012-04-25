@@ -1,4 +1,4 @@
-#import "md0/Plugin.h"
+#import "app/Plugin.h"
 
 @implementation Plugin
 

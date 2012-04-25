@@ -2,12 +2,12 @@
 #include <event2/buffer.h>
 #include <event2/http.h>
 
-#import "md0/HTTP.h"
-#import "md0/JSON.h"
-#import "md0/Log.h"
-#import "md0/NSNetServiceAddress.h"
-#import "md0/RemoteLibrary.h"
-#import "md0/Util.h"
+#import "app/HTTP.h"
+#import "app/JSON.h"
+#import "app/Log.h"
+#import "app/NSNetServiceAddress.h"
+#import "app/RemoteLibrary.h"
+#import "app/Util.h"
 
 int kRefreshInterval = 10000;
 

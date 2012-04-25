@@ -8,11 +8,11 @@
 #include <stdlib.h>
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations" 
 
-#import "md0/Base64.h"
-#import "md0/Log.h"
-#import "md0/RTSPClient.h"
-#import "md0/RTSPClient.h"
-#import "md0/Random.h"
+#import "app/Base64.h"
+#import "app/Log.h"
+#import "app/RTSPClient.h"
+#import "app/RTSPClient.h"
+#import "app/Random.h"
 
 static const int kBytesPerChannel = 2;
 static const int kNumChannels = 2;

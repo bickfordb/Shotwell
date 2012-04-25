@@ -1,5 +1,5 @@
-#import "md0/ITunesScan.h"
-#import "md0/Log.h"
+#import "app/ITunesScan.h"
+#import "app/Log.h"
 
 void GetITunesTracks(OnITunesTrack block) {
   NSString *homePath = NSHomeDirectory();

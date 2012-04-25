@@ -1,5 +1,5 @@
-#import "md0/SortField.h"
-#import "md0/NSStringNaturalComparison.h"
+#import "app/SortField.h"
+#import "app/NSStringNaturalComparison.h"
 
 @implementation SortField 
 @synthesize key = key_;

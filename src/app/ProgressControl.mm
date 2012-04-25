@@ -1,7 +1,7 @@
 #import <Cocoa/Cocoa.h>
-#import "md0/Log.h"
-#import "md0/ProgressControl.h"
-#import "md0/NSNumberTimeFormat.h"
+#import "app/Log.h"
+#import "app/ProgressControl.h"
+#import "app/NSNumberTimeFormat.h"
 
 @implementation ProgressControl 
 @synthesize onElapsed = onElapsed_;

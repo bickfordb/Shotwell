@@ -1,5 +1,5 @@
-#import "md0/Level.h"
-#import "md0/JSON.h"
+#import "app/Level.h"
+#import "app/JSON.h"
 #include <string>
 
 using namespace std;

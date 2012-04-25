@@ -1,5 +1,5 @@
 #import <Cocoa/Cocoa.h>
-#import "md0/Slider.h"
+#import "app/Slider.h"
 
 typedef void(^OnVolume)(double pct);
 

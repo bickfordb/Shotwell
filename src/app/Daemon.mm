@@ -3,14 +3,14 @@
 #include <fcntl.h>
 #include <string>
 
-#import "md0/Daemon.h"
-#import "md0/HTTP.h"
-#import "md0/JSON.h"
-#import "md0/Log.h"
-#import "md0/Track.h"
+#import "app/Daemon.h"
+#import "app/HTTP.h"
+#import "app/JSON.h"
+#import "app/Log.h"
+#import "app/Track.h"
 
 const int kDaemonDefaultPort = 6226;
-NSString * const kDaemonServiceType = @"_md0._tcp.";
+NSString * const kDaemonServiceType = @"_media._tcp.";
 
 @interface Request : NSObject { 
   struct evhttp_request *req_;
@@ -108,7 +108,7 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 }
 
 - (bool)handleLibraryRequest:(Request *)r {
-  if (![r.path isEqualToString:@"/library"])
+  if (![r.path isEqualToString:@"/tracks"])
     return false;
   [r addResponseHeader:@"Content-Type" value:@"application/json"];
   NSMutableArray *tracks = [NSMutableArray array];
@@ -199,7 +199,7 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 }
 
 - (void)handleRequest:(Request *)request {
-  [request addResponseHeader:@"Server" value:@"md0/0.0"];
+  [request addResponseHeader:@"Server" value:@"app/0.0"];
   if ([self handleHomeRequest:request])
     return;
   else if ([self handleLibraryRequest:request]) 

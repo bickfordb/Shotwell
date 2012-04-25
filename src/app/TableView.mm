@@ -1,5 +1,5 @@
-#import "md0/TableView.h"
-#import "md0/Log.h"
+#import "app/TableView.h"
+#import "app/Log.h"
 
 @implementation TableView
 @synthesize onKeyDown = onKeyDown_;

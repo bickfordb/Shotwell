@@ -3,7 +3,7 @@
 #import <CoreServices/CoreServices.h>
 #import <AudioUnit/AudioUnit.h>
 
-#import "md0/AudioSink.h"
+#import "app/AudioSink.h"
 
 @interface CoreAudioSink : NSObject <AudioSink> {  
   id <AudioSource, NSObject> audioSource_;

@@ -1,7 +1,7 @@
 #import <Cocoa/Cocoa.h>
 #import <WebKit/WebKit.h>
 
-#import "md0/Plugin.h"
+#import "app/Plugin.h"
 
 @interface WebPlugin : Plugin {
   NSURL *url_;

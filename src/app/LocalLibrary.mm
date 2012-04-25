@@ -6,13 +6,13 @@
 #include <string>
 #include <leveldb/slice.h>
 
-#import "md0/JSON.h"
-#import "md0/ITunesScan.h"
-#import "md0/LocalLibrary.h"
-#import "md0/Log.h"
-#import "md0/PThread.h"
-#import "md0/Track.h"
-#import "md0/Util.h"
+#import "app/JSON.h"
+#import "app/ITunesScan.h"
+#import "app/LocalLibrary.h"
+#import "app/Log.h"
+#import "app/PThread.h"
+#import "app/Track.h"
+#import "app/Util.h"
 
 #define GET_URL_KEY(url) (kURLTablePrefix + url) 
 static NSString * const kPathsToScan = @"PathsToScan";

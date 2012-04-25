@@ -59,8 +59,8 @@ SRC_RES := src/Resources
 SRC_RESOURCES = $(wildcard $(SRC_RES)/*.png $(SRC_RES)/*.pdf $(SRC_RES)/*.js)
 #SRC_RESOURCES = $(wildcard $(SRC_RES)/**/**/**)
 DST_RESOURCES := $(patsubst src/Resources/%, $(APP_DIR)/Contents/Resources/%, $(wildcard src/Resources/*.* src/Resources/**/*.* src/Resources/**/**/*.* src/Resources/**/**/**/*.* src/Resources/**/**/**/**/*.*))
-OBJS := $(patsubst src/md0/%, $(BUILD)/objs/%, $(patsubst %.mm, %.o, $(wildcard src/md0/*.mm))) 
-DEPS := $(patsubst src/md0/%, $(BUILD)/deps/%, $(patsubst %.mm, %.d, $(wildcard src/md0/*.mm))) 
+OBJS := $(patsubst src/app/%, $(BUILD)/objs/%, $(patsubst %.mm, %.o, $(wildcard src/app/*.mm))) 
+DEPS := $(patsubst src/app/%, $(BUILD)/deps/%, $(patsubst %.mm, %.d, $(wildcard src/app/*.mm))) 
 
 .PHONY: program
 all: program
@@ -83,14 +83,14 @@ $(BUILD)/deps:
 	mkdir -p $(BUILD)/deps
 
 
-$(BUILD)/deps/%.d: src/md0/%.mm $(VENDOR)
+$(BUILD)/deps/%.d: src/app/%.mm $(VENDOR)
 	mkdir -p $(BUILD)/deps
 	$(CXX) $(CXXFLAGS) -MM $< |sed -e 's/^\([a-z0-9A-Z]\)/$(BUILD)\/objs\/\1/' >$@
 
 # This will force the .d files to build.
 -include $(DEPS)
 
-$(BUILD)/objs/%.o: src/md0/%.mm
+$(BUILD)/objs/%.o: src/app/%.mm
 	mkdir -p $(BUILD)/objs
 	$(CXX) $(CXXFLAGS) -c -o $@ $<	
 
@@ -103,7 +103,7 @@ $(PROG): $(OBJS) $(VENDOR) $(APPDIRS)
 	$(CXX) $(OBJS) $(LDFLAGS) -o $@
 program: $(PROG)
 
-$(APP_DIR)/Contents/Info.plist: src/md0/Info.plist $(APP_DIR)/Contents
+$(APP_DIR)/Contents/Info.plist: src/app/Info.plist $(APP_DIR)/Contents
 	cp $< $@
 program: $(APP_DIR)/Contents/Info.plist
 
@@ -139,9 +139,9 @@ $(VENDOR):
 test-gdb: $(BUILD)/test-runner
 	gdb $(BUILD)/test-runner
 
-TAGS: src/md0/*.mm src/md0/*.h
-	#ctags -r src/md0/* $$(find $(BUILD)/vendor/include)
-	etags --language=objc -o TAGS src/md0/*.h src/md0/*.mm
+TAGS: src/app/*.mm src/app/*.h
+	#ctags -r src/app/* $$(find $(BUILD)/vendor/include)
+	etags --language=objc -o TAGS src/app/*.h src/app/*.mm
 
 cscope:
 	cscope -b $$(find -E src -type f -regex '.+[.](cc|mm|m|h|c)') $$(find $(BUILD)/vendor/include -type f)

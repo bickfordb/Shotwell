@@ -1,19 +1,19 @@
 #import <Cocoa/Cocoa.h>
 
-#import "md0/AppleCoverArtClient.h"
-#import "md0/Daemon.h"
-#import "md0/Library.h"
-#import "md0/LocalLibrary.h"
-#import "md0/Movie.h"
-#import "md0/Plugin.h"
-#import "md0/ProgressControl.h"
-#import "md0/Slider.h"
-#import "md0/SortField.h"
-#import "md0/SortedSeq.h"
-#import "md0/SplitView.h"
-#import "md0/TableView.h"
-#import "md0/Track.h"
-#import "md0/VolumeControl.h"
+#import "app/AppleCoverArtClient.h"
+#import "app/Daemon.h"
+#import "app/Library.h"
+#import "app/LocalLibrary.h"
+#import "app/Movie.h"
+#import "app/Plugin.h"
+#import "app/ProgressControl.h"
+#import "app/Slider.h"
+#import "app/SortField.h"
+#import "app/SortedSeq.h"
+#import "app/SplitView.h"
+#import "app/TableView.h"
+#import "app/Track.h"
+#import "app/VolumeControl.h"
 
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSNetServiceBrowserDelegate, NSNetServiceDelegate, NSTableViewDataSource, NSTableViewDelegate, NSToolbarDelegate> {
   AppleCoverArtClient *appleCoverArtClient_;

@@ -1,6 +1,6 @@
 #import <Cocoa/Cocoa.h>
 
-#import "md0/Track.h"
+#import "app/Track.h"
 
 @interface Plugin : NSObject { 
 }

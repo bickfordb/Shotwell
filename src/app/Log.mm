@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <sys/time.h>
-#import "md0/Log.h"
+#import "app/Log.h"
 #import <Cocoa/Cocoa.h>
 
 void LogMessage(const char *name, int line, enum LogLevel log_level, NSString *msg, ...) { 

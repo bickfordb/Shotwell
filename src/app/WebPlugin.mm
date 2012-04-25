@@ -1,6 +1,6 @@
-#import "md0/AppDelegate.h"
-#import "md0/Log.h"
-#import "md0/WebPlugin.h"
+#import "app/AppDelegate.h"
+#import "app/Log.h"
+#import "app/WebPlugin.h"
 
 @implementation WebPlugin
 @synthesize url = url_;

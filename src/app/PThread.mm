@@ -1,5 +1,5 @@
-#import "md0/Pthread.h"
-#import "md0/Signals.h"
+#import "app/Pthread.h"
+#import "app/Signals.h"
 
 static void *RunBlockInThreadCallback(void *context) {
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];

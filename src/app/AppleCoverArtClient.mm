@@ -1,8 +1,8 @@
-#import "md0/AppleCoverArtClient.h"
-#import "md0/JSON.h"
-#import "md0/NSURLAdditions.h"
-#import "md0/Track.h"
-#import "md0/HTTP.h"
+#import "app/AppleCoverArtClient.h"
+#import "app/JSON.h"
+#import "app/NSURLAdditions.h"
+#import "app/Track.h"
+#import "app/HTTP.h"
 
 static const int64_t kPollInterval = 500000;
 

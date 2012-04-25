@@ -41,7 +41,6 @@ Finale
 Forte
 Fret
 Fugue
-Genre
 Gig
 Groove
 HeadPhones
@@ -61,9 +60,7 @@ Legato
 Long play
 Madrigal
 Marcato
-Mediakit
 Melody
-Microvox
 Mix
 Mixer
 Modern listening
@@ -72,9 +69,7 @@ Modulate
 Monitor
 Mono
 Monotron
-Musicpal
 Mute
-Nanovox
 Needle
 Netplug
 Netvoice

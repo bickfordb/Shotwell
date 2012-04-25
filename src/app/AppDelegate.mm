@@ -3,19 +3,19 @@
 #include <sys/time.h>
 #include <sys/utsname.h>
 
-#import "md0/AppDelegate.h"
-#import "md0/Log.h"
-#import "md0/NSNetServiceAddress.h"
-#import "md0/NSNumberTimeFormat.h"
-#import "md0/NSMutableArrayInsert.h"
-#import "md0/NSStringDigest.h"
-#import "md0/Pthread.h"
-#import "md0/RAOP.h"
-#import "md0/RemoteLibrary.h"
-#import "md0/Signals.h"
-#import "md0/Util.h"
-#import "md0/WebPlugin.h"
-#import "md0/TableView.h"
+#import "app/AppDelegate.h"
+#import "app/Log.h"
+#import "app/NSNetServiceAddress.h"
+#import "app/NSNumberTimeFormat.h"
+#import "app/NSMutableArrayInsert.h"
+#import "app/NSStringDigest.h"
+#import "app/Pthread.h"
+#import "app/RAOP.h"
+#import "app/RemoteLibrary.h"
+#import "app/Signals.h"
+#import "app/Util.h"
+#import "app/WebPlugin.h"
+#import "app/TableView.h"
 
 static const int64_t kLibraryRefreshInterval = 2 * 1000000;
 static NSSize kStartupSize = {1300, 650};
@@ -784,7 +784,7 @@ static NSString *GetWindowTitle(Track *t) {
   self.searchItem = [[[NSToolbarItem alloc] initWithItemIdentifier:kSearchControl] autorelease];
   [searchItem_ setView:self.searchField];
 
-  self.toolbar = [[[NSToolbar alloc] initWithIdentifier:@"md0toolbar"] autorelease];
+  self.toolbar = [[[NSToolbar alloc] initWithIdentifier:@"toolbar"] autorelease];
   [toolbar_ setDelegate:self];
   [toolbar_ setDisplayMode:NSToolbarDisplayModeIconOnly];
   [toolbar_ insertItemWithItemIdentifier:kPlayButton atIndex:0];
@@ -792,7 +792,7 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)setupDockIcon {
-  [NSApp setApplicationIconImage:[NSImage imageNamed:@"md0dock"]];
+  [NSApp setApplicationIconImage:[NSImage imageNamed:@"dock"]];
 }
 
 

@@ -1,5 +1,5 @@
 #import <Cocoa/Cocoa.h>
-#import "md0/VolumeControl.h"
+#import "app/VolumeControl.h"
 
 static NSString * const kLoudImage = @"loud";
 static NSString * const kQuietImage = @"quiet";

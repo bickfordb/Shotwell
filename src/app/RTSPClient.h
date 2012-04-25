@@ -1,7 +1,7 @@
 #import <Cocoa/Cocoa.h>
-#import "md0/Loop.h"
-#import "md0/RTSPRequest.h"
-#import "md0/RTSPResponse.h"
+#import "app/Loop.h"
+#import "app/RTSPRequest.h"
+#import "app/RTSPResponse.h"
 
 typedef void (^OnStatus)(int status); 
 typedef void (^OnResponse)(RTSPResponse *response); 

@@ -1,6 +1,6 @@
 #import <Cocoa/Cocoa.h>
-#import "md0/Loop.h"
-#import "md0/Track.h"
+#import "app/Loop.h"
+#import "app/Track.h"
 
 @interface AppleCoverArtClient : NSObject {
   Loop *loop_;

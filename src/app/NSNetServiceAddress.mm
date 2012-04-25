@@ -1,4 +1,4 @@
-#import "md0/NSNetServiceAddress.h"
+#import "app/NSNetServiceAddress.h"
 #include <arpa/inet.h>
 
 @implementation NSNetService (Address)

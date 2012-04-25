@@ -11,12 +11,12 @@
 #include <xlocale.h>
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations" 
 
-#import "md0/AES.h"
-#import "md0/Base64.h"
-#import "md0/Log.h"
-#import "md0/RAOP.h"
-#import "md0/Random.h"
-#import "md0/Util.h"
+#import "app/AES.h"
+#import "app/Base64.h"
+#import "app/Log.h"
+#import "app/RAOP.h"
+#import "app/Random.h"
+#import "app/Util.h"
 
 const int kHdrDefaultLength = 1024;
 const double kMaxRemoteBufferTime = 4.0;

@@ -13,10 +13,10 @@
 #include <string>
 #include <unistd.h>
 
-#include "md0/AES.h"
-#include "md0/AudioSink.h"
-#include "md0/AudioSource.h"
-#include "md0/RTSPClient.h"
+#include "app/AES.h"
+#include "app/AudioSink.h"
+#include "app/AudioSource.h"
+#include "app/RTSPClient.h"
 
 typedef enum { RAOPV1 = 0, RAOPV2 = 1} RAOPVersion;
 

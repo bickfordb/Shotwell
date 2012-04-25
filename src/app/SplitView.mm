@@ -1,4 +1,4 @@
-#import "md0/SplitView.h"
+#import "app/SplitView.h"
 
 @implementation SplitView
 
