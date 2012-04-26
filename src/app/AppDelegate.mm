@@ -1283,7 +1283,6 @@ static NSString *GetWindowTitle(Track *t) {
   if (!track.artist.length || !track.album.length) 
     return;
   NSString *term = [NSString stringWithFormat:@"%@ %@", track.artist, track.album];
-  if (true) return;
 
   [appleCoverArtClient_ search:term withArtworkData:^(NSData *data) { 
     if (!data || !data.length)
