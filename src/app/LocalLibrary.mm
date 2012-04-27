@@ -16,11 +16,13 @@
 
 #define GET_URL_KEY(url) (kURLTablePrefix + url) 
 static NSString * const kPathsToScan = @"PathsToScan";
-static NSString * const kIsITunesImported = @"IsItunesImported";
+static NSString * const kIsITunesImported = @"IsITunesImported";
+static CFTimeInterval kMonitorLatency = 2.0;
 
 @interface LocalLibrary (P)  
 - (void)scanQueuedPaths;
 - (void)pruneQueued;
+- (void)monitorPaths;
 @end
 
 @implementation TrackTable 
@@ -42,6 +44,30 @@ static NSString * const kIsITunesImported = @"IsItunesImported";
 }
 
 @end
+
+static void OnFileEvent(
+    ConstFSEventStreamRef streamRef,
+    void *clientCallBackInfo,
+    size_t numEvents,
+    void *eventPaths,
+    const FSEventStreamEventFlags eventFlags[],
+    const FSEventStreamEventId eventIds[]) {
+  NSArray *paths = (NSArray *)eventPaths;
+  LocalLibrary *library = (LocalLibrary *)clientCallBackInfo;
+  NSMutableArray *paths0 = [NSMutableArray array];
+  for (NSString *p in paths) { 
+    struct stat status;
+    if (stat(p.UTF8String, &status) != 0) {
+      continue;
+    }
+    // Skip directories
+    if (status.st_mode & S_IFDIR) {
+      continue;
+    }
+    [paths0 addObject:p];
+  }
+  [library scan:paths0];
+}
 
 @implementation LocalLibrary
 @synthesize trackTable = trackTable_;
@@ -77,8 +103,37 @@ static NSString * const kIsITunesImported = @"IsItunesImported";
       [((LocalLibrary *)weakSelf) scanQueuedPaths];
       [e add:1000000];
     }];
+    fsEventStreamRef_ = nil;
+    [self monitorPaths]; 
   }
   return self;
+}
+
+- (void)monitorPaths {
+  if (fsEventStreamRef_) {
+    FSEventStreamStop(fsEventStreamRef_);
+    FSEventStreamInvalidate(fsEventStreamRef_);
+    FSEventStreamRelease(fsEventStreamRef_);
+    fsEventStreamRef_ = nil;
+  }
+  NSArray *paths = self.pathsToAutomaticallyScan;
+  FSEventStreamContext context = {0, self, NULL, NULL, NULL};
+
+  if (paths.count) { 
+    fsEventStreamRef_ = FSEventStreamCreate( 
+        kCFAllocatorDefault,
+        OnFileEvent,
+        &context, 
+        (CFArrayRef)paths,
+        kFSEventStreamEventIdSinceNow, 
+        kMonitorLatency, 
+        kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagFileEvents);  
+
+    FSEventStreamScheduleWithRunLoop(fsEventStreamRef_,
+        CFRunLoopGetCurrent(),
+        kCFRunLoopDefaultMode);
+    FSEventStreamStart(fsEventStreamRef_);
+  }
 }
 
 - (void)dealloc { 
@@ -88,6 +143,12 @@ static NSString * const kIsITunesImported = @"IsItunesImported";
   [trackTable_ release];
   [urlTable_ release];
   [onScanPathsChange_ release];
+  if (fsEventStreamRef_) {
+    FSEventStreamStop(fsEventStreamRef_);
+    FSEventStreamInvalidate(fsEventStreamRef_);
+    FSEventStreamRelease(fsEventStreamRef_);
+    fsEventStreamRef_ = nil;
+  }
   [super dealloc];
 }
 
@@ -256,6 +317,7 @@ static NSString * const kIsITunesImported = @"IsItunesImported";
   if (c) {
     c();
   }
+  [self monitorPaths];
 }
 - (void)checkITunesImport {
   ForkWith(^{

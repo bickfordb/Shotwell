@@ -24,6 +24,7 @@ typedef void (^OnScanPathsChange)(void);
   bool pruneRequested_;
   NSMutableSet *pathsToScan_;
   OnScanPathsChange onScanPathsChange_;
+  FSEventStreamRef fsEventStreamRef_;
 }
 
 @property (retain) TrackTable *trackTable;
