@@ -1,8 +1,8 @@
 Mariposa (name TBD)
 ===================
 
-This is a media player designed to meet my needs.  These needs mostly consist
-of the following: efficiently handling large collections, sharing, discovering, playing to an Aiport Express.
+This is a media player for Mac OS X designed to meet my needs.  These needs mostly consist
+of the following: efficiently handling large collections (ie. more than 5000 albums), sharing, discovering, playing to an Airport Express.
 
 Features:
 
