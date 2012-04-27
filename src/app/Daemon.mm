@@ -10,7 +10,7 @@
 #import "app/Track.h"
 
 const int kDaemonDefaultPort = 6226;
-NSString * const kDaemonServiceType = @"_media._tcp.";
+NSString * const kDaemonServiceType = @"_mariposa._tcp.";
 
 @interface Request : NSObject { 
   struct evhttp_request *req_;

@@ -78,7 +78,7 @@ function fillArtistInfo(artistID) {
       if (!doc)
         return;
       var relations = doc.getElementsByTagName("relation");
-      if (!relations)
+      if (!relations || !relations.length)
         return;
       $("div.artist-info").append($("<br />"));
       $("div.artist-info").append("<p>On the web:</p>");

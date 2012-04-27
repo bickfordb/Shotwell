@@ -1,0 +1,71 @@
+The Mariposa Culture Osmosis Protocol  
+
+1. Definitions
+
+  ID -- integer, a 64bit unsigned integer 
+  TrackObject -- an object with the following keys
+    id  -- ID, the unique (per host) identifier of the track (this is the only required field)
+    artist -- string, The artist name like "The Beatles"
+    title -- string, The title of the track like "Hey Jude"
+    album -- string, The title of the album like "Rubber Soul"
+    genre -- string, The genre of the track like "Reggae"
+    year -- string, The publication year of the track's album
+
+2. TCP/HTTP 
+
+  Track metadata and bytes are published via an HTTP api  
+
+  A. GET /tracks
+
+    Retrieve a list of tracks.  The response is a list of TrackObject encoded in JSON.
+
+    Example response:
+
+       200 OK
+       Content-Type: application/json
+       Content-Length: ...
+    
+       [{
+        "id": 25
+        "artist": "An artist",
+        "album": "An album",
+        "title": "A title",
+        "year": 2004}]
+        
+  B. GET /tracks/ID
+
+     Retrieve the bytes for a track.  Byte based HTTP Range header support is required for servers.
+    
+     Example request, response
+       GET /tracks/25
+     
+       200 OK
+       Content-Length: 123456
+       Content-Type: application/octet-stream
+       Accept-Ranges: bytes
+
+       ... 123456 track bytes ...
+      
+     Example range request, response:
+     
+       GET /tracks/33
+       Range: bytes 0-511
+       
+       206 Partial Content
+       Accept-Ranges: bytes
+       Content-Length: 512
+       Content-Range: bytes 0-511/123456
+
+       ... first 512 track bytes ..
+
+3. Bonjour/Multicast DNS
+
+  Services are advertised with "_mariposa._tcp." as the MDNS/Bonjour service type name.
+   
+4. Default Port
+
+  By default services should listen on port 6226.
+
+5. UDP
+
+  tbd

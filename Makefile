@@ -2,12 +2,16 @@ all:
 	@echo Targets:
 	@echo "\trun  -- Run the application (w/o gdb)"
 	@echo "\tgdb  -- Run the application (w/ gdb)"
-	@echo "\tgdb-memory  -- Run the application (w/ gdb) w/ malloc checking hooks turned on"
+	@echo "\tgdb-memory -- Run the application (w/ gdb) w/ malloc checking hooks turned on"
+	@echo "\tdist -- Prepare a DMG"
+	@echo "\tclean -- Clean everything"
+	@echo "\tclean-fast -- Clean everything except for vendor dependencies"
 
-APPNAME = MD0
-BUILD = build
+APPNAME ?= Mariposa
+BUILD ?= build
 APP_DIR = $(BUILD)/$(APPNAME).app
 IBTOOL ?= ibtool
+DIST ?= dist
 
 PROG = $(APP_DIR)/Contents/MacOS/$(APPNAME)
 
@@ -127,10 +131,27 @@ gdb-memory: program
 program: $(DST_RESOURCES)
 
 clean:
+
+.PHONY: clean
+
+clean-app:
 	rm -rf $(BUILD)/$(APPNAME).app
 	rm -rf $(BUILD)/objs
 	rm -rf $(BUILD)/deps
-.PHONY: clean
+.PHONY: clean-app
+clean-fast: clean-app
+
+clean-dist:
+	rm -rf $(DIST)
+.PHONY: clean-dist
+clean: clean-dist
+clean-fast: clean-dist
+
+
+clean-build:
+	rm -rf $(BUILD)
+.PHONY: clean-build
+clean: clean-build
 
 # build vendor libraries
 $(VENDOR):
@@ -146,4 +167,21 @@ TAGS: src/app/*.mm src/app/*.h
 cscope:
 	cscope -b $$(find -E src -type f -regex '.+[.](cc|mm|m|h|c)') $$(find $(BUILD)/vendor/include -type f)
 
+build/Mariposa.app.zip: build
+	rm -f build/Mariposa.app.zip
+	cd build && zip -r Mariposa.app.zip Mariposa.app/*
 
+DIST_SUFFIX ?= $(shell /bin/date +%Y%m%d-%H%M%S)
+DIST_NAME = $(APPNAME)-$(DIST_SUFFIX)
+DMG = $(DIST_NAME).dmg
+
+dist/$(DMG): program
+	mkdir -p dist
+	cd dist && \
+		mkdir -p $(DIST_NAME) && \
+		cp -r ../build/Mariposa.app $(DIST_NAME) && \
+		hdiutil create $(DMG) -srcfolder $(DIST_NAME) -ov
+
+dist: dist/$(DMG)
+
+.PHONY: dist

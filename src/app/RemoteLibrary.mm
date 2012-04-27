@@ -55,7 +55,7 @@ int kRefreshInterval = 10000;
 - (void)refresh {
   NSString *address = self.netService.ipv4Address;
   int port = self.netService.port;
-  NSString *aURL = [NSString stringWithFormat:@"http://%@:%d/library", address, port];
+  NSString *aURL = [NSString stringWithFormat:@"http://%@:%d/tracks", address, port];
   NSURL *u = [NSURL URLWithString:aURL];
   [self.loop fetchURL:u with:^(HTTPResponse *response) {
     NSArray *trackDicts = [response.body decodeJSON];

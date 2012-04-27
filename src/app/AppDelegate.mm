@@ -19,7 +19,7 @@
 
 static const int64_t kLibraryRefreshInterval = 2 * 1000000;
 static NSSize kStartupSize = {1300, 650};
-static NSString * const kDefaultWindowTitle = @"MD0";
+static NSString * const kDefaultWindowTitle = @"Mariposa";
 static NSString * const kGeneralPreferenceTab = @"GeneralPreferenceTab";
 static NSString * const kNextButton = @"NextButton";
 static NSString * const kPath = @"Path";
@@ -1283,8 +1283,10 @@ static NSString *GetWindowTitle(Track *t) {
   if (!track.artist.length || !track.album.length) 
     return;
   NSString *term = [NSString stringWithFormat:@"%@ %@", track.artist, track.album];
+  if (self.library != self.localLibrary) 
+    return;
 
-  [appleCoverArtClient_ search:term withArtworkData:^(NSData *data) { 
+  [self.appleCoverArtClient search:term withArtworkData:^(NSData *data) { 
     if (!data || !data.length)
       return;
     NSString *covertArtDir = CoverArtPath();
