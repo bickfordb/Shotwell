@@ -361,10 +361,11 @@ static NSString *GetWindowTitle(Track *t) {
 
   self.preferencesWindow.title = @"Preferences";
   self.scanPathsTable = [[[TableView alloc] initWithFrame:CGRectMake(0, 0, 300, 300)] autorelease];
-  [self.scanPathsTable setAllowsMultipleSelection:YES];
+  self.scanPathsTable.allowsMultipleSelection = YES;
   self.scanPathsTable.focusRingType = NSFocusRingTypeNone;
+  self.scanPathsTable.usesAlternatingRowBackgroundColors = YES;
+
   NSTableColumn *pathColumn = [[[NSTableColumn alloc] initWithIdentifier:kPath] autorelease];
-  //[pathColumn setResizingMask:NSTableColumnAutoresizingMask];
   [pathColumn setWidth:480];
   [[pathColumn headerCell] setStringValue:@"Path"];
   [[pathColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
