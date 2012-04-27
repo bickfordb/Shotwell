@@ -69,7 +69,7 @@ static NSString *LibraryDir() {
       NSUserDomainMask,
       YES);
   NSString *path = [paths objectAtIndex:0];
-  path = [path stringByAppendingPathComponent:@"MD0"];
+  path = [path stringByAppendingPathComponent:@"Mariposa"];
   mkdir(path.UTF8String, 0755);
   return path;
 }
@@ -1141,13 +1141,12 @@ static NSString *GetWindowTitle(Track *t) {
     } 
   }
 
-  if (movie_ != NULL) {
+  if (movie_) {
     if (!movie_.isSeeking) {
       self.progressControl.isEnabled = true;
       self.progressControl.duration = movie_.duration;
       self.progressControl.elapsed = movie_.elapsed;
     }
-
     if (movie_.state == kPlayingAudioSourceState)  {
       playButton_.image = stopImage_;
     } else {

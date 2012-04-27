@@ -76,6 +76,7 @@
     self.slider.maxValue = 1.0;
     self.slider.continuous = YES;
     self.slider.doubleValue = 0.5;
+    self.slider.enabled = NO;
     self.slider.target = self;
     self.slider.autoresizingMask = NSViewWidthSizable;
     self.slider.action = @selector(onSliderAction:);
@@ -89,6 +90,7 @@
     self.elapsedTextField.bordered = NO;
     self.elapsedTextField.editable = NO;
     self.elapsedTextField.autoresizingMask = NSViewMaxXMargin;
+    self.elapsedTextField.stringValue = [[NSNumber numberWithLongLong:0] formatSeconds];
 
     self.durationTextField = [[[NSTextField alloc] initWithFrame:
       CGRectMake(5 + 60 + 5 + 300 + 5, 3, 60, 15)] autorelease];
@@ -99,6 +101,7 @@
     self.durationTextField.bordered = NO;
     self.durationTextField.editable = NO;
     self.durationTextField.autoresizingMask = NSViewMinXMargin;
+    self.durationTextField.stringValue = [[NSNumber numberWithLongLong:0] formatSeconds];
 
     [self.view addSubview:self.elapsedTextField];
     [self.view addSubview:self.slider];

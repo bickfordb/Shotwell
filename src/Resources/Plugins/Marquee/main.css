@@ -3,14 +3,16 @@
 body { 
   margin: 0;
   padding: 0;
-  background: black;
+  background-attachment: fixed !important;
+  height: 100%;
+  background-image: -webkit-linear-gradient(top, rgb(67, 78, 85), rgb(7, 18, 25));
+  overflow-x: hidden;
 }
 
 img, div { margin: 0; padding: 0; }
 ul, li { list-style-type: none; margin: 0; padding: 0; }
 
 div.track-info-container { 
-  background-image: -webkit-linear-gradient(top, rgb(67, 78, 85), rgb(7, 18, 25));
 }
 
 div.track-info {
@@ -58,13 +60,6 @@ div.track-field:hover {
   text-decoration: underline; 
   cursor: pointer;
 }
-
-div.cover-art-container { 
-  margin: 0;
-  margin: 0;
-  padding: 0;
-}
-
 
 img.cover-art {
   margin: 0;

@@ -53,7 +53,7 @@
 					<bool key="EncodedWithXMLCoder">YES</bool>
 					<object class="NSMenuItem" id="694149608">
 						<reference key="NSMenu" ref="649796088"/>
-						<string key="NSTitle">MD0</string>
+						<string key="NSTitle">Mariposa</string>
 						<string key="NSKeyEquiv"/>
 						<int key="NSMnemonicLoc">2147483647</int>
 						<object class="NSCustomResource" key="NSOnImage" id="353210768">
@@ -66,12 +66,12 @@
 						</object>
 						<string key="NSAction">submenuAction:</string>
 						<object class="NSMenu" key="NSSubmenu" id="110575045">
-							<string key="NSTitle">MD0</string>
+							<string key="NSTitle">Mariposa</string>
 							<object class="NSMutableArray" key="NSMenuItems">
 								<bool key="EncodedWithXMLCoder">YES</bool>
 								<object class="NSMenuItem" id="238522557">
 									<reference key="NSMenu" ref="110575045"/>
-									<string key="NSTitle">About MD0</string>
+									<string key="NSTitle">About Mariposa</string>
 									<string key="NSKeyEquiv"/>
 									<int key="NSMnemonicLoc">2147483647</int>
 									<reference key="NSOnImage" ref="353210768"/>
@@ -115,7 +115,7 @@
 								</object>
 								<object class="NSMenuItem" id="755159360">
 									<reference key="NSMenu" ref="110575045"/>
-									<string key="NSTitle">Hide MD0</string>
+									<string key="NSTitle">Hide</string>
 									<string key="NSKeyEquiv">h</string>
 									<int key="NSKeyEquivModMask">1048576</int>
 									<int key="NSMnemonicLoc">2147483647</int>
@@ -151,7 +151,7 @@
 								</object>
 								<object class="NSMenuItem" id="632727374">
 									<reference key="NSMenu" ref="110575045"/>
-									<string key="NSTitle">Quit MD0</string>
+									<string key="NSTitle">Quit</string>
 									<string key="NSKeyEquiv">q</string>
 									<int key="NSKeyEquivModMask">1048576</int>
 									<int key="NSMnemonicLoc">2147483647</int>
@@ -1263,7 +1263,7 @@
 								<bool key="EncodedWithXMLCoder">YES</bool>
 								<object class="NSMenuItem" id="238773614">
 									<reference key="NSMenu" ref="374024848"/>
-									<string key="NSTitle">NewApplication Help</string>
+									<string key="NSTitle">Help</string>
 									<string key="NSKeyEquiv">?</string>
 									<int key="NSKeyEquivModMask">1048576</int>
 									<int key="NSMnemonicLoc">2147483647</int>
@@ -1281,7 +1281,7 @@
 				<string key="NSClassName">AppDelegate</string>
 			</object>
 			<object class="NSScrollView" id="460370172">
-				<reference key="NSNextResponder"/>
+				<nil key="NSNextResponder"/>
 				<int key="NSvFlags">268</int>
 				<object class="NSMutableArray" key="NSSubviews">
 					<bool key="EncodedWithXMLCoder">YES</bool>
@@ -1295,7 +1295,6 @@
 								<int key="NSvFlags">256</int>
 								<string key="NSFrameSize">{238, 117}</string>
 								<reference key="NSSuperview" ref="877741782"/>
-								<reference key="NSWindow"/>
 								<string key="NSReuseIdentifierKey">_NS:1197</string>
 								<bool key="NSEnabled">YES</bool>
 								<object class="NSTableHeaderView" key="NSHeaderView" id="849244027">
@@ -1303,7 +1302,6 @@
 									<int key="NSvFlags">256</int>
 									<string key="NSFrameSize">{238, 17}</string>
 									<reference key="NSSuperview" ref="1072503149"/>
-									<reference key="NSWindow"/>
 									<string key="NSReuseIdentifierKey">_NS:1199</string>
 									<reference key="NSTableView" ref="864958165"/>
 								</object>
@@ -1429,7 +1427,6 @@
 						</object>
 						<string key="NSFrame">{{1, 17}, {238, 117}}</string>
 						<reference key="NSSuperview" ref="460370172"/>
-						<reference key="NSWindow"/>
 						<reference key="NSNextKeyView" ref="864958165"/>
 						<string key="NSReuseIdentifierKey">_NS:1195</string>
 						<reference key="NSDocView" ref="864958165"/>
@@ -1441,7 +1438,6 @@
 						<int key="NSvFlags">-2147483392</int>
 						<string key="NSFrame">{{224, 17}, {15, 102}}</string>
 						<reference key="NSSuperview" ref="460370172"/>
-						<reference key="NSWindow"/>
 						<string key="NSReuseIdentifierKey">_NS:1214</string>
 						<reference key="NSTarget" ref="460370172"/>
 						<string key="NSAction">_doScroller:</string>
@@ -1453,7 +1449,6 @@
 						<int key="NSvFlags">-2147483392</int>
 						<string key="NSFrame">{{1, 119}, {223, 15}}</string>
 						<reference key="NSSuperview" ref="460370172"/>
-						<reference key="NSWindow"/>
 						<string key="NSReuseIdentifierKey">_NS:1216</string>
 						<int key="NSsFlags">1</int>
 						<reference key="NSTarget" ref="460370172"/>
@@ -1469,7 +1464,6 @@
 						</object>
 						<string key="NSFrame">{{1, 0}, {238, 17}}</string>
 						<reference key="NSSuperview" ref="460370172"/>
-						<reference key="NSWindow"/>
 						<reference key="NSNextKeyView" ref="849244027"/>
 						<string key="NSReuseIdentifierKey">_NS:1200</string>
 						<reference key="NSDocView" ref="849244027"/>
@@ -1478,8 +1472,6 @@
 					</object>
 				</object>
 				<string key="NSFrameSize">{240, 135}</string>
-				<reference key="NSSuperview"/>
-				<reference key="NSWindow"/>
 				<reference key="NSNextKeyView" ref="877741782"/>
 				<string key="NSReuseIdentifierKey">_NS:1193</string>
 				<int key="NSsFlags">133682</int>
