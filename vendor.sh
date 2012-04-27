@@ -35,39 +35,6 @@ then
     touch ${BUILDROOT}/libav.stamp
 fi  
 
-if [ ! -e "${BUILDROOT}/gtest.stamp" ];
-then
-   echo "building gtest"
-   #mkdir ${INSTALL_PREFIX}
-   #cd $projectroot/vendor/gtest-1.6.0
-   rm -rf ${SCRATCH}
-   mkdir ${SCRATCH}
-   cd ${SCRATCH}
-   unzip ${VENDOR}/gtest-1.6.0.zip
-   cd gtest-1.6.0
-   ./configure --prefix=${INSTALL_PREFIX} --disable-shared
-   make
-   #install ${INSTALL_PREFIX}/lib
-   install lib/.libs/libgtest.a ${INSTALL_PREFIX}/lib
-   install lib/.libs/libgtest_main.a ${INSTALL_PREFIX}/lib
-   cp -r include/* ${INSTALL_PREFIX}/include
-   touch ${BUILDROOT}/gtest.stamp
-fi  
-
-##if [ ! -e "${BUILDROOT}/pcre.stamp" ];
-##then
-##    echo "building pcre"
-##    rm -rf ${SCRATCH}
-##    mkdir -p ${SCRATCH}
-##    cd ${SCRATCH}
-##    tar xzvf ${VENDOR}/pcre-8.30.tar.gz
-##    cd pcre-8.30
-##    ./configure --prefix=${INSTALL_PREFIX} --disable-shared
-##    make
-##    make install
-##    touch ${BUILDROOT}/pcre.stamp
-##fi  
-
 if [ ! -e "${BUILDROOT}/leveldb.stamp" ];
 then
     echo "building leveldb"
@@ -126,16 +93,4 @@ then
   touch ${BUILDROOT}/icu.stamp
 fi
 
-##if [ ! -e "${BUILDROOT}/jscocoa.stamp" ]
-##then
-##  rm -rf ${SCRATCH}
-##  mkdir -p ${SCRATCH}
-##  cd ${SCRATCH}
-##  tar xzvf ${VENDOR}/jscocoa-32a49dc6b3020.tar.gz
-##  rm -rf ${INSTALL_PREFIX}/share/jscocoa
-##  install -d ${INSTALL_PREFIX}/share/jscocoa
-##  cd jscocoa-32a49dc6b3020/JSCocoa
-##  install *.h *.m ${INSTALL_PREFIX}/share/jscocoa
-##  touch ${BUILDROOT}/jscocoa.stamp
-##fi
 touch ${BUILDROOT}/vendor.stamp

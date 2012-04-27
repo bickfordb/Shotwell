@@ -1,7 +1,11 @@
 // libav based AudioSource
 #import <Cocoa/Cocoa.h>
 #import "AudioSource.h"
-#import "AV.h"
+extern "C" {
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libavfilter/avfilter.h>
+}
 
 @interface LibAVSource : NSObject <AudioSource> {
   AVPacket currAudioPacket_;

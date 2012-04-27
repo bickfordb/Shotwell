@@ -1,6 +1,5 @@
 #include <sys/time.h>
 
-#import "app/AV.h"
 #import "app/CoreAudioSink.h"
 #import "app/LibAVSource.h"
 #import "app/Log.h"

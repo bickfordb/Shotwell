@@ -42,8 +42,8 @@ static AVPacket flushPacket;
 + (void)initialize { 
   av_init_packet(&flushPacket);
   flushPacket.data = (uint8_t *)"FLUSH";
+  av_log_set_level(AV_LOG_QUIET);
   avcodec_register_all();
-  avdevice_register_all();
   avfilter_register_all();
   av_register_all();
   avformat_network_init();

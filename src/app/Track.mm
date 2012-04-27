@@ -10,10 +10,16 @@
 #include <unicode/unistr.h>
 #include <unicode/bytestream.h>
 
-#import "app/AV.h"
 #import "app/JSON.h"
 #import "app/Track.h"
 #import "app/Log.h"
+
+extern "C" {
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libavfilter/avfilter.h>
+}
+
 
 using namespace std;
 
@@ -91,7 +97,11 @@ static NSArray *mediaExtensions = nil;
 
 
 + (void)initialize {
-  AVInit(); 
+  av_log_set_level(AV_LOG_QUIET);
+  avcodec_register_all();
+  avfilter_register_all();
+  av_register_all();
+  avformat_network_init();
   mediaExtensions = [[NSArray arrayWithObjects:@".mp3", @".ogg", @".m4a", @".aac", @".avi", @".mp4", @".fla", @".flc", @".mov", @".m4a", @".mkv", @".mpg", nil] retain];
 
   allTrackKeys = [[NSArray arrayWithObjects:
