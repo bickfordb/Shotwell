@@ -18,3 +18,16 @@ pthread_t ForkWith(ClosedBlock block) {
   return thread_id;
 };
 
+void ForkToMainWith(ClosedBlock block) {
+  NSThread *mainThread = [NSThread mainThread];
+  if (mainThread == [NSThread currentThread]) {
+    block();
+  } else { 
+    block = [block copy];
+    [[NSOperationQueue mainQueue] addOperationWithBlock:^{
+      NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+      block();
+      [pool release];
+    }];
+  }
+}

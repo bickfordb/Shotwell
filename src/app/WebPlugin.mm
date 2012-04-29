@@ -132,9 +132,9 @@
   NSSplitView *split;
   AppDelegate *delegate = (AppDelegate *)[[NSApplication sharedApplication] delegate];
   if (isVertical) 
-    split = [delegate contentVerticalSplit];
+    split = delegate.mainWindowController.verticalSplit;
   else
-    split = [delegate contentHorizontalSplit];
+    split = delegate.mainWindowController.horizontalSplit;
   CGRect frame = NSZeroRect;
   CGRect firstFrame = [[split.subviews objectAtIndex:0] frame];
   if (isVertical) {

@@ -20,6 +20,7 @@ typedef void (^LoopOnData)(NSData *data);
 @property (retain) NSMutableSet *pendingEvents;
 
 - (void)monitorFd:(int)fd flags:(int)flags timeout:(int64_t)timeout with:(OnFireEvent)block;
+- (void)every:(int64_t)timeout with:(void (^)())block;
 - (void)onTimeout:(int64_t)timeout with:(OnFireEvent)block;
 - (void)writeBuffer:(struct evbuffer *)buffer fd:(int)fd with:(void (^)(int succ))block; 
 - (void)readLine:(int)fd with:(void (^)(NSString *line))aBlock;

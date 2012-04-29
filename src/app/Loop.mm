@@ -66,6 +66,13 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
 - (struct event_base *)base { 
   return base_;
 }
+- (void)every:(int64_t)timeout with:(void (^)())block {
+  block = [block copy];
+  [self onTimeout:timeout with:^(Event *e, short flags) {
+    block();
+    [e add:timeout];
+  }];
+}
 
 - (void)onTimeout:(int64_t)timeout with:(void (^)(Event *e, short flags))block {
   [self monitorFd:-1 flags:0 timeout:timeout with:block];
