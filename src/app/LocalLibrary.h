@@ -25,6 +25,8 @@ typedef void (^OnScanPathsChange)(void);
   NSMutableSet *pathsToScan_;
   OnScanPathsChange onScanPathsChange_;
   FSEventStreamRef fsEventStreamRef_;
+  NSMutableSet *pendingCoverArtTracks_;
+  NSString *coverArtPath_;
 }
 
 @property (retain) TrackTable *trackTable;
@@ -34,8 +36,10 @@ typedef void (^OnScanPathsChange)(void);
 @property bool pruneRequested;
 @property (retain) NSMutableSet *pathsToScan;
 @property (copy) OnScanPathsChange onScanPathsChange;
+@property (retain) NSMutableSet *pendingCoverArtTracks;
+@property (retain) NSString *coverArtPath;
 
-- (id)initWithPath:(NSString *)path;
+- (id)initWithDBPath:(NSString *)dbPath coverArtPath:(NSString *)coverArtPath;
 - (void)save:(Track *)t;
 - (Track *)get:(NSNumber *)trackID;
 - (void)clear;

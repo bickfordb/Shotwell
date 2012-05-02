@@ -72,7 +72,7 @@ int kRefreshInterval = 10000;
     self.tracks = tracks; 
     self.lastUpdatedAt = Now();
     for (Track *t in self.tracks) {
-      self.onAdded(self, t);
+      [self notifyTrack:t change:kLibraryTrackAdded];
     }
   }];
 }

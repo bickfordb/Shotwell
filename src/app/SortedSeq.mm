@@ -77,8 +77,8 @@
   [filteredItems_ release];
   [items_ release];
   [ilock_ release];
-  self.predicate = nil;
-  self.comparator = nil;
+  [predicate_ release];
+  [comparator_ release];
   [super dealloc];
 }
 

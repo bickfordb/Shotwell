@@ -36,6 +36,7 @@ extern NSArray *allTrackKeys;
   NSString *trackNumber_;
   NSString *url_;
   NSString *year_;
+  NSNumber *isCoverArtChecked_;
 }
 
 - (bool)isAudioOrVideo;
@@ -53,6 +54,7 @@ extern NSArray *allTrackKeys;
 @property (retain, nonatomic) NSString *url;
 @property (retain, nonatomic) NSString *year;
 @property (retain, nonatomic) NSNumber *isVideo;
+@property (retain, nonatomic) NSNumber *isCoverArtChecked;
 @property (retain, nonatomic) NSNumber *isAudio;
 @property (retain, nonatomic) NSNumber *createdAt;
 @property (retain, nonatomic) NSNumber *duration;
@@ -60,6 +62,8 @@ extern NSArray *allTrackKeys;
 @property (retain, nonatomic) NSNumber *lastPlayedAt;
 @property (retain, nonatomic) NSNumber *updatedAt;
 - (bool)isLocalMediaURL;
+
+
 @end
  
 // vim: filetype=objcpp

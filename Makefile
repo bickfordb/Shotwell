@@ -47,6 +47,7 @@ LDFLAGS += -framework AudioUnit
 LDFLAGS += -framework Carbon 
 LDFLAGS += -framework Cocoa 
 LDFLAGS += -framework CoreAudio 
+LDFLAGS += -framework QuartzCore 
 LDFLAGS += -framework CoreServices 
 LDFLAGS += -framework CoreFoundation 
 LDFLAGS += -framework Foundation 

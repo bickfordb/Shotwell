@@ -5,19 +5,20 @@
 @class Library;
 typedef void (^OnTrackChange)(Library *, Track *t);
 
+
+extern NSString * const kLibraryTrackChanged;
+extern NSString * const kLibraryTrackSaved;
+extern NSString * const kLibraryTrackAdded;
+extern NSString * const kLibraryTrackDeleted;
+
 @interface Library : NSObject {
   int64_t lastUpdatedAt_;
-  OnTrackChange onAdded_;
-  OnTrackChange onSaved_;
-  OnTrackChange onDeleted_;
 }
 
-@property (copy) OnTrackChange onAdded;
-@property (copy) OnTrackChange onSaved;
-@property (copy) OnTrackChange onDeleted;
-
-- (void)each:(void (^)(Track *))block; 
 - (int)count;
+- (void)delete:(Track *)track;
+- (void)each:(void (^)(Track *))block; 
+- (void)notifyTrack:(Track *)t change:(NSString *)change;
 @property int64_t lastUpdatedAt;
 @end
 // vim: filetype=objcpp
