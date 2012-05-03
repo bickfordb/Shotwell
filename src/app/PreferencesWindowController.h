@@ -1,9 +1,12 @@
 #import <Cocoa/Cocoa.h>
 #import "app/WindowController.h"
 #import "app/TableViewController.h"
-@interface PreferencesWindowController : WindowController {
-  TableViewController *automaticPathsTable_;
+#import "app/AutomaticPathsEditor.h"
+
+@interface PreferencesWindowController : WindowController  <NSToolbarDelegate> {
+  AutomaticPathsEditor *automaticPathsEditor_;
 }
-@property (retain) TableViewController *automaticPathsTable;
+- (id)initWithLocalLibrary:(LocalLibrary *)localLibrary;
+@property (retain) AutomaticPathsEditor *automaticPathsEditor;
 @end
 // vim: filetype=objcpp

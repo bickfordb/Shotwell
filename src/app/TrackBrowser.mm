@@ -272,7 +272,6 @@ static NSPredicate *ParseSearchQuery(NSString *query) {
 }
 
 - (void)onTrackChange:(NSNotification *)notification {
-  INFO(@"track change: %@", notification);
   NSString *change = [notification.userInfo valueForKey:@"change"];
   Track *t = [notification.userInfo valueForKey:@"track"];
   if (change == kLibraryTrackAdded) {

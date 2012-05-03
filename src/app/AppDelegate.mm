@@ -179,38 +179,25 @@ static NSString *CoverArtPath() {
   self.audioOutputs = [NSMutableArray array];
   self.libraries = [NSMutableArray array];
   self.localLibrary = [[[LocalLibrary alloc] initWithDBPath:LibraryPath() coverArtPath:CoverArtPath()] autorelease];
-  self.localLibrary.onScanPathsChange = ^{
-    [self.preferencesWindowController.automaticPathsTable reload];
-  };
-  
   self.library = self.localLibrary;
   self.movie = nil;
   self.track = nil;
 
   [self setupSharing];
-
   [self.localLibrary prune];
-  [self setupMenu];
-  self.preferencesWindowController = [[[PreferencesWindowController alloc] init] autorelease];
+  self.preferencesWindowController = [[[PreferencesWindowController alloc] initWithLocalLibrary:self.localLibrary] autorelease];
   self.mainWindowController = [[[MainWindowController alloc] init] autorelease];
   self.loop = [Loop loop];
   [self.loop every:kPollMovieInterval with:^{
     [weakSelf pollMovie];  
   }];
 
-  
   [self setupPlugins];
   [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
-
   [self.localLibrary checkITunesImport];
   [self.localLibrary checkAutomaticPaths];
+  [self setupMenu];
 }
-
-- (void)pollServices { 
-
-}
-
-
 
 - (void)setupSharing { 
   self.daemon = [[[Daemon alloc] 

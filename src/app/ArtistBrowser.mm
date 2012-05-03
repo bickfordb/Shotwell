@@ -22,7 +22,6 @@ static NSImage *blankImage = nil;
 + (void)initialize {
   blankImage = [[NSImage alloc] initWithSize:NSMakeSize(1, 1)];
   blankImage.backgroundColor = [NSColor blackColor];
-  NSLog(@"initialized image: %@", blankImage);
 }
 
 - (void)dealloc { 
@@ -33,12 +32,12 @@ static NSImage *blankImage = nil;
 
 - (void)loadView { 
   self.view = [[[NSView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)] autorelease];
-  self.view.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
   CGRect frame = self.view.frame;
   self.titleView = [[[NSButton alloc] initWithFrame:CGRectMake(0, 0, frame.size.width, 22)] autorelease];
   self.titleView.autoresizingMask = NSViewWidthSizable | NSViewMaxYMargin;
   self.titleView.stringValue = @"";
   self.titleView.bezelStyle = NSRoundRectBezelStyle;
+
   self.coverView = [[[NSImageView alloc] initWithFrame:CGRectMake(0, 0, frame.size.width, frame.size.height)] autorelease];
   self.coverView.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
   self.coverView.imageScaling = NSScaleToFit;
@@ -62,7 +61,7 @@ static NSImage *blankImage = nil;
       break;
     }   
   }
-  NSImage *image = url ? [[[NSImage alloc] initByReferencingURL:url] autorelease] : blankImage;
+  NSImage *image = url ? [[[NSImage alloc] initByReferencingURL:url] autorelease] : nil;
   self.coverView.image = image;
 }
 
@@ -108,6 +107,7 @@ static NSImage *blankImage = nil;
     self.items = [[[SortedSeq alloc] init] autorelease];
     self.scrollView = [[[NSScrollView alloc] initWithFrame:self.view.frame] autorelease];
     self.collectionView = [[[NSCollectionView alloc] initWithFrame:self.scrollView.frame] autorelease];
+    self.collectionView.backgroundColors = [NSArray arrayWithObjects:[NSColor blackColor], nil];
     self.collectionView.itemPrototype = [[[ArtistCollectionViewItem alloc] initWithNibName:nil bundle:nil] autorelease];
     self.scrollView.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
     self.collectionView.autoresizingMask = (NSViewMinXMargin |

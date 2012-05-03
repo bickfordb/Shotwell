@@ -14,7 +14,8 @@
 }
 @end
 
-typedef void (^OnScanPathsChange)(void);
+extern NSString * const kScanPathsChanged;
+
 
 @interface LocalLibrary : Library { 
   TrackTable *trackTable_;
@@ -23,7 +24,6 @@ typedef void (^OnScanPathsChange)(void);
   Loop *scanLoop_;
   bool pruneRequested_;
   NSMutableSet *pathsToScan_;
-  OnScanPathsChange onScanPathsChange_;
   FSEventStreamRef fsEventStreamRef_;
   NSMutableSet *pendingCoverArtTracks_;
   NSString *coverArtPath_;
@@ -35,7 +35,6 @@ typedef void (^OnScanPathsChange)(void);
 @property (retain) Loop *scanLoop;
 @property bool pruneRequested;
 @property (retain) NSMutableSet *pathsToScan;
-@property (copy) OnScanPathsChange onScanPathsChange;
 @property (retain) NSMutableSet *pendingCoverArtTracks;
 @property (retain) NSString *coverArtPath;
 
