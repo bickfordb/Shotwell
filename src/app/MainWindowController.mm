@@ -1,5 +1,6 @@
 #import "app/AppDelegate.h"
 #import "app/Log.h"
+#import "app/AlbumBrowser.h"
 #import "app/MainWindowController.h"
 #import "app/Movie.h"
 
@@ -8,9 +9,11 @@ static NSString * const kRAOPServiceType = @"_raop._tcp.";
 static NSString * const kPlayButton = @"PlayButton";
 static NSString * const kPreviousButton = @"PreviousButton";
 static NSString * const kProgressControl = @"ProgressControl";
+static NSString * const kGroupControl = @"GroupControl";
 static NSSize kStartupSize = {1300, 650};
 static CGRect kStartupFrame = {{50, 50}, {1300, 650}};
 static int64_t kPollMovieInterval = 100000;
+static int64_t kPollProgressInterval = 500000;
 static NSString * const kDefaultWindowTitle = @"Mariposa";
 static NSString * const kSearchControl = @"SearchControl";
 static  const int kBottomEdgeMargin = 25;
@@ -38,7 +41,7 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize artists = artists_;
 @synthesize audioOutputPopUpButton = audioOutputPopUpButton_;
 @synthesize contentView = contentView_;
-@synthesize groupsPopUpButton = groupsPopUpButton_;
+@synthesize groupsButton = groupsButton_;
 @synthesize horizontalSplit = horizontalSplit_;
 @synthesize libraryPopUp = libraryPopUp_;
 @synthesize libraryPopUpButton = libraryPopUpButton_; 
@@ -48,6 +51,7 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize playImage = playImage_;
 @synthesize previousButton = previousButton_;
 @synthesize progressControl = progressControl_;
+@synthesize progressIndicator = progressIndicator_;
 @synthesize searchField = searchField_;
 @synthesize startImage = startImage_;
 @synthesize statusBarText = statusBarText_;
@@ -69,9 +73,10 @@ static NSString *GetWindowTitle(Track *t) {
     self.searchField.target = self;
     self.searchField.action = @selector(onSearch:);
     [self.searchField setRecentsAutosaveName:@"recentSearches"];
+    [self setupGroupsPopupButton];
     [self setupWindow];
     [self setupStatusBarText];
-    [self setupGroupsPopupButton];
+    [self setupBusyIndicator];
 
     MainWindowController *weakSelf = self;
     [loop_ every:kPollMovieInterval with:^{
@@ -89,6 +94,16 @@ static NSString *GetWindowTitle(Track *t) {
         weakSelf.progressControl.elapsed = 0;
         weakSelf.progressControl.isEnabled = false;
         playButton_.image = startImage_;
+      }
+    }];
+    isBusy_ = false;
+    [loop_ every:kPollProgressInterval with:^{
+      if (weakSelf.content.isBusy && !isBusy_) {
+        [self.progressIndicator startAnimation:self];
+        isBusy_ = true;
+      } else if (!weakSelf.content.isBusy && isBusy_) {
+        isBusy_ = false;
+        [self.progressIndicator stopAnimation:self];
       }
     }];
     [self setupAudioSelect];
@@ -129,7 +144,7 @@ static NSString *GetWindowTitle(Track *t) {
   [audioOutputPopUpButton_ release];
   [contentView_ release];
   [content_ release];
-  [groupsPopUpButton_ release];
+  [groupsButton_ release];
   [horizontalSplit_ release];
   [libraryPopUp_ release];
   [loop_ release];
@@ -147,40 +162,56 @@ static NSString *GetWindowTitle(Track *t) {
   [super dealloc];
 }
 
-- (void)search:(NSString *)term {
+- (void)search:(NSString *)term after:(On0)after {
+  after = [after copy];
   if (![self.searchField.stringValue isEqual:term])
     self.searchField.stringValue = term;
-  [self.content search:term];
+  [self.content search:term after:after];
+}
+
+- (void)setupBusyIndicator { 
+  CGRect rect = CGRectMake(5, 2, 18, 18);
+  self.progressIndicator = [[[NSProgressIndicator alloc] initWithFrame:rect] autorelease];
+  self.progressIndicator.style = NSProgressIndicatorSpinningStyle;
+  self.progressIndicator.displayedWhenStopped = NO;
+  [self.window.contentView addSubview:self.progressIndicator];
 }
 
 - (void)setupGroupsPopupButton {
-  CGRect rect = CGRectMake(200, 2, 100, 18);
-  self.groupsPopUpButton = [[[NSPopUpButton alloc] initWithFrame:rect] autorelease]; 
-  [self.window.contentView addSubview:self.groupsPopUpButton];
-  [self.groupsPopUpButton addItemWithTitle:@"Albums"];
-  [self.groupsPopUpButton addItemWithTitle:@"Artists"];
-  [self.groupsPopUpButton addItemWithTitle:@"Tracks"];
-  [self.groupsPopUpButton selectItemAtIndex:2];
-  [[self.groupsPopUpButton cell] setFont:[NSFont systemFontOfSize:11.0]];
-  [[self.groupsPopUpButton cell] setControlSize:NSSmallControlSize];
-  self.groupsPopUpButton.target = self;
-  self.groupsPopUpButton.action = @selector(onGroupSelect:);
-}
-- (void)onGroupSelect:(id)sender { 
-  NSPopUpButton *select = (NSPopUpButton *)sender;
-  [self selectBrowser:select.indexOfSelectedItem];
+  CGRect rect = CGRectMake(0, 0, 100, 32);
+  //NSImage *albumImage = [NSImage imageNamed:@"album-icon"];
+  NSImage *albumImage = [NSImage imageNamed:@"album-icon"];
+  NSImage *trackImage = [NSImage imageNamed:@"NSListViewTemplate"];
+  self.groupsButton = [[[NSSegmentedControl alloc] initWithFrame:rect] autorelease]; 
+  self.groupsButton.segmentStyle = NSSegmentStyleTexturedRounded;
+  self.groupsButton.segmentCount = 2;
+  self.groupsButton.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
+  [[self.groupsButton cell] setControlSize:NSRegularControlSize];
+  self.groupsButton.selectedSegment = 1;
+  self.groupsButton.target = self;
+  self.groupsButton.action = @selector(onGroupSelect:);
+  [self.groupsButton setImage:albumImage forSegment:0];
+  [self.groupsButton setImage:trackImage forSegment:1];
+  [self.groupsButton setImageScaling:0.6 forSegment:0];
+  [self.groupsButton setImageScaling:0.8 forSegment:1];
 }
 
-- (void)selectBrowser:(int)idx { 
-  if (idx == 1) {
-    self.content = [[[ArtistBrowser alloc] initWithLibrary:SharedAppDelegate().library] autorelease];
+- (void)onGroupSelect:(id)sender { 
+  [self selectBrowser:(MainWindowControllerBrowser)self.groupsButton.selectedSegment];
+}
+
+- (void)selectBrowser:(MainWindowControllerBrowser)idx { 
+  if (idx == MainWindowControllerAlbumBrowser) {
+    self.content = [[[AlbumBrowser alloc] initWithLibrary:SharedAppDelegate().library] autorelease];
   } else { 
     self.content = self.trackBrowser;
   }
+  if (idx != self.groupsButton.selectedSegment)
+    self.groupsButton.selectedSegment = idx;
 }
 
 - (void)onSearch:(id)sender { 
-  [[NSApp delegate] search:[sender stringValue]];
+  [[NSApp delegate] search:[sender stringValue] after:nil];
 }
 
 - (void)setupWindow {
@@ -309,6 +340,8 @@ static NSString *GetWindowTitle(Track *t) {
     view = self.progressControl.view;
     [item setMaxSize:NSMakeSize(1000, 22)];
     [item setMinSize:NSMakeSize(400, 22)];
+  } else if (itemIdentifier == kGroupControl) {
+    view = self.groupsButton;
   } else if (itemIdentifier == kVolumeControl) { 
     if (!self.volumeControl) {
       self.volumeControl = [[[VolumeControl alloc] init] autorelease];
@@ -365,7 +398,7 @@ static NSString *GetWindowTitle(Track *t) {
 - (NSArray *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar { 
   NSArray *ret = [NSArray array];
   return [NSArray arrayWithObjects:kPreviousButton, kPlayButton, kNextButton,
-         kVolumeControl, kProgressControl, kSearchControl, nil];
+         kVolumeControl, kProgressControl, kGroupControl, kSearchControl, nil];
 }
 
 - (NSArray *)toolbarSelectableItemIdentifiers:(NSToolbar *)toolbar {

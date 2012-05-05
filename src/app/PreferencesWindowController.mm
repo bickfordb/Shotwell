@@ -5,6 +5,11 @@ static NSString * const kGeneral = @"General";
 @implementation PreferencesWindowController 
 @synthesize automaticPathsEditor = automaticPathsEditor_;
 
+- (void)dealloc { 
+  [automaticPathsEditor_ release];
+  [super dealloc];
+}
+
 - (id)initWithLocalLibrary:(LocalLibrary *)localLibrary {
   self = [super init];
 

@@ -140,7 +140,7 @@
 
 - (NSArray *)all {
   @synchronized(ilock_) {
-    return [items_ copy];
+    return [NSArray arrayWithArray:items_];
   }
 }
 

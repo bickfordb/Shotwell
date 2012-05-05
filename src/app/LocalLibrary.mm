@@ -32,8 +32,8 @@ static int64_t kPollCoverArtInterval = 1000000;
 - (void)pruneQueued;
 - (void)monitorPaths;
 - (void)checkCoverArt;
-- (void)search:(NSString *)d entity:(NSString *)entity withResult:(void(^)(NSArray *results))onResults;
-- (void)search:(NSString *)term withArtworkData:(void (^)(NSData *d))block;
+- (void)search:(NSString *)d entity:(NSString *)entity withResult:(void(^)(int status, NSArray *results))onResults;
+- (void)searchCoverArt:(NSString *)term withArtworkData:(void (^)(int status, NSData *d))block;
 - (void)queueCheckCoverArt:(int64_t)interval;
 @end
 
@@ -41,8 +41,6 @@ static int64_t kPollCoverArtInterval = 1000000;
 - (const char *)keyPrefix {
   return "t:";
 }
-
-
 
 - (id)decodeValue:(const char *)bytes length:(size_t)length {
   NSDictionary *v = [super decodeValue:bytes length:length];
@@ -85,6 +83,7 @@ static void OnFileEvent(
 
 @implementation LocalLibrary
 @synthesize trackTable = trackTable_;
+@synthesize coverArtLoop = coverArtLoop_;
 @synthesize urlTable = urlTable_;
 @synthesize pathsToScan = pathsToScan_;
 @synthesize pruneRequested = pruneRequested_;
@@ -94,39 +93,39 @@ static void OnFileEvent(
 @synthesize pendingCoverArtTracks = pendingCoverArtTracks_;
 @synthesize coverArtPath = coverArtPath_;
 
-- (void)search:(NSString *)term withArtworkData:(void (^)(NSData *d))block {
+- (void)search:(NSString *)term withArtworkData:(void (^)(int code, NSData *d))block {
   __block LocalLibrary *weakSelf = self;
   block = [block copy];
-  [self search:term entity:@"album" withResult:^(NSArray *results) {
+  [self search:term entity:@"album" withResult:^(int status, NSArray *results) {
     if (results && results.count) { 
       NSString *artworkURL = [[results objectAtIndex:0] objectForKey:@"artworkUrl100"];
       artworkURL = [artworkURL
         stringByReplacingOccurrencesOfString:@".100x100" withString:@".600x600"];
       if (artworkURL && artworkURL.length) {
-        [weakSelf.scanLoop fetchURL:[NSURL URLWithString:artworkURL] with:^(HTTPResponse *response) { 
-          block(response.status == 200 ? response.body : nil);
+        [weakSelf.coverArtLoop fetchURL:[NSURL URLWithString:artworkURL] with:^(HTTPResponse *response) { 
+          block(response.status, response.status == 200 ? response.body : nil);
         }];
       } else { 
-        block(nil);
+        block(status, nil);
       }
     } else {
-      block(nil);
+      block(status, nil);
     }
   }];
 }
 
-- (void)search:(NSString *)term entity:(NSString *)entity withResult:(void(^)(NSArray *results))onResults { 
+- (void)search:(NSString *)term entity:(NSString *)entity withResult:(void(^)(int status, NSArray *results))onResults { 
   onResults = [onResults copy]; 
   NSURL *url = [NSURL URLWithString:kITunesAffiliateURL];
   url = [url pushKey:@"term" value:term];
   url = [url pushKey:@"entity" value:entity];
-  [scanLoop_ fetchURL:url with:^(HTTPResponse *r) { 
+  [coverArtLoop_ fetchURL:url with:^(HTTPResponse *r) { 
     NSArray *results = [NSArray array];
     if (r.status == 200) {
       NSDictionary *data = (NSDictionary *)r.body.decodeJSON;
       results = [data objectForKey:@"results"];
     }
-    onResults(results);
+    onResults(r.status, results);
   }];
 }
 
@@ -134,6 +133,7 @@ static void OnFileEvent(
   coverArtPath:(NSString *)coverArtPath {
   self = [super init];
   if (self) {
+    self.coverArtLoop = [Loop loop];
     self.coverArtPath = coverArtPath;
     Level *level = [[[Level alloc] initWithPath:dbPath] autorelease]; 
     urlTable_ = [[URLTable alloc] initWithLevel:level];
@@ -156,7 +156,7 @@ static void OnFileEvent(
       [weakSelf scanQueuedPaths];
       [e add:1000000];
     }];
-    [scanLoop_ onTimeout:1 with:^(Event *e, short flags) {
+    [coverArtLoop_ onTimeout:1 with:^(Event *e, short flags) {
       [weakSelf each:^(Track *t) {
         if (!t.isCoverArtChecked.boolValue) {
           @synchronized(weakSelf.pendingCoverArtTracks) { 
@@ -174,13 +174,15 @@ static void OnFileEvent(
 }
 
 - (void)queueCheckCoverArt:(int64_t)interval {
-  [scanLoop_ onTimeout:interval with:^(Event *e, short flags) {
+  [coverArtLoop_ onTimeout:interval with:^(Event *e, short flags) {
     [self checkCoverArt];
   }];
 }
 
 - (void)checkCoverArt {
   __block LocalLibrary *weakSelf = self;
+  if (true)
+    return;
   Track *track = nil;
   @synchronized(pendingCoverArtTracks_) {
     NSNumber *trackID = pendingCoverArtTracks_.anyObject;
@@ -199,12 +201,13 @@ static void OnFileEvent(
 
   NSString *term = [NSString stringWithFormat:@"%@ %@", artist, album];
   INFO(@"checking cover art for %@", term);
-  [self search:term withArtworkData:^(NSData *data) { 
+  [self search:term withArtworkData:^(int status, NSData *data) { 
     INFO(@"checked cover art for %@", term);
     NSMutableSet *tracksToUpdate = [NSMutableSet set];
     NSString *url = nil;
     if (data && data.length) {
       mkdir(weakSelf.coverArtPath.UTF8String, 0755);
+      INFO(@"sha1: %@ => %@", term, term.sha1);
       NSString *path = [weakSelf.coverArtPath stringByAppendingPathComponent:term.sha1];
       if ([data writeToFile:path atomically:YES]) {
         url = [[NSURL fileURLWithPath:path] absoluteString];
@@ -251,19 +254,21 @@ static void OnFileEvent(
 }
 
 - (void)dealloc { 
-  [pendingCoverArtTracks_ release];
+  [coverArtLoop_ release];
   [pruneLoop_ release];
   [scanLoop_ release];
-  [coverArtPath_ release];
-  [pathsToScan_ release];
-  [trackTable_ release];
-  [urlTable_ release];
   if (fsEventStreamRef_) {
     FSEventStreamStop(fsEventStreamRef_);
     FSEventStreamInvalidate(fsEventStreamRef_);
     FSEventStreamRelease(fsEventStreamRef_);
     fsEventStreamRef_ = nil;
   }
+
+  [pendingCoverArtTracks_ release];
+  [coverArtPath_ release];
+  [pathsToScan_ release];
+  [trackTable_ release];
+  [urlTable_ release];
   [super dealloc];
 }
 

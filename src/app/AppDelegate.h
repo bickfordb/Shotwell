@@ -4,11 +4,12 @@
 #import "app/Library.h"
 #import "app/LocalLibrary.h"
 #import "app/Loop.h"
+#import "app/MainWindowController.h"
 #import "app/Movie.h"
 #import "app/Plugin.h"
-#import "app/Track.h"
-#import "app/MainWindowController.h"
 #import "app/PreferencesWindowController.h"
+#import "app/Track.h"
+#import "app/Types.h"
 
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSNetServiceBrowserDelegate, NSNetServiceDelegate> {
   Daemon *daemon_;
@@ -16,7 +17,6 @@
   LocalLibrary *localLibrary_;
   Loop *loop_;
   Movie *movie_;
-  NSMenuItem *addToLibraryMenuItem_;
   NSMenuItem *stopMenuItem_;
   NSMutableArray *libraries_;
   NSMutableArray *plugins_;
@@ -24,7 +24,6 @@
   NSNetServiceBrowser *daemonBrowser_;
   NSNetServiceBrowser *raopServiceBrowser_;
   NSMutableDictionary *selectedAudioOutput_;
-  NSMutableDictionary *selectedLibrary_;
   MainWindowController *mainWindowController_;
   PreferencesWindowController *preferencesWindowController_;
   Track *track_;
@@ -54,11 +53,11 @@
 @property (retain) NSMutableArray *libraries;
 @property (retain) NSMutableArray *plugins;
 @property (retain) NSMutableDictionary *selectedAudioOutput;
-@property (retain) NSMutableDictionary *selectedLibrary;
 @property (retain) NSNetServiceBrowser *daemonBrowser;
 @property (retain) NSNetServiceBrowser *raopServiceBrowser;
 @property (retain) PreferencesWindowController *preferencesWindowController;
 @property (retain) Track *track;
+- (void)search:(NSString *)term after:(On0)after;
 @end
 
 AppDelegate *SharedAppDelegate();

@@ -62,6 +62,7 @@ extern NSArray *allTrackKeys;
 @property (retain, nonatomic) NSNumber *lastPlayedAt;
 @property (retain, nonatomic) NSNumber *updatedAt;
 - (bool)isLocalMediaURL;
+- (NSString *)artistAlbumYearTitle;
 
 
 @end

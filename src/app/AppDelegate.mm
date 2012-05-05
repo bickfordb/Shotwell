@@ -58,7 +58,6 @@ static NSString *CoverArtPath() {
 @synthesize preferencesWindowController = preferencesWindowController_;
 @synthesize raopServiceBrowser = raopServiceBrowser_;
 @synthesize selectedAudioOutput = selectedAudioOutput_;
-@synthesize selectedLibrary = selectedLibrary_;
 @synthesize track = track_;
 
 - (void)dealloc { 
@@ -67,6 +66,7 @@ static NSString *CoverArtPath() {
   [loop_ release];
   [daemon_ release];
   [daemonBrowser_ release];
+  [library_ release];
   [libraries_ release];
   [localLibrary_ release];
   [mainWindowController_ release];
@@ -75,14 +75,14 @@ static NSString *CoverArtPath() {
   [preferencesWindowController_ release];
   [raopServiceBrowser_ release];
   [selectedAudioOutput_ release];
-  [selectedLibrary_ release];
   [track_ release];
   [super dealloc];
 }
 
-- (void)search:(NSString *)term {
+- (void)search:(NSString *)term after:(On0)after {
+  after = [after copy];
   ForkWith(^{
-    [self.mainWindowController search:term];
+    [self.mainWindowController search:term after:after];
   });
 }
 

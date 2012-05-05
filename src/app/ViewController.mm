@@ -3,6 +3,7 @@
 @implementation ViewController
 
 @synthesize view = view_;
+@synthesize isBusy = isBusy_;
 
 - (void)dealloc {
   [view_ release];
@@ -18,9 +19,7 @@
   return self;
 }
 
-- (void)search:(NSString *)query {
-
-}
+- (void)search:(NSString *)query after:(On0)after { }
 
 - (void)reload { 
 }

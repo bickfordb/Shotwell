@@ -281,5 +281,21 @@ done:
 - (void)finalizeForWebScript {
 }
 
+- (NSString *)artistAlbumYearTitle {
+  NSString *artist = self.artist;
+  NSString *album = self.album;
+  NSString *year = self.year;
+  NSMutableArray *terms = [NSMutableArray array];
+  if (artist && artist.length) {
+    [terms addObject:artist];
+  }
+  if (album && album.length) {
+    [terms addObject:album];
+  }
+  if (year && year.length) {
+    [terms addObject:year];
+  }
+  return [terms componentsJoinedByString:@" - "];
+}
 
 @end
