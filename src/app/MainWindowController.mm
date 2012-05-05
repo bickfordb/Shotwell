@@ -1,8 +1,8 @@
 #import "app/AppDelegate.h"
 #import "app/Log.h"
-#import "app/AlbumBrowser.h"
 #import "app/MainWindowController.h"
 #import "app/Movie.h"
+#import "app/RemoteLibrary.h"
 
 static NSString * const kNextButton = @"NextButton";
 static NSString * const kRAOPServiceType = @"_raop._tcp.";
@@ -57,9 +57,9 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize statusBarText = statusBarText_;
 @synthesize stopImage = stopImage_;
 @synthesize trackBrowser = trackBrowser_;
-@synthesize library = library_;
 @synthesize verticalSplit = verticalSplit_;
 @synthesize volumeControl = volumeControl_;
+@synthesize albumBrowser = albumBrowser_;
 
 - (id)init { 
   self = [super init];
@@ -77,6 +77,7 @@ static NSString *GetWindowTitle(Track *t) {
     [self setupWindow];
     [self setupStatusBarText];
     [self setupBusyIndicator];
+    [self setupLibrarySelect];
 
     MainWindowController *weakSelf = self;
     [loop_ every:kPollMovieInterval with:^{
@@ -107,11 +108,10 @@ static NSString *GetWindowTitle(Track *t) {
       }
     }];
     [self setupAudioSelect];
-    self.trackBrowser = [[[TrackBrowser alloc] initWithLibrary:SharedAppDelegate().library] autorelease];
-    self.content = self.trackBrowser;
     [self.loop every:kPollStatsInterval with:^{
       [weakSelf pollStats];
     }];
+    [self selectBrowser:MainWindowControllerTrackBrowser];
   }
   return self;
 }
@@ -196,15 +196,37 @@ static NSString *GetWindowTitle(Track *t) {
   [self.groupsButton setImageScaling:0.8 forSegment:1];
 }
 
+- (Library *)library { 
+  return library_;
+}
+
+- (void)setLibrary:(Library *)library { 
+  @synchronized(self) {
+    Library *oldLibrary = library_;
+    library_ = [library retain];
+    [oldLibrary release];
+  }
+}
+
 - (void)onGroupSelect:(id)sender { 
   [self selectBrowser:(MainWindowControllerBrowser)self.groupsButton.selectedSegment];
 }
 
 - (void)selectBrowser:(MainWindowControllerBrowser)idx { 
   if (idx == MainWindowControllerAlbumBrowser) {
-    self.content = [[[AlbumBrowser alloc] initWithLibrary:SharedAppDelegate().library] autorelease];
+    if (!self.albumBrowser) {
+      self.albumBrowser = [[[AlbumBrowser alloc] initWithLibrary:SharedAppDelegate().library] autorelease];
+    }
+    self.content = self.albumBrowser;
   } else { 
+    if (!self.trackBrowser) {
+      self.trackBrowser = [[[TrackBrowser alloc] initWithLibrary:SharedAppDelegate().library] autorelease];
+    }
     self.content = self.trackBrowser;
+  }
+  NSString *term = self.searchField.stringValue;
+  if (term && term.length) { 
+    [self.content search:term after:nil];
   }
   if (idx != self.groupsButton.selectedSegment)
     self.groupsButton.selectedSegment = idx;
@@ -271,7 +293,7 @@ static NSString *GetWindowTitle(Track *t) {
   self.statusBarText.bordered = NO;
   self.statusBarText.bezeled = NO;
   self.statusBarText.backgroundColor = [NSColor clearColor];
-  self.statusBarText.autoresizingMask = NSViewWidthSizable;
+  self.statusBarText.autoresizingMask = NSViewWidthSizable | NSViewMaxYMargin;
   self.statusBarText.alignment = NSCenterTextAlignment;
 
   NSTextFieldCell *cell = (NSTextFieldCell *)[self.statusBarText cell];
@@ -302,8 +324,6 @@ static NSString *GetWindowTitle(Track *t) {
 
 - (void)setupLibrarySelect { 
   int w = 160;
-  int x = ((NSView *)[self.window contentView]).bounds.size.width;
-  x -= w + 10;
   self.libraryPopUpButton = [[[ServicePopUpButton alloc] initWithFrame:CGRectMake(5, 3, w, 18)
     serviceTypes:[NSSet setWithObjects:kDaemonServiceType, nil]] autorelease];
   self.libraryPopUpButton.autoresizingMask = NSViewMaxXMargin | NSViewMaxYMargin;
@@ -312,8 +332,12 @@ static NSString *GetWindowTitle(Track *t) {
   [buttonCell setControlSize:NSSmallControlSize];
   [self.libraryPopUpButton appendItemWithTitle:@"Local Library" value:nil];
   self.libraryPopUpButton.onService = ^(id v) {
-
+    SharedAppDelegate().library = !v ? SharedAppDelegate().localLibrary : [[[RemoteLibrary alloc] initWithNetService:v] autorelease];
+    self.trackBrowser = nil;
+    self.albumBrowser = nil;
+    [self selectBrowser:(MainWindowControllerBrowser)self.groupsButton.selectedSegment];
   };
+  [self.window.contentView addSubview:self.libraryPopUpButton];
 }
 
 - (NSToolbarItem *)toolbar:(NSToolbar *)toolbar itemForItemIdentifier:(NSString *)itemIdentifier willBeInsertedIntoToolbar:(BOOL)flag {
@@ -372,16 +396,6 @@ static NSString *GetWindowTitle(Track *t) {
     nextButton.target = SharedAppDelegate();
     view = nextButton;
   }
-  //} else if (itemIdentifier == kGeneralPreferenceTab) { 
-    /*
-    item.label = @"General";
-    item.target = self;
-    item.action = @selector(generalSelected:);
-    NSImageView *view = [[[NSImageView alloc] initWithFrame:CGRectMake(0, 0, 32, 32)] autorelease];
-    view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-    view.image = [NSImage imageNamed:@"NSPreferencesGeneral"];
-    item.view = view;*/
-  //}
   if (view) {
     item.view = view;
     item.enabled = YES;

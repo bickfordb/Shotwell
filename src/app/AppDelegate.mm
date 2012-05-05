@@ -237,12 +237,12 @@ static NSString *CoverArtPath() {
 
 - (void)setLibrary:(Library *)library { 
   @synchronized(self) {
-    if (library_) { 
-      [[NSNotificationCenter defaultCenter] removeObserver:self name:kLibraryTrackChanged object:library_];
+    Library *last = library_;
+    if (last) { 
+      [[NSNotificationCenter defaultCenter] removeObserver:self name:kLibraryTrackChanged object:last];
     }
-    Library *o = library_;
     library_ = [library retain];
-    [o autorelease];
+    [last release];
   }
   if (library) { 
     [[NSNotificationCenter defaultCenter]

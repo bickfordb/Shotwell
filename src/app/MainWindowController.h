@@ -1,12 +1,13 @@
 #import <Cocoa/Cocoa.h>
-#import "app/ServicePopUpButton.h"
+#import "app/AlbumBrowser.h"
 #import "app/ProgressControl.h"
+#import "app/ServicePopUpButton.h"
 #import "app/SplitView.h"
 #import "app/TableViewController.h"
+#import "app/Track.h"
 #import "app/TrackBrowser.h"
 #import "app/VolumeControl.h"
 #import "app/WindowController.h"
-#import "app/Track.h"
 
 typedef enum {
   MainWindowControllerAlbumBrowser = 0,
@@ -14,6 +15,7 @@ typedef enum {
 } MainWindowControllerBrowser;
 
 @interface MainWindowController : WindowController <NSToolbarDelegate> {
+  AlbumBrowser *albumBrowser_;
   Loop *loop_;
   NSButton *nextButton_;
   NSButton *playButton_;
@@ -51,10 +53,12 @@ typedef enum {
 - (void)trackEnded:(Track *)track;
 - (void)trackStarted:(Track *)track;
 - (void)setupBusyIndicator;
+- (void)setupLibrarySelect;
 
 @property (retain) Loop *loop;
 @property (retain) NSButton *nextButton;
 @property (retain) NSButton *playButton;
+@property (retain) AlbumBrowser *albumBrowser;
 @property (retain) NSButton *previousButton;
 @property (retain) NSImage *playImage;
 @property (retain) NSProgressIndicator *progressIndicator;

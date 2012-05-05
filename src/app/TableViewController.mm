@@ -76,11 +76,13 @@
 }
 
 - (void)dealloc {
-  [onRowCount_ release];
   [onCellValue_ release];
-  [tableView_ release];
-  [scrollView_ release];
   [onDoubleAction_ release];
+  [onRowCount_ release];
+  [onSortComparatorChanged_ release];
+  [scrollView_ release];
+  [sortFields_ release];
+  [tableView_ release];
   [super dealloc];
 }
 
@@ -127,15 +129,17 @@
 
 
 - (void)updateTableColumnHeaders {
-  for (NSTableColumn *c in tableView_.tableColumns) { 
-    [tableView_ setIndicatorImage:nil inTableColumn:c];
-  }
-  for (SortField *f in sortFields_) {
-    Direction d = f.direction;
-    NSImage *img = [NSImage imageNamed:d == Ascending ? @"NSAscendingSortIndicator" : @"NSDescendingSortIndicator"];
-    [tableView_ setIndicatorImage:img inTableColumn:[tableView_ tableColumnWithIdentifier:f.key]];
-    break;
-  }
+  ForkToMainWith(^{
+    for (NSTableColumn *c in tableView_.tableColumns) { 
+      [tableView_ setIndicatorImage:nil inTableColumn:c];
+    }
+    for (SortField *f in sortFields_) {
+      Direction d = f.direction;
+      NSImage *img = [NSImage imageNamed:d == Ascending ? @"NSAscendingSortIndicator" : @"NSDescendingSortIndicator"];
+      [tableView_ setIndicatorImage:img inTableColumn:[tableView_ tableColumnWithIdentifier:f.key]];
+      break;
+    }
+  });
 }
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView { 
