@@ -1,5 +1,7 @@
 #import <Cocoa/Cocoa.h>
 
+#import "app/AudioSink.h"
+#import "app/AudioSource.h"
 #import "app/Daemon.h"
 #import "app/Library.h"
 #import "app/LocalLibrary.h"
@@ -16,7 +18,8 @@
   Library *library_;
   LocalLibrary *localLibrary_;
   Loop *loop_;
-  Movie *movie_;
+  id <AudioSink> audioSink_;
+  id <AudioSource> audioSource_;
   NSMenuItem *stopMenuItem_;
   NSMutableArray *libraries_;
   NSMutableArray *plugins_;
@@ -43,12 +46,13 @@
 - (void)nextClicked:(id)sender;
 - (void)previousClicked:(id)sender;
 
+@property (retain) id <AudioSink> audioSink;
 @property (retain) Daemon *daemon;
 @property (retain) Library *library;
 @property (retain) LocalLibrary *localLibrary;
 @property (retain) Loop *loop;
 @property (retain) MainWindowController *mainWindowController;
-@property (retain) Movie *movie;
+@property (retain) id <AudioSource> audioSource;
 @property (retain) NSMutableArray *audioOutputs;
 @property (retain) NSMutableArray *libraries;
 @property (retain) NSMutableArray *plugins;

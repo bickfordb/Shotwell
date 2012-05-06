@@ -11,10 +11,8 @@
 	void *buffer_;
 	uint32_t bufferOffset_;
 	uint32_t bufferSize_;
-  bool opened_;
   double volume_;
+  bool isPaused_;
 }
-//@property (retain, atomic) id <AudioSource> audioSource;
-- (id)initWithSource:(id <AudioSource>)audioSource;
 
 @end

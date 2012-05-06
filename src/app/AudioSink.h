@@ -3,7 +3,6 @@
 @protocol AudioSink <NSObject>
 @property double volume;
 @property (retain, atomic) id <AudioSource> audioSource;
-- (void)stop;
-- (void)start;
+@property bool isPaused;
 - (void)flush;
 @end

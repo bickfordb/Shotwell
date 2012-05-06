@@ -1,8 +1,12 @@
 #import "app/AppDelegate.h"
+#import "app/AudioSource.h"
 #import "app/Log.h"
 #import "app/MainWindowController.h"
 #import "app/Movie.h"
+#import "app/NSNetServiceAddress.h"
 #import "app/RemoteLibrary.h"
+#import "app/RAOP.h"
+#import "app/CoreAudioSink.h"
 
 static NSString * const kNextButton = @"NextButton";
 static NSString * const kRAOPServiceType = @"_raop._tcp.";
@@ -81,7 +85,7 @@ static NSString *GetWindowTitle(Track *t) {
 
     MainWindowController *weakSelf = self;
     [loop_ every:kPollMovieInterval with:^{
-      Movie *movie = SharedAppDelegate().movie;
+      id <AudioSource> movie = SharedAppDelegate().audioSource;
       if (movie) {
         if (!movie.isSeeking) {
           weakSelf.progressControl.isEnabled = true;
@@ -89,7 +93,7 @@ static NSString *GetWindowTitle(Track *t) {
           weakSelf.progressControl.elapsed = movie.elapsed;
         }
         playButton_.image = (movie.state == kPlayingAudioSourceState) ? stopImage_ : startImage_;
-        weakSelf.volumeControl.level = movie.volume;
+        weakSelf.volumeControl.level = SharedAppDelegate().audioSink.volume;
       } else {
         weakSelf.progressControl.duration = 0;
         weakSelf.progressControl.elapsed = 0;
@@ -314,7 +318,12 @@ static NSString *GetWindowTitle(Track *t) {
   self.audioOutputPopUpButton = [[[ServicePopUpButton alloc] initWithFrame:CGRectMake(x, 2, w, 18)
     serviceTypes:[NSSet setWithObjects:kRAOPServiceType, nil]] autorelease];
   self.audioOutputPopUpButton.onService = ^(id v) { 
-    INFO(@"selected audio service: %@", v);
+    NSNetService *netService = (NSNetService *)v;
+    if (netService) {
+      SharedAppDelegate().audioSink = [[[RAOPSink alloc] initWithAddress:netService.ipv4Address port:netService.port] autorelease];
+    } else {
+      SharedAppDelegate().audioSink = [[[CoreAudioSink alloc] init] autorelease];
+    }
   };
   [self.audioOutputPopUpButton appendItemWithTitle:@"Computer Speakers" value:nil];
   self.audioOutputPopUpButton.autoresizingMask = NSViewMinXMargin | NSViewMaxYMargin;
@@ -361,7 +370,7 @@ static NSString *GetWindowTitle(Track *t) {
       self.progressControl = [[[ProgressControl alloc]
         initWithFrame:CGRectMake(0, 0, 5 + 60 + 5 + 300 + 5 + + 60 + 5, 22)] autorelease];
       self.progressControl.onElapsed = ^(int64_t amt) {
-        [SharedAppDelegate().movie seek:amt];
+        [SharedAppDelegate().audioSource seek:amt];
       };
     }
     view = self.progressControl.view;
@@ -373,7 +382,7 @@ static NSString *GetWindowTitle(Track *t) {
     if (!self.volumeControl) {
       self.volumeControl = [[[VolumeControl alloc] init] autorelease];
       self.volumeControl.onVolume = ^(double amt) {
-        SharedAppDelegate().movie.volume = amt;
+        SharedAppDelegate().audioSink.volume = amt;
       };
     }
     view = self.volumeControl.view;

@@ -13,10 +13,10 @@ typedef enum {
 - (void)getAudio:(uint8_t *)bytes length:(size_t)len;
 - (void)seek:(int64_t)usecs;
 - (bool)isSeeking;
-- (void)stop;
-- (void)start;
 - (int64_t)duration;
 - (int64_t)elapsed;
 - (AudioSourceState)state;
+- (NSString *)url;
+@property bool isPaused;
 @end
 

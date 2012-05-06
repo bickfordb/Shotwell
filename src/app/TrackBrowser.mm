@@ -100,7 +100,7 @@ static NSString * const kStatus = @"status";
       AppDelegate *appDelegate = (AppDelegate *)[NSApp delegate];
       NSString *identifier = aTableColumn.identifier;
       id ret = nil;
-      bool isPlaying = appDelegate.movie && [t.url isEqual:appDelegate.movie.url];
+      bool isPlaying = SharedAppDelegate().track && [t.url isEqual:SharedAppDelegate().track.url];
       if (isPlaying) {
         [[aTableColumn dataCell] setFont:isPlaying ? playingFont_ : font_];
       }

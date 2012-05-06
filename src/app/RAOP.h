@@ -50,7 +50,7 @@ typedef enum { RAOPV1 = 0, RAOPV2 = 1} RAOPVersion;
 @property uint32_t rtpTimestamp;
 @property uint32_t ssrc;
 
-- (id)initWithAddress:(NSString *)address port:(uint16_t)port source:(id <AudioSource>)source;
+- (id)initWithAddress:(NSString *)address port:(uint16_t)port;
 - (void)read;
 - (bool)connectRTP;
 - (void)write;

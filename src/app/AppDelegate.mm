@@ -4,13 +4,14 @@
 #include <sys/utsname.h>
 
 #import "app/AppDelegate.h"
+#import "app/CoreAudioSink.h"
+#import "app/LibAVSource.h"
 #import "app/Log.h"
 #import "app/NSNetServiceAddress.h"
 #import "app/NSNumberTimeFormat.h"
 #import "app/NSMutableArrayInsert.h"
 #import "app/NSStringDigest.h"
 #import "app/Pthread.h"
-#import "app/RAOP.h"
 #import "app/RemoteLibrary.h"
 #import "app/Signals.h"
 #import "app/Util.h"
@@ -46,6 +47,7 @@ static NSString *CoverArtPath() {
 }
 
 @implementation AppDelegate
+@synthesize audioSink = audioSink_;
 @synthesize audioOutputs = audioOutputs_;
 @synthesize daemon = daemon_;
 @synthesize daemonBrowser = daemonBrowser_;
@@ -53,7 +55,7 @@ static NSString *CoverArtPath() {
 @synthesize localLibrary = localLibrary_;
 @synthesize loop = loop_;
 @synthesize mainWindowController = mainWindowController_;
-@synthesize movie = movie_;
+@synthesize audioSource = audioSource_;
 @synthesize plugins = plugins_;
 @synthesize preferencesWindowController = preferencesWindowController_;
 @synthesize raopServiceBrowser = raopServiceBrowser_;
@@ -70,7 +72,7 @@ static NSString *CoverArtPath() {
   [libraries_ release];
   [localLibrary_ release];
   [mainWindowController_ release];
-  [movie_ release];
+  [audioSource_ release];
   [plugins_ release];
   [preferencesWindowController_ release];
   [raopServiceBrowser_ release];
@@ -174,13 +176,13 @@ static NSString *CoverArtPath() {
 
 - (void)applicationDidFinishLaunching:(NSNotification *)n {
   __block AppDelegate *weakSelf = self;
+  self.audioSink = [[[CoreAudioSink alloc] init] autorelease];
   [self setupDockIcon];
   [self parseDefaults];
   self.audioOutputs = [NSMutableArray array];
   self.libraries = [NSMutableArray array];
   self.localLibrary = [[[LocalLibrary alloc] initWithDBPath:LibraryPath() coverArtPath:CoverArtPath()] autorelease];
   self.library = self.localLibrary;
-  self.movie = nil;
   self.track = nil;
 
   [self setupSharing];
@@ -225,7 +227,7 @@ static NSString *CoverArtPath() {
 
 
 - (void)pollMovie { 
-  if (movie_ && ([movie_ state] == kEOFAudioSourceState)) {
+  if (audioSource_ && ([audioSource_ state] == kEOFAudioSourceState)) {
     [self playNextTrack];
     return;
   }
@@ -271,8 +273,8 @@ static NSString *CoverArtPath() {
 }
 
 - (void)playTrackAtIndex:(int)index {
-  if (movie_) {
-    [movie_ stop];
+  if (audioSource_) {
+    audioSource_.isPaused = true;
     @synchronized (plugins_) {
       for (Plugin *p in plugins_) {
         [p trackEnded:track_];
@@ -282,13 +284,12 @@ static NSString *CoverArtPath() {
   }
   self.track = [self.mainWindowController.trackBrowser.tracks get:index];
   [self.mainWindowController trackStarted:track_];
-  NSNetService *netService = [self.selectedAudioOutput objectForKey:@"service"];
-
-  self.movie = self.track ? [[[Movie alloc] initWithURL:self.track.url
-    address:netService.ipv4Address port:netService.port] autorelease] : nil;
-  self.movie.volume = self.mainWindowController.volumeControl.level;
-  [self.movie start];
-
+  self.audioSource = [[((LibAVSource *)[LibAVSource alloc]) initWithURL:self.track.url] autorelease];
+  self.audioSource.isPaused = false;
+  self.audioSink.audioSource = self.audioSource;
+  if (self.audioSink.isPaused) 
+    self.audioSink.isPaused = false;
+  self.audioSink.volume = self.mainWindowController.volumeControl.level;
   [self.mainWindowController.trackBrowser seekTo:index];
   [self.mainWindowController.trackBrowser reload];
   if (self.track) {
@@ -307,7 +308,8 @@ static NSString *CoverArtPath() {
   IgnoreSigPIPE();
   int idx = 0;
   int found = -1;
-  if (movie_) {
+  if (track_) {
+    // FIXME: delegate
     for (Track *t in self.mainWindowController.trackBrowser.tracks) {
       if ([t isEqual:track_]) {
         found = idx;
@@ -323,7 +325,7 @@ static NSString *CoverArtPath() {
   int idx = 0;
   int found = -1;
   int req = 0;
-  if (movie_) {
+  if (track_) {
     for (Track *t in self.mainWindowController.trackBrowser.tracks) {
       if ([t isEqual:track_]) {
         found = idx;
@@ -339,12 +341,12 @@ static NSString *CoverArtPath() {
 
 - (void)playClicked:(id)sender { 
   ForkWith(^{
-    if (movie_) { 
-        bool playing = movie_.state == kPlayingAudioSourceState;
+    if (audioSource_) { 
+        bool playing = audioSource_.state == kPlayingAudioSourceState;
         if (playing) { 
-          [movie_ stop];
+          audioSource_.isPaused = true;
         } else { 
-          [movie_ start]; 
+          audioSource_.isPaused = false;
         } 
       } else { 
         [self playNextTrack]; 

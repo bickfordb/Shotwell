@@ -29,7 +29,6 @@ extern "C" {
 - (bool)readPacket:(AVPacket *)packet;
 - (id)initWithURL:(NSString *)s;
 
-@property (retain, atomic) NSString *url;
-
+- (NSString *)url;
 @end
 // vim: filetype=objcpp

@@ -27,29 +27,34 @@ static OSStatus GetAudioCallback(void *context,
   return 0;
 }
 
+@interface CoreAudioSink (Private)
+- (void)stopOutputUnit;
+- (void)startOutputUnit;
+@end
+
 @implementation CoreAudioSink
 @synthesize audioSource = audioSource_;
 
-- (id)initWithSource:(id <AudioSource>)audioSource {
+- (id)init {
   self = [super init];
   if (self) { 
     volume_ = 0.5;
-    audioSource_ = [audioSource retain];  
-    opened_ = false;
+    isPaused_ = true;
   }
   return self;
 }
-
-- (void)dealloc {
-  [self stop];
-  [audioSource_ release];
-  [super dealloc];
+- (void)stopOutputUnit {
+  AudioOutputUnitStop(outputAudioUnit_);
+  struct AURenderCallbackStruct callback;
+  callback.inputProc = NULL;
+  callback.inputProcRefCon = NULL;
+  AudioUnitSetProperty(outputAudioUnit_, kAudioUnitProperty_SetRenderCallback,
+      kAudioUnitScope_Input, 0, &callback, sizeof(callback));
+  CloseComponent(outputAudioUnit_);
 }
 
-- (void)start { 
-  if (opened_)
-    return;
-  opened_ = true;
+- (void)startOutputUnit {
+  memset(&outputAudioUnit_, 0, sizeof(outputAudioUnit_));
   Component comp;
   ComponentDescription desc;
   struct AURenderCallbackStruct callback;
@@ -97,19 +102,41 @@ static OSStatus GetAudioCallback(void *context,
       kHALOutputParam_Volume, kAudioUnitScope_Output, 0, (AudioUnitParameterValue)volume_, 0);
 }
 
+- (void)dealloc {
+  if (!isPaused_) {
+    [self stopOutputUnit];
+    isPaused_ = true;
+  }
+  [audioSource_ release];
+  [super dealloc];
+}
+
+- (bool)isPaused {
+  return isPaused_;
+}
+
+- (void)setIsPaused:(bool)isPaused {
+  @synchronized(self) { 
+    if (isPaused == isPaused_) {
+      INFO(@"already %d", (int)isPaused);
+      return;
+    }
+    if (!isPaused) { 
+      [self startOutputUnit];
+    } else { 
+      [self stopOutputUnit];
+    }
+    isPaused_ = isPaused;
+  }
+}
+
 - (double)volume {
-  AudioUnitParameterValue v = 0;
-  AudioUnitGetParameter(outputAudioUnit_, 
-      kHALOutputParam_Volume,
-      kAudioUnitScope_Output, 
-      0, 
-      &v);
-  return (double)v;
+  return volume_;
 }
 
 - (void)setVolume:(double)pct { 
   volume_ = pct;
-  if (!opened_)
+  if (isPaused_)
     return;
   OSStatus status = AudioUnitSetParameter(outputAudioUnit_, 
       kHALOutputParam_Volume, kAudioUnitScope_Output, 0, (AudioUnitParameterValue)pct, 0);
@@ -117,19 +144,6 @@ static OSStatus GetAudioCallback(void *context,
     ERROR(@"failed to set volume (%d)", status);
 }
 
-- (void)stop { 
-  if (!opened_)
-    return;
-  opened_ = false;
-
-  AudioOutputUnitStop(outputAudioUnit_);
-  struct AURenderCallbackStruct callback;
-  callback.inputProc = NULL;
-  callback.inputProcRefCon = NULL;
-  AudioUnitSetProperty(outputAudioUnit_, kAudioUnitProperty_SetRenderCallback,
-      kAudioUnitScope_Input, 0, &callback, sizeof(callback));
-  CloseComponent(outputAudioUnit_);
-}
 
 - (void)flush { 
 

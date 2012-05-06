@@ -9,7 +9,10 @@ static AVPacket flushPacket;
 @end
 
 @implementation LibAVSource
-@synthesize url = url_;
+
+- (NSString *)url { 
+  return url_;
+}
 
 - (AVCodecContext *)audioCodecContext {
   if (audioStreamIndex_ < 0) {
@@ -52,7 +55,7 @@ static AVPacket flushPacket;
 - (id)initWithURL:(NSString *)url { 
   self = [super init];
   if (self) {
-    self.url = url;
+    url_ = [url retain];
     // Don't retain:
     opened_ = false;
     audioStreamIndex_ = - 1;
@@ -255,14 +258,21 @@ static AVPacket flushPacket;
   return ret; 
 }
 
-- (void)stop {
-  if (state_ == kPlayingAudioSourceState)  {
-    state_ = kPausedAudioSourceState;
-  }
+- (bool)isPaused {
+  return state_ != kPlayingAudioSourceState;
 }
-- (void)start { 
-  if (state_ == kPausedAudioSourceState) {
-    state_ = kPlayingAudioSourceState;
+
+- (void)setIsPaused:(bool)isPaused {
+  @synchronized(self) {
+    if (isPaused) { 
+      if (state_ == kPlayingAudioSourceState)  {
+        state_ = kPausedAudioSourceState;
+      }
+    } else {
+      if (state_ == kPausedAudioSourceState) {
+        state_ = kPlayingAudioSourceState;
+      }
+    }
   }
 }
 

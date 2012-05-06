@@ -31,6 +31,11 @@ const static int kAESKeySize = 16;  // Used by gen. 1
 const static int kV2FrameHeaderSize = 12;   // Used by gen. 2
 static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
 
+@interface RAOPSink (Private)
+- (void)stop;
+- (void)start;
+@end
+
 @implementation RAOPSink
 @synthesize audioSource = audioSource_;
 @synthesize rtsp = rtsp_;
@@ -118,18 +123,17 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
   [loop_ release];
   [rtsp_ release];
   [audioSource_ release];
-
+  [address_ release];
   [super dealloc];
 }
 
-- (id)initWithAddress:(NSString *)address port:(uint16_t)port source:(id <AudioSource>)source { 
+- (id)initWithAddress:(NSString *)address port:(uint16_t)port { 
   self = [super init];
   if (self) { 
     self.loop = [Loop loop];
     self.address = address;
     self.port = port;
     volume_ = 0.5;
-    self.audioSource = source;
     self.raopVersion = RAOPV1;
     self.rtsp = [[[RTSPClient alloc] initWithLoop:loop_ address:address_ port:port_] autorelease];
     self.rtsp.framesPerPacket = self.raopVersion == RAOPV1 ? kSamplesPerFrameV1 : kSamplesPerFrameV2;
@@ -143,13 +147,36 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
   return self;
 }
 
+- (bool)isPaused { 
+  return fd_ >= 0;
+}
+
+- (void)setIsPaused:(bool)paused { 
+  @synchronized(self) { 
+    if (paused) {
+      [self stop];
+    } else { 
+      [self start]; 
+    }
+  }
+}
+
 - (void)stop { 
+  if (fd_ < 0)
+    return;
   [rtsp_ tearDown:^(int succ) { }];
   close(fd_);
+  fd_ = -1;
   close(controlFd_);
+  controlFd_ = -1;
 }
 
 - (void)start { 
+  if (fd_ >= 0) {
+    INFO(@"already started");
+    return;
+  }
+  DEBUG(@"starting RAOP");
   [rtsp_ connect:^(int status) {
     if (status != 200) {
       DEBUG(@"failed to connect to RTSP: %d", status);
