@@ -1,6 +1,5 @@
 #import "app/LibAVSource.h"
 #import "app/Log.h"
-#import "app/Movie.h"
 
 static AVPacket flushPacket;
 

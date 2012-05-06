@@ -2,7 +2,6 @@
 #import "app/AudioSource.h"
 #import "app/Log.h"
 #import "app/MainWindowController.h"
-#import "app/Movie.h"
 #import "app/NSNetServiceAddress.h"
 #import "app/RemoteLibrary.h"
 #import "app/RAOP.h"

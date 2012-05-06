@@ -7,7 +7,6 @@
 #import "app/LocalLibrary.h"
 #import "app/Loop.h"
 #import "app/MainWindowController.h"
-#import "app/Movie.h"
 #import "app/Plugin.h"
 #import "app/PreferencesWindowController.h"
 #import "app/Track.h"
