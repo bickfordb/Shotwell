@@ -1,7 +1,8 @@
 #import <Cocoa/Cocoa.h>
-#import "app/ViewController.h"
-#import "app/TableView.h"
+#import "app/Loop.h"
 #import "app/SortField.h"
+#import "app/TableView.h"
+#import "app/ViewController.h"
 
 typedef int (^TableViewControllerGetRowCount)(void);
 typedef id (^TableViewControllerGetCellValue)(int row, NSTableColumn *column);
@@ -17,9 +18,12 @@ typedef void (^TableViewControllerSortComparatorChanged)();
   TableViewControllerGetRowCount onRowCount_;
   TableViewControllerSortComparatorChanged onSortComparatorChanged_;
   int seekToRow_;
+  bool requestReload_;
+  Loop *loop_;
 }
 
 @property (retain) TableView *tableView;
+@property (retain) Loop *loop;
 @property (retain) NSScrollView *scrollView;
 @property (copy) TableViewControllerGetCellValue onCellValue;
 @property (copy) TableViewControllerGetRowCount onRowCount;

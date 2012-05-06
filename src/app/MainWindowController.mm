@@ -170,9 +170,11 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)setupBusyIndicator { 
-  CGRect rect = CGRectMake(5, 2, 18, 18);
+  CGSize sz = ((NSView *)self.window.contentView).frame.size;
+  CGRect rect = CGRectMake(sz.width - 5 - 18, 2, 18, 18);
   self.progressIndicator = [[[NSProgressIndicator alloc] initWithFrame:rect] autorelease];
   self.progressIndicator.style = NSProgressIndicatorSpinningStyle;
+  self.progressIndicator.autoresizingMask = NSViewMaxYMargin | NSViewMinXMargin;
   self.progressIndicator.displayedWhenStopped = NO;
   [self.window.contentView addSubview:self.progressIndicator];
 }
@@ -308,6 +310,7 @@ static NSString *GetWindowTitle(Track *t) {
   int w = 160;
   int x = ((NSView *)[self.window contentView]).bounds.size.width;
   x -= w + 10;
+  x -= 32;
   self.audioOutputPopUpButton = [[[ServicePopUpButton alloc] initWithFrame:CGRectMake(x, 2, w, 18)
     serviceTypes:[NSSet setWithObjects:kRAOPServiceType, nil]] autorelease];
   self.audioOutputPopUpButton.onService = ^(id v) { 
@@ -437,14 +440,14 @@ static NSString *GetWindowTitle(Track *t) {
 - (void)pollStats {
   NSMutableSet *artists = [NSMutableSet set];
   NSMutableSet *albums = [NSMutableSet set];
-  __block int i = 0;
-  [SharedAppDelegate().library each:^(Track *t) {
-    i++;
+  int i = 0;
+  for (Track *t in self.trackBrowser.tracks.array) {
     if (t.artist)
       [artists addObject:t.artist];
     if (t.album) 
       [albums addObject:t.album];
-  }];
+    i++;
+  }
   self.artists = artists;
   self.albums = albums;
   self.statusBarText.stringValue = [NSString stringWithFormat:@"%d Tracks, %d Artists, %d Albums", i, self.artists.count, self.albums.count]; 

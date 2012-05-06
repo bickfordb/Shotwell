@@ -1,8 +1,12 @@
-#import "app/TableViewController.h"
+#import "app/Loop.h"
 #import "app/PThread.h"
+#import "app/TableViewController.h"
+
+static int64_t kReloadInterval = 500000;
 
 @implementation TableViewController 
 
+@synthesize loop = loop_;
 @synthesize onCellValue = onCellValue_;
 @synthesize onDoubleAction = onDoubleAction_;
 @synthesize onRowCount = onRowCount_;
@@ -29,6 +33,8 @@
 - (id)init { 
   self = [super init];
   if (self) { 
+    requestReload_ = false;
+    self.loop = [Loop loop];
     self.tableView = [[[TableView alloc] init] autorelease];
     self.tableView.allowsMultipleSelection = YES;
     self.tableView.focusRingType = NSFocusRingTypeNone;
@@ -58,6 +64,15 @@
     [self.tableView registerForDraggedTypes:[NSArray arrayWithObjects:NSURLPboardType, NSFilenamesPboardType, nil]];
     self.sortFields = [NSMutableArray array];
     self.tableView.dataSource = self;
+    __block TableViewController *weakSelf = self;
+    [loop_ every:kReloadInterval with:^{ 
+      if (requestReload_) {
+        requestReload_ = false;
+        ForkToMainWith(^{
+          [weakSelf.tableView reloadData];
+        });
+      }
+    }];
   }
   return self;
 }
@@ -76,6 +91,7 @@
 }
 
 - (void)dealloc {
+  [loop_ release];
   [onCellValue_ release];
   [onDoubleAction_ release];
   [onRowCount_ release];
@@ -151,9 +167,7 @@
 }
 
 - (void)reload { 
-  ForkToMainWith(^{
-    [self.tableView reloadData];
-  });
+  requestReload_ = true;
 }
 
 - (void)seekTo:(int)row { 
