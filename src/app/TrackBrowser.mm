@@ -255,7 +255,7 @@ static NSString * const kStatus = @"status";
     [self.tracks add:t];
   } else if (change == kLibraryTrackDeleted) {
     [self.tracks remove:t];
-  } else if (change == kLibraryTrackChanged) {
+  } else if (change == kLibraryTrackSaved) {
     [self.tracks remove:t];
     [self.tracks add:t];
   }

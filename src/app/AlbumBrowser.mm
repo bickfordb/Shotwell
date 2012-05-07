@@ -148,73 +148,26 @@ typedef void (^Action)(void);
 
 @end
 
+@interface AlbumBrowser (Private)
+- (void)addTracks:(NSArray *)t;
+- (void)removeTrack:(Track *)t;
+@end
+
 @implementation AlbumBrowser 
 @synthesize collectionView = collectionView_;
 @synthesize items = items_;
+@synthesize titleToItem = titleToItem_;
 @synthesize library = library_;
 @synthesize scrollView = scrollView_;
-@synthesize loop = loop_;
-@synthesize predicate = predicate_;
-
-- (void)reload { 
-    NSMutableDictionary *d = [NSMutableDictionary dictionary];
-    NSPredicate *p = [predicate_ retain];
-    @synchronized(items_) { 
-      for (Track *t in items_) { 
-        if (p && ![p evaluateWithObject:t]) 
-          continue;
-        NSString *key = t.artistAlbumYearTitle;
-        if (!key)
-          continue;
-        NSMutableArray *m = [d valueForKey:key];
-        if (!m) {
-          m = [NSMutableArray array];
-          [d setValue:m forKey:key];     
-        }
-        [m addObject:t];
-      }
-    }
-    [p release];
-    NSMutableArray *items = [NSMutableArray array];
-    [d enumerateKeysAndObjectsUsingBlock:^(id key, id val, BOOL *stop) { 
-      NSMutableDictionary *i = [NSMutableDictionary dictionary];
-      [i setValue:key forKey:@"title"];
-      [i setValue:val forKey:@"tracks"];
-      for (Track *t in ((NSArray *)val)) {
-        if (t.coverArtURL) {
-          [i setValue:[NSURL URLWithString:t.coverArtURL] forKey:@"url"];
-          break;
-        }
-      }
-      [items addObject:i];
-    }];
-    [items sortUsingComparator:^(id left, id right) {
-      return NaturalComparison([left valueForKey:@"title"], [right valueForKey:@"title"]);
-    }];
-    ForkToMainWith(^{ 
-      self.collectionView.content = items;
-    });
-}
-
-- (void)checkReload { 
-  if (!requestReload_) 
-    return;
-  requestReload_ = false;
-  [self reload];
-  self.isBusy = false; 
-}
 
 - (id)initWithLibrary:(Library *)library { 
   self = [super init];
-  __block AlbumBrowser *weakSelf = self;
   if (self) {
-    self.loop = [Loop loop];
-    self.items = [NSMutableSet set];
-    [self.loop 
-      every:kReloadInterval 
-      with:^{ 
-        [weakSelf checkReload];
-      }];
+    self.items = [[[NSArrayController alloc] initWithContent:[NSMutableSet set]] autorelease]; 
+    self.items.sortDescriptors = [NSArray arrayWithObjects:
+        [NSSortDescriptor sortDescriptorWithKey:@"title" ascending:YES comparator:NaturalComparison],
+      nil];
+    self.items.automaticallyRearrangesObjects = YES;
     self.library = library;
     [[NSNotificationCenter defaultCenter]
      addObserver:self 
@@ -225,8 +178,8 @@ typedef void (^Action)(void);
     self.collectionView = [[[NSCollectionView alloc] initWithFrame:self.scrollView.frame] autorelease];
     self.collectionView.selectable = YES;
     self.collectionView.allowsMultipleSelection = YES;
-    self.collectionView.maxItemSize = CGSizeMake(400, 400);
-    self.collectionView.minItemSize = CGSizeMake(200, 200);
+    self.collectionView.minItemSize = CGSizeMake(175, 175);
+    self.collectionView.maxItemSize = CGSizeMake(300, 300);
 
     self.collectionView.backgroundColors = [NSArray arrayWithObjects:[NSColor blackColor], nil];
     self.collectionView.itemPrototype = [[[AlbumCollectionViewItem alloc] initWithNibName:nil bundle:nil] autorelease];
@@ -244,25 +197,94 @@ typedef void (^Action)(void);
     self.scrollView.hasHorizontalScroller = YES;
     self.scrollView.hasVerticalScroller = YES;
     [self.view addSubview:self.scrollView];
+    [self.collectionView 
+      bind:@"content" 
+      toObject:items_ 
+      withKeyPath:@"arrangedObjects"
+      options:nil];
+    self.titleToItem = [NSMutableDictionary dictionary];
+
     self.isBusy = true;
     ForkWith(^{ 
+      NSMutableArray *seq = [NSMutableArray array];
       [self.library each:^(Track *t) { 
-        @synchronized(items_) {
-          [items_ addObject:t];
-        }
-        requestReload_ = true;
+        [seq addObject:t];
       }];
+      [self addTracks:seq];
+      self.isBusy = false;
     });
   }
   return self;
 }
+
+- (void)removeTrack:(Track *)t {
+  NSMutableDictionary *item = nil;
+  NSString *key = t.artistAlbumYearTitle;
+  if (!key) {
+    return;
+  }
+  @synchronized(titleToItem_) {
+    item = [titleToItem_ objectForKey:key];      
+  }
+  if (!item) {
+    return; 
+  }
+  NSMutableSet *tracks = [item objectForKey:@"tracks"];
+  @synchronized(tracks) {
+    [tracks removeObject:t];
+  }
+  if (tracks.count == 0) {
+    @synchronized(titleToItem_) {
+      [titleToItem_ setObject:nil forKey:key];
+    }
+    ForkToMainWith(^{
+      [items_ removeObject:item];
+    });
+  }
+}
+
+- (void)addTracks:(NSArray *)tracks { 
+  NSMutableSet *toAdd = [NSMutableSet set];
+  for (Track *track in tracks) {
+    NSMutableDictionary *item = nil;
+    NSString *key = track.artistAlbumYearTitle;
+    if (!key) {
+      return;
+    }
+    @synchronized(titleToItem_) {
+      item = [titleToItem_ objectForKey:key];      
+    }
+    bool isNew = false;
+    if (!item) {
+      isNew = true;
+      item = [NSMutableDictionary dictionary];
+      [item setObject:key forKey:@"title"];
+      [item setObject:[NSMutableSet set] forKey:@"tracks"];
+      @synchronized(titleToItem_) {
+        [titleToItem_ setObject:item forKey:key];
+      }
+      [toAdd addObject:item];
+    }
+    [[item objectForKey:@"tracks"] addObject:track];
+    if (track.coverArtURL) {
+      [item setObject:[NSURL URLWithString:track.coverArtURL] forKey:@"url"]; 
+    }
+  }
+  if (toAdd.count > 0) {
+    ForkToMainWith(^{
+      [items_ addObjects:toAdd.allObjects];
+    });
+  }
+
+}
+
 - (void)dealloc { 
   [[NSNotificationCenter defaultCenter] removeObserver:self];
-  [loop_ release];
   [library_ release];
   [collectionView_ release];
   [scrollView_ release];
   [items_ release];
+  [titleToItem_ release];
   [super dealloc];
 }
 
@@ -272,21 +294,32 @@ typedef void (^Action)(void);
 
   @synchronized(items_) { 
     if (change == kLibraryTrackDeleted) {
-      [items_ removeObject:t]; 
+      [self removeTrack:t];
     } else if (change == kLibraryTrackAdded) {
-      [items_ addObject:t]; 
+      [self addTracks:[NSArray arrayWithObjects:t, nil]];
+    } else if (change == kLibraryTrackSaved) {
+      [self removeTrack:t];
+      [self addTracks:[NSArray arrayWithObjects:t, nil]];
     }
   }
-  self.isBusy = true;
-  requestReload_ = true;
 }
 
 - (void)search:(NSString *)term after:(On0)after {
   after = [after copy];
   ForkWith(^{
-    self.predicate = ParseSearchQuery(term);
-    requestReload_ = true;
-    self.isBusy = true;
+    NSPredicate *predicate = ParseSearchQuery(term);
+    NSPredicate *albumPredicate = predicate ? [NSPredicate predicateWithBlock:Block_copy(^(id item, NSDictionary *opts) {
+      NSSet *tracks = [item valueForKey:@"tracks"];
+      for (id t in tracks) {
+        if ([predicate evaluateWithObject:t]) {
+          return YES;
+        }
+      }
+      return NO;
+    })] : nil;
+    ForkToMainWith(^{
+      items_.filterPredicate = albumPredicate;
+    });
     if (after)
       after();
   });

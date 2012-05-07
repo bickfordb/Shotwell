@@ -230,7 +230,7 @@ static NSString *GetWindowTitle(Track *t) {
     self.content = self.trackBrowser;
   }
   NSString *term = self.searchField.stringValue;
-  if (term && term.length) { 
+  if (term) { 
     [self.content search:term after:nil];
   }
   if (idx != self.groupsButton.selectedSegment)

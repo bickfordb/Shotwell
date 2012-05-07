@@ -5,22 +5,18 @@
 #import "app/Loop.h"
 
 @interface AlbumBrowser : ViewController { 
-  NSMutableSet *items_;
-  Loop *loop_;
+  NSArrayController *items_;
+  NSMutableDictionary *titleToItem_;
   NSScrollView *scrollView_;
   NSCollectionView *collectionView_;
   Library *library_;
-  bool requestReload_;
-  NSPredicate *predicate_;
 }
-@property (retain) NSMutableSet *items;
+@property (retain) NSArrayController *items;
 @property (retain) NSCollectionView *collectionView;
 @property (retain) NSScrollView *scrollView;
 @property (retain) Library *library;
-@property (retain) Loop *loop;
-@property (retain) NSPredicate *predicate;
+@property (retain) NSMutableDictionary *titleToItem;
 
-- (void)reload;
 - (id)initWithLibrary:(Library *)library;
 
 @end

@@ -14,6 +14,7 @@ VENDOR_BUILD ?= vendor-build
 APP_DIR = $(BUILD)/$(APPNAME).app
 IBTOOL ?= ibtool
 DIST ?= dist
+GDB ?= gdb
 
 PROG = $(APP_DIR)/Contents/MacOS/$(APPNAME)
 
@@ -68,63 +69,62 @@ TESTOBJS := $(patsubst src/test/%, $(BUILD)/objs/test/%, $(patsubst %.mm, %.o, $
 DEPS := $(patsubst src/app/%, $(BUILD)/deps/app/%, $(patsubst %.mm, %.d, $(wildcard src/app/*.mm))) 
 TESTDEPS := $(patsubst src/test/%, $(BUILD)/deps/test/%, $(patsubst %.mm, %.d, $(wildcard src/test/*.mm)))
 
+check_dirs = $(foreach i, $1, $(shell [ -d "$1" ] || mkdir -p $1 ))
+create_parent_dir = $(call check_dirs, $(dir $@))
+
 .PHONY: program
 all: program
 
 $(RESOURCES_DIR)/%: $(SRC_RES)/%
 	if [ ! -d "$<" ]; \
 	then \
-		mkdir -p $$(dirname $@); \
+		[ -d "$(dir $@)" ] || mkdir -p $(dir $@); \
 		install $< $@; \
 	fi 
 
 # Convert the XIB into a nib.
 program: $(RESOURCES_DIR)/en.lproj/MainMenu.nib
 
-BUILD_DIRS = 
-BUILD_DIRS += $(BUILD)/objs/app
-BUILD_DIRS += $(BUILD)/objs/test
-BUILD_DIRS += $(BUILD)/deps/app
-BUILD_DIRS += $(BUILD)/deps/test
-BUILD_DIRS += $(APP_DIR)/Contents/MacOS
-BUILD_DIRS += $(APP_DIR)/Contents/Resources
-
-$(BUILD_DIRS): %: 
-	mkdir -p $@
-
-$(BUILD)/deps/%.d: src/%.mm $(VENDOR) $(BUILD)/deps/app $(BUILD)/deps/test
+$(BUILD)/deps/%.d: src/%.mm $(VENDOR)
+	$(call create_parent_dir)
 	$(CXX) $(CXXFLAGS) -MM -MT $(BUILD)/objs/$*.o $< >$@
 
 # This will force the .d files to build.
 -include $(DEPS)
 -include $(TESTDEPS)
 
-$(BUILD)/objs/%.o: src/%.mm $(BUILD)/objs/app $(BUILD)/objs/test
+$(BUILD)/objs/%.o: src/%.mm 
+	$(call create_parent_dir)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<	
 
-$(PROG): $(APP_DIR)/Contents/MacOS
-
 $(PROG): $(OBJS) $(VENDOR) $(APPDIRS)
+	$(call create_parent_dir)
 	$(CXX) $(OBJS) $(LDFLAGS) -o $@
 program: $(PROG)
 
-$(APP_DIR)/Contents/Info.plist: src/app/Info.plist $(APP_DIR)/Contents
+$(APP_DIR)/Contents/Info.plist: src/app/Info.plist
+	$(call create_parent_dir)
 	cp $< $@
 program: $(APP_DIR)/Contents/Info.plist
 
 run: program
 	$(PROG)
 
-gdb: program
-	echo break malloc_error_break >$(BUILD)/gdb-commands
-	echo handle SIGPIPE nostop noprint pass >$(BUILD)/gdb-commands
-	echo run >>$(BUILD)/gdb-commands
-	gdb -f -x $(BUILD)/gdb-commands $(PROG)
+$(BUILD)/gdb-commands:
+	echo break malloc_error_break >$@
+	echo handle SIGPIPE nostop noprint pass >>$@
+	echo run >>$@
 
-gdb-memory: program
-	echo break malloc_error_break >$(BUILD)/gdb-commands
-	echo run >>$(BUILD)/gdb-commands
-	MallocScribbling=1 MallocGuardEdges=1 NSDebugEnabled=YES MallocStackLoggingNoCompact=YES gdb -f -x $(BUILD)/gdb-commands $(APP_DIR)/Contents/MacOS/$(APPNAME) 
+gdb: program $(BUILD)/gdb-commands
+	$(GDB) -f -x $(BUILD)/gdb-commands $(PROG)
+
+GDB_MEMORY_ENV += MallocScribbling=1
+GDB_MEMORY_ENV += MallocGuardEdges=1
+GDB_MEMORY_ENV += NSDebugEnabled=YES
+GDB_MEMORY_ENV += MallocStackLoggingNoCompact=YES
+
+gdb-memory: program $(BUILD)/gdb-commands
+	$(GDB_MEMORY_ENV) $(GDB) -f -x $(BUILD)/gdb-memory-commands $(PROG) 
 
 %.nib: %.xib
 	$(IBTOOL) --compile $@ $+
@@ -177,7 +177,7 @@ DIST_NAME = $(APPNAME)-$(DIST_SUFFIX)
 DMG = $(DIST_NAME).dmg
 
 dist/$(DMG): program
-	mkdir -p dist
+	$(call create_parent_dir)
 	cd dist && \
 		mkdir -p $(DIST_NAME) && \
 		cp -r ../build/Mariposa.app $(DIST_NAME) && \
@@ -195,5 +195,9 @@ build/test: $(VENDOR) $(TEST_SRCS) $(ALL_TEST_OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $(TEST_SRCS) $(LDFLAGS) $(ALL_TEST_OBJS) 
 
 dist: dist/$(DMG)
+
+fizz/buzz:
+	$(call create_parent_dir)
+	touch fizz/buzz
 
 .PHONY: dist
