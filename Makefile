@@ -6,9 +6,11 @@ all:
 	@echo "\tdist -- Prepare a DMG"
 	@echo "\tclean -- Clean everything"
 	@echo "\tclean-fast -- Clean everything except for vendor dependencies"
+	@echo "\ttest -- run tests"
 
 APPNAME ?= Mariposa
 BUILD ?= build
+VENDOR_BUILD ?= vendor-build
 APP_DIR = $(BUILD)/$(APPNAME).app
 IBTOOL ?= ibtool
 DIST ?= dist
@@ -16,14 +18,14 @@ DIST ?= dist
 PROG = $(APP_DIR)/Contents/MacOS/$(APPNAME)
 
 CXX = clang
-VENDOR = $(BUILD)/vendor.stamp
+VENDOR = $(VENDOR_BUILD)/stamp/vendor
 CXXFLAGS += -iquote src
 CXXFLAGS += -Werror
 CXXFLAGS += -ferror-limit=2
-CXXFLAGS += -I$(BUILD)/vendor/include
+CXXFLAGS += -I$(VENDOR_BUILD)/vendor/include
 CXXFLAGS += -ggdb 
 CXXFLAGS += -O0
-LDFLAGS += -L$(BUILD)/vendor/lib
+LDFLAGS += -L$(VENDOR_BUILD)/vendor/lib
 LDFLAGS += -lleveldb
 LDFLAGS += -ljansson
 LDFLAGS += -levent
@@ -58,14 +60,13 @@ LDFLAGS += -framework VideoDecodeAcceleration
 LDFLAGS += -framework WebKit 
 
 RESOURCES_DIR := $(APP_DIR)/Contents/Resources
-
-
 SRC_RES := src/Resources
 SRC_RESOURCES = $(wildcard $(SRC_RES)/*.png $(SRC_RES)/*.pdf $(SRC_RES)/*.js)
-#SRC_RESOURCES = $(wildcard $(SRC_RES)/**/**/**)
 DST_RESOURCES := $(patsubst src/Resources/%, $(APP_DIR)/Contents/Resources/%, $(wildcard src/Resources/*.* src/Resources/**/*.* src/Resources/**/**/*.* src/Resources/**/**/**/*.* src/Resources/**/**/**/**/*.*))
-OBJS := $(patsubst src/app/%, $(BUILD)/objs/%, $(patsubst %.mm, %.o, $(wildcard src/app/*.mm))) 
-DEPS := $(patsubst src/app/%, $(BUILD)/deps/%, $(patsubst %.mm, %.d, $(wildcard src/app/*.mm))) 
+OBJS := $(patsubst src/app/%, $(BUILD)/objs/app/%, $(patsubst %.mm, %.o, $(wildcard src/app/*.mm)))
+TESTOBJS := $(patsubst src/test/%, $(BUILD)/objs/test/%, $(patsubst %.mm, %.o, $(wildcard src/test/*.mm)))
+DEPS := $(patsubst src/app/%, $(BUILD)/deps/app/%, $(patsubst %.mm, %.d, $(wildcard src/app/*.mm))) 
+TESTDEPS := $(patsubst src/test/%, $(BUILD)/deps/test/%, $(patsubst %.mm, %.d, $(wildcard src/test/*.mm)))
 
 .PHONY: program
 all: program
@@ -80,27 +81,26 @@ $(RESOURCES_DIR)/%: $(SRC_RES)/%
 # Convert the XIB into a nib.
 program: $(RESOURCES_DIR)/en.lproj/MainMenu.nib
 
+BUILD_DIRS = 
+BUILD_DIRS += $(BUILD)/objs/app
+BUILD_DIRS += $(BUILD)/objs/test
+BUILD_DIRS += $(BUILD)/deps/app
+BUILD_DIRS += $(BUILD)/deps/test
+BUILD_DIRS += $(APP_DIR)/Contents/MacOS
+BUILD_DIRS += $(APP_DIR)/Contents/Resources
 
-$(BUILD)/objs:
-	mkdir -p $(BUILD)/objs
+$(BUILD_DIRS): %: 
+	mkdir -p $@
 
-$(BUILD)/deps: 
-	mkdir -p $(BUILD)/deps
-
-
-$(BUILD)/deps/%.d: src/app/%.mm $(VENDOR)
-	mkdir -p $(BUILD)/deps
-	$(CXX) $(CXXFLAGS) -MM $< |sed -e 's/^\([a-z0-9A-Z]\)/$(BUILD)\/objs\/\1/' >$@
+$(BUILD)/deps/%.d: src/%.mm $(VENDOR) $(BUILD)/deps/app $(BUILD)/deps/test
+	$(CXX) $(CXXFLAGS) -MM -MT $(BUILD)/objs/$*.o $< >$@
 
 # This will force the .d files to build.
 -include $(DEPS)
+-include $(TESTDEPS)
 
-$(BUILD)/objs/%.o: src/app/%.mm
-	mkdir -p $(BUILD)/objs
+$(BUILD)/objs/%.o: src/%.mm $(BUILD)/objs/app $(BUILD)/objs/test
 	$(CXX) $(CXXFLAGS) -c -o $@ $<	
-
-$(APP_DIR)/Contents/MacOS:
-	mkdir -p $@
 
 $(PROG): $(APP_DIR)/Contents/MacOS
 
@@ -182,6 +182,17 @@ dist/$(DMG): program
 		mkdir -p $(DIST_NAME) && \
 		cp -r ../build/Mariposa.app $(DIST_NAME) && \
 		hdiutil create $(DMG) -srcfolder $(DIST_NAME) -ov
+
+test-program: build/test
+
+test: test-program
+	build/test
+
+TEST_SRCS += vendor-build/vendor/share/gtest-1.6.0/src/gtest-all.cc
+ALL_TEST_OBJS = $(TESTOBJS) $(filter-out $(BUILD)/objs/app/main.o, $(OBJS))
+
+build/test: $(VENDOR) $(TEST_SRCS) $(ALL_TEST_OBJS) 
+	$(CXX) $(CXXFLAGS) -o $@ $(TEST_SRCS) $(LDFLAGS) $(ALL_TEST_OBJS) 
 
 dist: dist/$(DMG)
 

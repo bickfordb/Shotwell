@@ -181,8 +181,6 @@ static void OnFileEvent(
 
 - (void)checkCoverArt {
   __block LocalLibrary *weakSelf = self;
-  if (true)
-    return;
   Track *track = nil;
   @synchronized(pendingCoverArtTracks_) {
     NSNumber *trackID = pendingCoverArtTracks_.anyObject;
@@ -200,9 +198,7 @@ static void OnFileEvent(
   }
 
   NSString *term = [NSString stringWithFormat:@"%@ %@", artist, album];
-  INFO(@"checking cover art for %@", term);
   [self search:term withArtworkData:^(int status, NSData *data) { 
-    INFO(@"checked cover art for %@", term);
     NSMutableSet *tracksToUpdate = [NSMutableSet set];
     NSString *url = nil;
     if (data && data.length) {
