@@ -82,7 +82,7 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
   if (timeout > 0)
     flags |= EV_TIMEOUT;
   Event *e = [[[Event alloc] initWithLoop:self fd:fd flags:flags] autorelease];
-  e.fire = [block copy];
+  e.fire = block;
   [e add:timeout];
 }
 

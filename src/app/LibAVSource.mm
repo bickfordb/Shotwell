@@ -9,7 +9,7 @@ static AVPacket flushPacket;
 
 @implementation LibAVSource
 
-- (NSString *)url { 
+- (NSURL *)url { 
   return url_;
 }
 
@@ -51,7 +51,7 @@ static AVPacket flushPacket;
   avformat_network_init();
 }
 
-- (id)initWithURL:(NSString *)url { 
+- (id)initWithURL:(NSURL *)url { 
   self = [super init];
   if (self) {
     url_ = [url retain];
@@ -86,7 +86,9 @@ static AVPacket flushPacket;
   duration_ = 0;
   audioStreamIndex_ = -1;
   formatContext_ = avformat_alloc_context();
-  err = avformat_open_input(&formatContext_, url_.UTF8String, NULL, NULL);
+
+  NSString *url0 = url_.isFileURL ? url_.path : url_.absoluteString;
+  err = avformat_open_input(&formatContext_, url0.UTF8String, NULL, NULL);
   if (err != 0) {
     ERROR(@"could not open: %d", err);
     return false;

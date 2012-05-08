@@ -1,5 +1,7 @@
 #import "app/SortedSeq.h"
 #import "app/NSMutableArrayInsert.h"
+#import "app/PThread.h"
+#import "app/Log.h"
 
 @implementation SortedSeq
 
@@ -32,7 +34,9 @@
   }
   return -1;
 }
+
 - (void)setPredicate:(NSPredicate *)predicate {
+  NSIndexSet *indices = nil;
   @synchronized(ilock_) {
     [predicate_ release];
     predicate_ = [predicate retain]; 
@@ -41,7 +45,10 @@
       if (!predicate || [predicate evaluateWithObject:p]) 
         [filteredItems_ addObject:p];
     }
+    indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, filteredItems_.count)];
   }
+  [self willChangeArrangedObjects:indices];
+  [self didChangeArrangedObjects:indices];
 }
 
 - (NSComparator)comparator {
@@ -51,7 +58,9 @@
 }
 
 - (void)setComparator:(NSComparator)comparator { 
+  NSIndexSet *indices = nil;
   @synchronized(ilock_) {
+    indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, filteredItems_.count)];
     [comparator_ release];
     comparator_ = [comparator copy];
     if (comparator) {
@@ -59,6 +68,8 @@
       [filteredItems_ sortUsingComparator:comparator];
     }
   }
+  [self willChangeArrangedObjects:indices];
+  [self didChangeArrangedObjects:indices];
 }
 
 - (id)init { 
@@ -100,12 +111,14 @@
 
 - (NSArray *)array { 
   @synchronized(ilock_) {
-    return [filteredItems_ copy];
+    return [NSArray arrayWithArray:filteredItems_];
   }
 }
 
-- (void)add:(id)something { 
+- (void)add:(id)something {
+  NSIndexSet *indices = nil;
   @synchronized(ilock_) {
+    indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, filteredItems_.count)];
     if (comparator_) {
       [items_ insert:something sortedWithComparator:comparator_];  
       if (!predicate_ || [predicate_ evaluateWithObject:something]) 
@@ -116,13 +129,36 @@
         [filteredItems_ addObject:something];
     }
   }
+  [self willChangeArrangedObjects:indices];
+  [self didChangeArrangedObjects:indices];
 }
 
 - (void)clear { 
+  NSIndexSet *indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, 0)];
   @synchronized(ilock_) {
     [items_ removeAllObjects];
     [filteredItems_ removeAllObjects];
   }
+  [self willChangeArrangedObjects:indices];
+  [self didChangeArrangedObjects:indices];
+}
+
+- (void)willChangeArrangedObjects:(NSIndexSet *)indices {
+  ForkToMainWith(^{ 
+    if (!indices)
+      [self willChangeValueForKey:@"arrangedObjects"];
+    else 
+      [self willChange:NSKeyValueChangeReplacement valuesAtIndexes:indices forKey:@"arrangedObjects"];
+  });
+}
+
+- (void)didChangeArrangedObjects:(NSIndexSet *)indices {
+  ForkToMainWith(^{ 
+    if (!indices)
+      [self didChangeValueForKey:@"arrangedObjects"];
+    else 
+      [self didChange:NSKeyValueChangeReplacement valuesAtIndexes:indices forKey:@"arrangedObjects"];
+  });
 }
 
 - (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state objects:(id *)stackbuf count:(NSUInteger)len {
@@ -132,10 +168,14 @@
 }
 
 - (void)remove:(id)something { 
+  NSIndexSet *indices = nil;
   @synchronized(ilock_) {
     [filteredItems_ removeObject:something];
     [items_ removeObject:something];
+    indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, filteredItems_.count)];
   }
+  [self willChangeArrangedObjects:indices];
+  [self didChangeArrangedObjects:indices];
 }
 
 - (NSArray *)all {
@@ -144,4 +184,23 @@
   }
 }
 
+- (NSUInteger)countOfArrangedObjects {
+  return (NSUInteger)[self count];
+}
+
+- (id)objectInArrangedObjectsAtIndex:(NSUInteger)index {
+  return [self get:(int)index];
+}
+
+- (id)arrangedObjectsAtIndexes:(NSIndexSet *)indices {
+  return [self getMany:indices];
+}
+
+- (void)addObject:(id)something { 
+  [self add:something];
+}
+
+- (void)removeObject:(id)something {
+  [self remove:something];
+}
 @end

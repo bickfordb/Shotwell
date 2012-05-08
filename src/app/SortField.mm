@@ -1,3 +1,4 @@
+#import "app/Log.h"
 #import "app/SortField.h"
 #import "app/NSStringNaturalComparison.h"
 
@@ -28,19 +29,27 @@
 
 NSComparator GetSortComparatorFromSortFields(NSArray *sortFields) {
   NSComparator comparator = ^(id l, id r) {
-      NSObject *left = (NSObject *)l;
-      NSObject *right = (NSObject *)r;
-      NSComparisonResult cmp = NSOrderedSame;
-      for (SortField *f in sortFields) {
+    NSObject *left = (NSObject *)l;
+    NSObject *right = (NSObject *)r;
+    NSComparisonResult cmp = NSOrderedSame;
+    for (SortField *f in sortFields) {
+      INFO(@"f: %@", f); 
       NSString *key = f.key;
       Direction d = f.direction;
       id leftValue = [left valueForKey:key];
       id rightValue = [right valueForKey:key];
-      cmp = f.comparator(leftValue, rightValue);
+      if (!leftValue && !rightValue) 
+        cmp = NSOrderedSame;
+      else if (!leftValue) 
+        cmp = NSOrderedDescending;
+      else if (!rightValue) 
+        cmp = NSOrderedAscending;
+      else
+        cmp = f.comparator ? f.comparator(leftValue, rightValue) : NSOrderedSame;
       if (f.direction == Descending) 
-      cmp *= -1;
+        cmp *= -1;
       if (cmp != NSOrderedSame) 
-      break;
+        break;
     }
     return cmp;
   };
@@ -51,8 +60,15 @@ NSComparator GetSortComparatorFromSortFields(NSArray *sortFields) {
 NSComparator NaturalComparison = ^(id left, id right) {
   NSString *l = left;
   NSString *r = right;
-  NSComparisonResult ret;
-  if (![l length] && [r length]) 
+  NSComparisonResult ret = 0;
+  // note: treat empty strings and nil values as the largest
+  if (!left && !right) 
+    ret = 0;
+  else if (!right) 
+    ret = -1;
+  else if (!left)
+    ret = 1;
+  else if (![l length] && [r length]) 
     ret = 1;
   else if ([l length] && ![r length])
     ret = -1;
@@ -63,5 +79,9 @@ NSComparator NaturalComparison = ^(id left, id right) {
 
 NSComparator DefaultComparison = ^(id left, id right) {
   return [left compare:right]; 
+};
+
+NSComparator URLComparison = ^(id left, id right) {
+  return [((NSURL *)left).absoluteString compare:((NSURL *)right).absoluteString]; 
 };
 

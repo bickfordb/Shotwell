@@ -11,6 +11,8 @@
 #include <unicode/bytestream.h>
 
 #import "app/JSON.h"
+#include <objc/runtime.h>
+
 #import "app/Track.h"
 #import "app/Log.h"
 
@@ -27,6 +29,8 @@ typedef enum {
   } TrackFlags;
 
 using namespace std;
+
+static Class trackClass;
 
 static NSString *ToUTF8(const char *src) {
   UErrorCode err = U_ZERO_ERROR;
@@ -47,6 +51,7 @@ NSString * const kArtist = @"artist";
 NSString * const kCreatedAt = @"createdAt";
 NSString * const kCoverArtURL = @"coverArtURL";
 NSString * const kDuration = @"duration";
+NSString * const kFolder = @"folder";
 NSString * const kIsCoverArtChecked = @"isCoverArtChecked";
 NSString * const kGenre = @"genre";
 NSString * const kID = @"id";
@@ -63,6 +68,7 @@ NSString * const kYear = @"year";
 NSArray *allTrackKeys = nil;
 static NSDictionary *tagKeyToTrackKey; 
 static NSArray *mediaExtensions = nil;
+static NSArray *ignoreExtensions = nil;
 
 @implementation Track
 @synthesize album = album_;
@@ -70,9 +76,9 @@ static NSArray *mediaExtensions = nil;
 @synthesize coverArtURL = coverArtURL_;
 @synthesize createdAt = createdAt_;
 @synthesize duration = duration_;
+@synthesize folder = folder_;
 @synthesize isCoverArtChecked = isCoverArtChecked_;
 @synthesize genre = genre_;
-@synthesize id = id_;
 @synthesize isAudio = isAudio_;
 @synthesize isVideo = isVideo_;
 @synthesize lastPlayedAt = lastPlayedAt_;
@@ -87,7 +93,9 @@ static NSArray *mediaExtensions = nil;
   [album_ release];
   [artist_ release];
   [coverArtURL_ release];
+  [createdAt_ release];
   [duration_ release];
+  [folder_ release];
   [genre_ release];
   [isCoverArtChecked_ release];
   [id_ release];
@@ -105,12 +113,18 @@ static NSArray *mediaExtensions = nil;
 
 
 + (void)initialize {
+  trackClass = [Track class];
   av_log_set_level(AV_LOG_QUIET);
   avcodec_register_all();
   avfilter_register_all();
   av_register_all();
   avformat_network_init();
   mediaExtensions = [[NSArray arrayWithObjects:@".mp3", @".ogg", @".m4a", @".aac", @".avi", @".mp4", @".fla", @".flc", @".mov", @".m4a", @".mkv", @".mpg", nil] retain];
+  ignoreExtensions = [[NSArray arrayWithObjects:@".jpg", @".nfo", @".sfv",
+                   @".torrent", @".m3u", @".diz", @".rtf", @".ds_store", @".txt", @".m3u8",
+                   @".htm", @".url", @".html", @".atom", @".rss", @".crdownload", @".dmg",
+                   @".zip", @".rar", @".jpeg", @".part", @".ini", @".", @".log", @".db",
+                   @".cue", @".gif", @".png", nil] retain];
 
   allTrackKeys = [[NSArray arrayWithObjects:
     kAlbum,
@@ -118,10 +132,11 @@ static NSArray *mediaExtensions = nil;
     kCoverArtURL,
     kCreatedAt,
     kDuration,
-    kIsCoverArtChecked,
+    kFolder,
     kGenre,
     kID, 
     kIsAudio,
+    kIsCoverArtChecked,
     kIsVideo,
     kLastPlayedAt,
     kPublisher,
@@ -156,29 +171,35 @@ static NSArray *mediaExtensions = nil;
   return ret;
 }
 
+- (void)setId:(NSNumber *)anID {
+  @synchronized(self) {
+    NSNumber *t = id_;
+    id_ = [anID retain];
+    [t release];
+  }
+  idCache_ = [anID longLongValue];
+}
+
+- (NSNumber *)id {
+  return id_;
+}
+
+
 - (BOOL)isEqual:(id)other {
-  if ([other isKindOfClass:[Track class]]) {
+  if (other == self) {
+    return YES;
+  } else if (!other) {
+    return NO;
+  } else if ((object_getClass(other) == trackClass) || [other isKindOfClass:trackClass]) {
     Track *other0 = (Track *)other;
-    return [id_ longLongValue] == [other0->id_ longLongValue];
+    return idCache_ == other0->idCache_;
   } else { 
     return NO;
   }
 }
 
 - (NSUInteger)hash {
-  return [id_ hash];
-}
-
-- (bool)isLocalMediaURL {
-  NSString *s = self.url;
-  s = s.lowercaseString;
-  if (!s || !s.length)
-    return false;
-  for (NSString *ext in mediaExtensions) {
-    if ([s hasSuffix:ext]) 
-      return true;
-  }
-  return false;
+  return (NSUInteger)[id_ longLongValue];
 }
 
 - (int)readTag {
@@ -189,16 +210,25 @@ static NSArray *mediaExtensions = nil;
   AVDictionaryEntry *tag = NULL;
   int audioStreamIndex = -1;
   int format_ret = -1;
+  NSString *s;
 
-  if (!url_ || !url_.length) 
+  NSString *path0 = url_.path.lowercaseString;
+  if (!url_ || !url_.isFileURL || !url_.path.length)
     return -1;
 
+  for (NSString *ext in ignoreExtensions) {
+    if ([path0 hasSuffix:ext]) {
+      return -1;
+    }
+  }
+
   memset(&st, 0, sizeof(st));
-  if (stat(url_.UTF8String, &st) < 0) {
+  if (stat(url_.path.UTF8String, &st) < 0) {
     ret = -2;
     goto done;
   }
-  if (avformat_open_input(&c, url_.UTF8String, NULL, NULL) < 0) {
+  s = url_.isFileURL ? url_.path: url_.absoluteString; 
+  if (avformat_open_input(&c, s.UTF8String, NULL, NULL) < 0) {
     ret = -3;
     goto done;
   }
@@ -257,8 +287,30 @@ done:
 }
 
 - (json_t *)getJSON {
-  NSDictionary *data = [self dictionaryWithValuesForKeys:allTrackKeys];
+  NSMutableDictionary *data = [NSMutableDictionary dictionaryWithDictionary:[self dictionaryWithValuesForKeys:allTrackKeys]];
+  [data setObject:[[data objectForKey:kURL] absoluteString] forKey:kURL]; 
   return [data getJSON];
+}
++ (Track *)fromJSON:(NSDictionary *)json { 
+  Track *t = [[[Track alloc] init] autorelease];
+  t.album = [json valueForKey:kAlbum];
+  t.artist = [json valueForKey:kArtist];
+  t.duration = [json valueForKey:kDuration];
+  t.folder = [json valueForKey:kFolder];
+  t.genre = [json valueForKey:kGenre];
+  t.id = [json valueForKey:kID];
+  t.isAudio = [json valueForKey:kIsAudio];
+  t.isCoverArtChecked = [json valueForKey:kIsCoverArtChecked];
+  t.isVideo = [json valueForKey:kIsVideo];
+  t.lastPlayedAt = [json valueForKey:kLastPlayedAt];
+  t.publisher = [json valueForKey:kPublisher];
+  t.title = [json valueForKey:kTitle];
+  t.trackNumber = [json valueForKey:kTrackNumber];
+  t.updatedAt = [json valueForKey:kUpdatedAt];
+  t.year = [json valueForKey:kYear];
+  NSString *url = [json valueForKey:kURL];
+  t.url = url ? [NSURL URLWithString:url] : nil;
+  return t;
 }
 
 + (NSString *)webScriptNameForKey:(const char *)name {
@@ -279,23 +331,6 @@ done:
 }
 
 - (void)finalizeForWebScript {
-}
-
-- (NSString *)artistAlbumYearTitle {
-  NSString *artist = self.artist;
-  NSString *album = self.album;
-  NSString *year = self.year;
-  NSMutableArray *terms = [NSMutableArray array];
-  if (artist && artist.length) {
-    [terms addObject:artist];
-  }
-  if (album && album.length) {
-    [terms addObject:album];
-  }
-  if (year && year.length) {
-    [terms addObject:year];
-  }
-  return [terms componentsJoinedByString:@" - "];
 }
 
 @end

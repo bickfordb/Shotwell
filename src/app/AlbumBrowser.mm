@@ -9,143 +9,110 @@
 static NSString * const kTotal = @"total";
 static NSImage *blankImage = nil; 
 static int64_t kReloadInterval = 5 * 1000000;
+static NSString *GetAlbumTitle(NSSet *tracks) { 
+  NSString *artist = nil;
+  NSString *album = nil;
+  for (Track *t in tracks) { 
+    if (!artist) {
+      artist = t.artist;
+    } else if (t.artist && ![t.artist isEqual:artist]) {
+      artist = @"Various Artists";
+    }
+    if (!album) {
+      album = t.album;
+    } else if (t.album && ![t.album isEqual:album]) {
+      album = @"Various Albums";
+    }
+  }
+  if (album && artist) {
+    return [NSString stringWithFormat:@"%@ - %@", artist, album];
+  } else if (album) {
+    return album;
+  } else if (artist) {
+    return artist;
+  } else { 
+    return @"";
+  }
+}
 
 typedef void (^Action)(void);
- 
-@interface AlbumView : NSView {
-  bool inited_;
-  NSString *title_;
-  NSURL *url_;
-  NSTextField *titleField_;
-  NSImageView *cover_; 
-  Action onDoubleClick_;
-  NSDictionary *item_;
-}
-@property (copy) Action onDoubleClick;
-@property (retain) NSDictionary *item;
 
+@interface AlbumBrowserItem : NSObject {  
+  NSMutableSet *tracks_;
+  NSString *folder_;
+}
+
+@property (retain) NSString *folder;
+@property (retain) NSMutableSet *tracks;
+
+// IKImageBrowserItem protocol:
+- (NSString *)imageUID;
+- (NSUInteger)imageVersion;
+- (NSString *)imageTitle;
+- (NSString *)imageSubtitle;
+- (NSString *)imageRepresentationType;
+- (id)imageRepresentation;
+- (BOOL)isSelectable;
 @end
-@implementation AlbumView
-@synthesize onDoubleClick = onDoubleClick_;
-@synthesize item = item_;
 
-- (void)dealloc { 
-  [onDoubleClick_ release];
-  [item_ release];
-  [cover_ release];
-  [titleField_ release];
-  [super dealloc];
+@implementation AlbumBrowserItem 
+@synthesize tracks = tracks_;
+@synthesize folder = folder_;
+
++ (void)initialize { 
+  blankImage = [NSImage imageNamed:@"album"];
+}
+ 
+- (NSString *)imageUID {
+  return folder_;
 }
 
-- (id)initWithFrame:(CGRect)frame {
-  self = [super initWithFrame:frame];
+- (NSUInteger)imageVersion {
+  return 0;
+}
+
+- (NSString *)imageTitle {
+  return GetAlbumTitle(self.tracks);
+}
+
+- (NSString *)imageSubtitle { 
+  for (Track *t in self.tracks) {
+    return t.year;
+  }
+  return nil;
+}
+
+- (NSString *)imageRepresentationType {
+  return IKImageBrowserNSImageRepresentationType;  
+}
+
+- (id)imageRepresentation {
+  for (Track *t in self.tracks) {
+    if (t.coverArtURL) {
+      return [[[NSImage alloc] initByReferencingURL:[NSURL URLWithString:t.coverArtURL]] autorelease];
+    }
+  }
+  return blankImage;
+}
+
+- (BOOL)isSelectable { 
+  return YES;
+}
+
+- (id)init {
+  self = [super init];
   if (self) {
-    inited_ = false;
+    self.tracks = [NSMutableSet set];
+    self.folder = @"";
   }
   return self;
 }
 
-- (void)drawRect:(NSRect)rect { 
-  if (!inited_) {
-    CGRect frame = self.frame;
-    titleField_ = [[NSTextField alloc] initWithFrame:CGRectMake(0, 0, frame.size.width, 28)];
-    NSString *title = [item_ valueForKey:@"title"];
-    titleField_.stringValue = title ? title : @"";
-    titleField_.textColor = [NSColor whiteColor];
-    titleField_.editable = NO;
-    titleField_.bezeled = NO;
-    titleField_.selectable = NO;
-    titleField_.backgroundColor = [NSColor clearColor];
-    titleField_.alignment = NSCenterTextAlignment;
-    titleField_.autoresizingMask = NSViewWidthSizable | NSViewMaxYMargin;
-    titleField_.font = [NSFont systemFontOfSize:11.0];
-    [[titleField_ cell] setBackgroundStyle:NSBackgroundStyleRaised];
-    cover_ = [[NSImageView alloc] initWithFrame:CGRectMake(0, 0, frame.size.width, frame.size.height)];
-    cover_.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
-    cover_.imageScaling = NSScaleProportionally;
-    NSURL *url = [item_ valueForKey:@"url"];
-    cover_.image = url ? [[[NSImage alloc] initByReferencingURL:url] autorelease] : blankImage;
-    NSBox *box = [[[NSBox alloc] initWithFrame:CGRectMake(0, 0, frame.size.width, 32)] autorelease];
-    box.boxType = NSBoxCustom;
-    box.autoresizingMask = NSViewWidthSizable | NSViewMaxYMargin;
-    box.fillColor = [NSColor colorWithDeviceRed:0.0 green:0.0 blue:0.0 alpha:0.45];
-    box.borderType = NSNoBorder;
-    titleField_.autoresizingMask = NSViewWidthSizable | NSViewMaxYMargin;
-    [self addSubview:cover_];
-    [self addSubview:box];
-    [self addSubview:titleField_];
-    inited_ = true;
-  }
-}
-
-- (void)mouseDown:(NSEvent *)theEvent {
-  [super mouseDown:theEvent];
-  if (theEvent.clickCount > 1) {
-    if (onDoubleClick_) {
-      onDoubleClick_();
-    }
-  }
-}
-@end
-
-@interface AlbumCollectionViewItem : NSCollectionViewItem {
-  NSBox *selectionBox_;
-}
-@property (retain) NSBox *selectionBox;
-@end
-
-@implementation AlbumCollectionViewItem
-@synthesize selectionBox = selectionBox_;
-
-+ (void)initialize {
-  blankImage = [NSImage imageNamed:@"album"];
-}
-
 - (void)dealloc { 
-  [selectionBox_ release];
+  [tracks_ release];
+  [folder_ release];
   [super dealloc];
 }
-
-- (void)loadView { 
-  self.view = [[[AlbumView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)] autorelease];
-  self.view.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
-  AlbumCollectionViewItem *weakSelf = self;
-  ((AlbumView *)self.view).onDoubleClick = ^{
-    for (Track *t in [weakSelf.representedObject valueForKey:@"tracks"]) {
-      NSMutableArray *terms = [NSMutableArray array];
-      if (t.artist && t.artist.length) 
-        [terms addObject:t.artist];
-      if (t.album && t.album.length) 
-        [terms addObject:t.album];
-      NSString *term = [terms componentsJoinedByString:@" "];
-      // make this nicer.
-      [SharedAppDelegate().mainWindowController selectBrowser:MainWindowControllerTrackBrowser];
-      [SharedAppDelegate() search:term after:^{
-        [SharedAppDelegate() playTrackAtIndex:0];
-      }];
-      break;
-    }
-  };
-  self.selectionBox = [[[NSBox alloc] initWithFrame:CGRectMake(0, 0, 200, 200)] autorelease];
-  self.selectionBox.boxType = NSBoxCustom;
-  self.selectionBox.autoresizingMask = NSViewWidthSizable | NSViewMaxYMargin;
-  self.selectionBox.fillColor = [NSColor colorWithDeviceRed:1.0 green:1.0 blue:1.0 alpha:0.10];
-  self.selectionBox.borderType = NSNoBorder;
-  self.selectionBox.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
-  self.selectionBox.hidden = !self.isSelected;
-  [self.view addSubview:self.selectionBox];
-}
-
-- (void)setSelected:(BOOL)selected {
-  [super setSelected:selected];
-  self.selectionBox.hidden = !selected;
-}
-
-- (void)setRepresentedObject:(id)o { 
-  [super setRepresentedObject:o];
-  ((AlbumView *)self.view).item = (NSDictionary *)o;
-}
-
 @end
 
 @interface AlbumBrowser (Private)
@@ -154,20 +121,19 @@ typedef void (^Action)(void);
 @end
 
 @implementation AlbumBrowser 
-@synthesize collectionView = collectionView_;
 @synthesize items = items_;
 @synthesize titleToItem = titleToItem_;
 @synthesize library = library_;
 @synthesize scrollView = scrollView_;
+@synthesize browserView = browserView_;
 
 - (id)initWithLibrary:(Library *)library { 
   self = [super init];
   if (self) {
-    self.items = [[[NSArrayController alloc] initWithContent:[NSMutableSet set]] autorelease]; 
-    self.items.sortDescriptors = [NSArray arrayWithObjects:
-        [NSSortDescriptor sortDescriptorWithKey:@"title" ascending:YES comparator:NaturalComparison],
-      nil];
-    self.items.automaticallyRearrangesObjects = YES;
+    self.items = [[[SortedSeq alloc] init] autorelease];
+    self.items.comparator = ^(id left, id right) { 
+      return NaturalComparison([left imageTitle], [right imageTitle]);
+    };
     self.library = library;
     [[NSNotificationCenter defaultCenter]
      addObserver:self 
@@ -175,35 +141,26 @@ typedef void (^Action)(void);
      name:kLibraryTrackChanged
      object:self.library];
     self.scrollView = [[[NSScrollView alloc] initWithFrame:self.view.frame] autorelease];
-    self.collectionView = [[[NSCollectionView alloc] initWithFrame:self.scrollView.frame] autorelease];
-    self.collectionView.selectable = YES;
-    self.collectionView.allowsMultipleSelection = YES;
-    self.collectionView.minItemSize = CGSizeMake(175, 175);
-    self.collectionView.maxItemSize = CGSizeMake(300, 300);
+    self.browserView = [[[IKImageBrowserView alloc] initWithFrame:self.scrollView.frame] autorelease];
+    self.browserView.canControlQuickLookPanel = YES;
 
-    self.collectionView.backgroundColors = [NSArray arrayWithObjects:[NSColor blackColor], nil];
-    self.collectionView.itemPrototype = [[[AlbumCollectionViewItem alloc] initWithNibName:nil bundle:nil] autorelease];
     self.scrollView.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
-    self.collectionView.autoresizingMask = (NSViewMinXMargin |
+    self.browserView.autoresizingMask = (NSViewMinXMargin |
         NSViewWidthSizable | NSViewMaxXMargin | NSViewMinYMargin |
         NSViewHeightSizable | NSViewMaxYMargin);
+    self.browserView.cellsStyleMask = IKCellsStyleTitled | IKCellsStyleSubtitled;
+    self.browserView.cellSize = CGSizeMake(225, 225);
+    self.browserView.animates = YES;
+    self.browserView.delegate = self;
+    self.browserView.intercellSpacing = CGSizeMake(7, 7);
     self.scrollView.focusRingType = NSFocusRingTypeNone;
-    CGRect frame = self.view.frame;
-    frame.origin.x = 0;
-    frame.origin.y = 0;
-    self.collectionView.frame = frame;
-    self.scrollView.frame = frame;
-    self.scrollView.documentView = self.collectionView;
+    self.scrollView.frame = self.view.frame;
+    self.scrollView.documentView = self.browserView;
     self.scrollView.hasHorizontalScroller = YES;
     self.scrollView.hasVerticalScroller = YES;
     [self.view addSubview:self.scrollView];
-    [self.collectionView 
-      bind:@"content" 
-      toObject:items_ 
-      withKeyPath:@"arrangedObjects"
-      options:nil];
+    [self.browserView bind:@"content" toObject:items_ withKeyPath:@"arrangedObjects" options:nil];
     self.titleToItem = [NSMutableDictionary dictionary];
-
     self.isBusy = true;
     ForkWith(^{ 
       NSMutableArray *seq = [NSMutableArray array];
@@ -218,8 +175,8 @@ typedef void (^Action)(void);
 }
 
 - (void)removeTrack:(Track *)t {
-  NSMutableDictionary *item = nil;
-  NSString *key = t.artistAlbumYearTitle;
+  AlbumBrowserItem *item = nil;
+  NSString *key = t.folder;
   if (!key) {
     return;
   }
@@ -229,11 +186,10 @@ typedef void (^Action)(void);
   if (!item) {
     return; 
   }
-  NSMutableSet *tracks = [item objectForKey:@"tracks"];
-  @synchronized(tracks) {
-    [tracks removeObject:t];
+  @synchronized(item.tracks) {
+    [item.tracks removeObject:t];
   }
-  if (tracks.count == 0) {
+  if (item.tracks.count == 0) {
     @synchronized(titleToItem_) {
       [titleToItem_ setObject:nil forKey:key];
     }
@@ -243,13 +199,36 @@ typedef void (^Action)(void);
   }
 }
 
+
+- (void)imageBrowser:(IKImageBrowserView *)aBrowser cellWasDoubleClickedAtIndex:(NSUInteger)index {
+  NSArray *items = self.items.array;
+  if (index < items.count) {
+    AlbumBrowserItem *item = [self.items get:index];
+    for (Track *t in item.tracks) {
+      NSMutableArray *terms = [NSMutableArray array];
+      if (t.artist && t.artist.length) 
+        [terms addObject:t.artist];
+      if (t.album && t.album.length) 
+        [terms addObject:t.album];
+      NSString *term = [terms componentsJoinedByString:@" "];
+      // make this nicer.
+      [SharedAppDelegate().mainWindowController selectBrowser:MainWindowControllerTrackBrowser];
+      [SharedAppDelegate() search:term after:^{
+        [SharedAppDelegate() playTrackAtIndex:0];
+      }];
+      break;
+    }
+  }
+}
+
+
 - (void)addTracks:(NSArray *)tracks { 
-  NSMutableSet *toAdd = [NSMutableSet set];
   for (Track *track in tracks) {
-    NSMutableDictionary *item = nil;
-    NSString *key = track.artistAlbumYearTitle;
+    AlbumBrowserItem *item = nil;
+    NSString *key = track.folder;
     if (!key) {
-      return;
+      ERROR(@"%@ is missing a folder", track);
+      continue;
     }
     @synchronized(titleToItem_) {
       item = [titleToItem_ objectForKey:key];      
@@ -257,31 +236,23 @@ typedef void (^Action)(void);
     bool isNew = false;
     if (!item) {
       isNew = true;
-      item = [NSMutableDictionary dictionary];
-      [item setObject:key forKey:@"title"];
-      [item setObject:[NSMutableSet set] forKey:@"tracks"];
+      item = [[[AlbumBrowserItem alloc] init] autorelease];
+      item.folder = key;
       @synchronized(titleToItem_) {
         [titleToItem_ setObject:item forKey:key];
       }
-      [toAdd addObject:item];
+      [self.items add:item];
     }
-    [[item objectForKey:@"tracks"] addObject:track];
-    if (track.coverArtURL) {
-      [item setObject:[NSURL URLWithString:track.coverArtURL] forKey:@"url"]; 
+    @synchronized(item.tracks) {
+      [item.tracks addObject:track];
     }
   }
-  if (toAdd.count > 0) {
-    ForkToMainWith(^{
-      [items_ addObjects:toAdd.allObjects];
-    });
-  }
-
 }
 
 - (void)dealloc { 
   [[NSNotificationCenter defaultCenter] removeObserver:self];
   [library_ release];
-  [collectionView_ release];
+  [browserView_ release];
   [scrollView_ release];
   [items_ release];
   [titleToItem_ release];
@@ -317,9 +288,7 @@ typedef void (^Action)(void);
       }
       return NO;
     })] : nil;
-    ForkToMainWith(^{
-      items_.filterPredicate = albumPredicate;
-    });
+    self.items.predicate = albumPredicate;
     if (after)
       after();
   });

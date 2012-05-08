@@ -21,5 +21,6 @@ typedef enum {
 NSComparator GetSortComparatorFromSortFields(NSArray *sortFields);
 extern NSComparator NaturalComparison;
 extern NSComparator DefaultComparison;
+extern NSComparator URLComparison;
 
 // vim filetype=objcpp

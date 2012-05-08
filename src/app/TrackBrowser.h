@@ -1,10 +1,9 @@
 #import <Cocoa/Cocoa.h>
 #import "app/Library.h"
-#import "app/SortedSeq.h"
+#import "app/ArrayController.h"
 #import "app/TableViewController.h"
-#import "app/TrackContainer.h"
 
-@interface TrackBrowser : TableViewController <TrackContainer> {
+@interface TrackBrowser : TableViewController {
   SortedSeq *tracks_;
   NSFont *playingFont_;
   NSFont *font_;
@@ -21,7 +20,8 @@
 @property (retain) NSFont *font;
 @property (retain) NSImage *playImage;
 @property (retain) Library *library;
-- (NSArray *)cutTracksAtIndices:(NSIndexSet *)indexSet;
+- (NSArray *)selectedTracks;
+- (NSArray *)cutSelectedTracks;
 
 @end
 // vim: filetype=objcpp

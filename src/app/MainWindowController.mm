@@ -3,6 +3,7 @@
 #import "app/Log.h"
 #import "app/MainWindowController.h"
 #import "app/NSNetServiceAddress.h"
+#import "app/PThread.h"
 #import "app/RemoteLibrary.h"
 #import "app/RAOP.h"
 #import "app/CoreAudioSink.h"
@@ -27,14 +28,14 @@ static NSString *GetWindowTitle(Track *t) {
   NSString *title = t.title;
   NSString *artist = t.artist;
   NSString *album = t.album;
-  NSString *url = t.url;
+  NSURL *url = t.url;
 
   if ([title length] && [artist length] && [album length])
     return [NSString stringWithFormat:@"%@ - %@ - %@ ", title, artist, album, nil];
   else if ([title length])
     return title;
   else if (url) 
-    return url;
+    return url.absoluteString;
   else 
     return kDefaultWindowTitle;
 }
@@ -82,7 +83,7 @@ static NSString *GetWindowTitle(Track *t) {
     [self setupBusyIndicator];
     [self setupLibrarySelect];
 
-    MainWindowController *weakSelf = self;
+    __block MainWindowController *weakSelf = self;
     [loop_ every:kPollMovieInterval with:^{
       id <AudioSource> movie = SharedAppDelegate().audioSource;
       if (movie) {
@@ -184,7 +185,6 @@ static NSString *GetWindowTitle(Track *t) {
 
 - (void)setupGroupsPopupButton {
   CGRect rect = CGRectMake(0, 0, 100, 32);
-  //NSImage *albumImage = [NSImage imageNamed:@"album-icon"];
   NSImage *albumImage = [NSImage imageNamed:@"album-icon"];
   NSImage *trackImage = [NSImage imageNamed:@"NSListViewTemplate"];
   self.groupsButton = [[[NSSegmentedControl alloc] initWithFrame:rect] autorelease]; 
@@ -197,8 +197,7 @@ static NSString *GetWindowTitle(Track *t) {
   self.groupsButton.action = @selector(onGroupSelect:);
   [self.groupsButton setImage:albumImage forSegment:0];
   [self.groupsButton setImage:trackImage forSegment:1];
-  [self.groupsButton setImageScaling:0.6 forSegment:0];
-  [self.groupsButton setImageScaling:0.8 forSegment:1];
+  [self.groupsButton setImageScaling:NSImageScaleProportionallyUpOrDown forSegment:0];
 }
 
 - (Library *)library { 
@@ -242,7 +241,7 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)setupWindow {
-  MainWindowController *weakSelf = self; 
+  __block MainWindowController *weakSelf = self; 
   [self.window setFrame:kStartupFrame display:YES];
   [self.window display];
   [self.window makeKeyAndOrderFront:self];
@@ -354,7 +353,7 @@ static NSString *GetWindowTitle(Track *t) {
 - (NSToolbarItem *)toolbar:(NSToolbar *)toolbar itemForItemIdentifier:(NSString *)itemIdentifier willBeInsertedIntoToolbar:(BOOL)flag {
   NSToolbarItem *item = [[[NSToolbarItem alloc] initWithItemIdentifier:itemIdentifier] autorelease];
   NSView *view = nil;
-  MainWindowController *weakSelf = self;
+  __block MainWindowController *weakSelf = self;
   if (itemIdentifier == kPlayButton) { 
       self.playButton = [[[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)] autorelease];
       view = playButton_;
@@ -363,7 +362,8 @@ static NSString *GetWindowTitle(Track *t) {
       playButton_.bezelStyle = NSTexturedRoundedBezelStyle;
       playButton_.action = @selector(playClicked:);
       playButton_.target = SharedAppDelegate();
-      [[playButton_ cell] setImageScaling:0.8];
+      //[[playButton_ cell] setImageScaling:0.8];
+      [[playButton_ cell] setImageScaling:NSImageScaleProportionallyUpOrDown];
   } else if (itemIdentifier == kProgressControl) { 
     if (!self.progressControl) {
       self.progressControl = [[[ProgressControl alloc]
@@ -395,14 +395,16 @@ static NSString *GetWindowTitle(Track *t) {
     previousButton.image = [NSImage imageNamed:@"left"];
     previousButton.action = @selector(previousClicked:);
     previousButton.target = SharedAppDelegate();
-    [[previousButton cell] setImageScaling:0.8];
+    //[[previousButton cell] setImageScaling:0.8];
+    [[previousButton cell] setImageScaling:NSImageScaleProportionallyUpOrDown];
   } else if (itemIdentifier == kNextButton)  {
     NSButton *nextButton = [[[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)] autorelease];
     nextButton.target = self;
     nextButton.title = @"";
     nextButton.image = [NSImage imageNamed:@"right"];
     nextButton.bezelStyle = NSTexturedRoundedBezelStyle;
-    [[nextButton cell] setImageScaling:0.8];
+    //[[nextButton cell] setImageScaling:0.8];
+    [[nextButton cell] setImageScaling:NSImageScaleProportionallyUpOrDown];
     nextButton.action = @selector(nextClicked:);
     nextButton.target = SharedAppDelegate();
     view = nextButton;

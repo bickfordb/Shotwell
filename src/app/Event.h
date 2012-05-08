@@ -12,7 +12,7 @@ typedef void (^OnFireEvent)(Event *event, short flags);
 }
 
 - (id)initWithLoop:(Loop *)loop fd:(int)fd flags:(short)flags;
-@property (retain) OnFireEvent fire;
+@property (copy) OnFireEvent fire;
 @property (readonly) struct event *event;
 @property (assign) Loop *loop; // Loops hold onto events
 - (void)add:(int64_t)timeout;

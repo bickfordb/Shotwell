@@ -10,9 +10,7 @@ static int64_t kReloadInterval = 500000;
 @synthesize onCellValue = onCellValue_;
 @synthesize onDoubleAction = onDoubleAction_;
 @synthesize onRowCount = onRowCount_;
-@synthesize onSortComparatorChanged = onSortComparatorChanged_;
 @synthesize scrollView = scrollView_;
-@synthesize sortFields = sortFields_;
 @synthesize tableView = tableView_;
 
 - (BOOL)tableView:(NSTableView *)aTableView shouldEditTableColumn:(NSTableColumn *)aTableColumn row:(NSInteger)rowIndex {
@@ -62,12 +60,11 @@ static int64_t kReloadInterval = 500000;
     [self.view addSubview:self.scrollView];
     self.scrollView.documentView = self.tableView;
     [self.tableView registerForDraggedTypes:[NSArray arrayWithObjects:NSURLPboardType, NSFilenamesPboardType, nil]];
-    self.sortFields = [NSMutableArray array];
     self.tableView.dataSource = self;
     __block TableViewController *weakSelf = self;
     [loop_ every:kReloadInterval with:^{ 
       if (requestReload_) {
-        requestReload_ = false;
+        weakSelf->requestReload_ = false;
         ForkToMainWith(^{
           [weakSelf.tableView reloadData];
         });
@@ -95,69 +92,67 @@ static int64_t kReloadInterval = 500000;
   [onCellValue_ release];
   [onDoubleAction_ release];
   [onRowCount_ release];
-  [onSortComparatorChanged_ release];
   [scrollView_ release];
-  [sortFields_ release];
   [tableView_ release];
   [super dealloc];
 }
 
-- (void)tableView:(NSTableView *)tableView didClickTableColumn:(NSTableColumn *)tableColumn {
-  NSString *ident = tableColumn.identifier;
-  @synchronized(sortFields_) { 
-    int found = -1;
-    int idx = 0;
-    for (SortField *f in sortFields_) {
-      if ([f.key isEqualToString:ident]) {
-        found = idx; 
-        break;
-      }
-      idx++;
-    }
-    if (found < 0) {
-      SortField *s = [[[SortField alloc] 
-        initWithKey:ident
-        direction:Ascending
-        comparator:[self comparatorForKey:ident]] autorelease];
-      [sortFields_ insertObject:s atIndex:0];
-    } else if (found > 0) {
-      // Pop the field off a non-zero index, set the direction to ascending
-      SortField *s = [[[SortField alloc] 
-        initWithKey:ident
-        direction:Ascending
-        comparator:[self comparatorForKey:ident]] autorelease];
-      [sortFields_ removeObjectAtIndex:found];
-      [sortFields_ insertObject:s atIndex:0];
-    } else { 
-      SortField *s = [sortFields_ objectAtIndex:0];
-      // Flip the direction
-      s.direction = s.direction == Ascending ? Descending : Ascending;
-    }
-  }
-  [self updateTableColumnHeaders];
-  ForkWith(^{
-    if (onSortComparatorChanged_) {
-      onSortComparatorChanged_();
-    }
-  });
-}
+//- (void)tableView:(NSTableView *)tableView didClickTableColumn:(NSTableColumn *)tableColumn {
+//  NSString *ident = tableColumn.identifier;
+//  @synchronized(sortFields_) { 
+//    int found = -1;
+//    int idx = 0;
+//    for (SortField *f in sortFields_) {
+//      if ([f.key isEqualToString:ident]) {
+//        found = idx; 
+//        break;
+//      }
+//      idx++;
+//    }
+//    if (found < 0) {
+//      SortField *s = [[[SortField alloc] 
+//        initWithKey:ident
+//        direction:Ascending
+//        comparator:[self comparatorForKey:ident]] autorelease];
+//      [sortFields_ insertObject:s atIndex:0];
+//    } else if (found > 0) {
+//      // Pop the field off a non-zero index, set the direction to ascending
+//      SortField *s = [[[SortField alloc] 
+//        initWithKey:ident
+//        direction:Ascending
+//        comparator:[self comparatorForKey:ident]] autorelease];
+//      [sortFields_ removeObjectAtIndex:found];
+//      [sortFields_ insertObject:s atIndex:0];
+//    } else { 
+//      SortField *s = [sortFields_ objectAtIndex:0];
+//      // Flip the direction
+//      s.direction = s.direction == Ascending ? Descending : Ascending;
+//    }
+//  }
+//  [self updateTableColumnHeaders];
+//  ForkWith(^{
+//    if (onSortComparatorChanged_) {
+//      onSortComparatorChanged_();
+//    }
+//  });
+//}
+//
 
 
-
-- (void)updateTableColumnHeaders {
-  ForkToMainWith(^{
-    for (NSTableColumn *c in tableView_.tableColumns) { 
-      [tableView_ setIndicatorImage:nil inTableColumn:c];
-    }
-    for (SortField *f in sortFields_) {
-      Direction d = f.direction;
-      NSImage *img = [NSImage imageNamed:d == Ascending ? @"NSAscendingSortIndicator" : @"NSDescendingSortIndicator"];
-      [tableView_ setIndicatorImage:img inTableColumn:[tableView_ tableColumnWithIdentifier:f.key]];
-      break;
-    }
-  });
-}
-
+//- (void)updateTableColumnHeaders {
+//  ForkToMainWith(^{
+//    for (NSTableColumn *c in tableView_.tableColumns) { 
+//      [tableView_ setIndicatorImage:nil inTableColumn:c];
+//    }
+//    for (SortField *f in sortFields_) {
+//      Direction d = f.direction;
+//      NSImage *img = [NSImage imageNamed:d == Ascending ? @"NSAscendingSortIndicator" : @"NSDescendingSortIndicator"];
+//      [tableView_ setIndicatorImage:img inTableColumn:[tableView_ tableColumnWithIdentifier:f.key]];
+//      break;
+//    }
+//  });
+//}
+//
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView { 
   return self.onRowCount ? self.onRowCount() : 0;
 }
@@ -175,8 +170,8 @@ static int64_t kReloadInterval = 500000;
     [self.tableView scrollRowToVisible:row];
   });
 }
-
-- (NSComparator)sortComparator {
-  return GetSortComparatorFromSortFields(self.sortFields);
-}
+//
+//- (NSComparator)sortComparator {
+//  return GetSortComparatorFromSortFields(self.sortFields);
+//}
 @end

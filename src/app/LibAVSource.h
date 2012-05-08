@@ -23,11 +23,11 @@ extern "C" {
   AudioSourceState state_; 
   pthread_mutex_t lock_; 
   AVRational timeBase_;
-  NSString *url_;
+  NSURL *url_;
 }
 - (bool)readFrame;
 - (bool)readPacket:(AVPacket *)packet;
-- (id)initWithURL:(NSString *)s;
+- (id)initWithURL:(NSURL *)s;
 
 - (NSString *)url;
 @end

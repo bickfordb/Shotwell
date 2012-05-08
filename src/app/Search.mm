@@ -13,7 +13,7 @@ NSPredicate *ParseSearchQuery(NSString *query) {
           @"(artist CONTAINS[cd] %@)"
           " OR (album CONTAINS[cd] %@)"
           " OR (title CONTAINS[cd] %@)"
-          " OR (url CONTAINS[cd] %@)"
+          //" OR (url.absoluteString CONTAINS[cd] %@)"
           " OR (year CONTAINS[cd] %@)"
           " OR (genre CONTAINS[cd] %@)",
         token, token, token, token, token, token, nil];

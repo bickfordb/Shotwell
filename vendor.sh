@@ -31,8 +31,8 @@ mkdir -p \
   ${INSTALL_PREFIX}/share \
   ${INSTALL_PREFIX}/sbin
 
-export CFLAGS="-ggdb ${CFLAGS}"
-export CXXFLAGS="-ggdb ${CXXFLAGS}"
+export CFLAGS="-ggdb -O3 ${CFLAGS}"
+export CXXFLAGS="-ggdb -O3 ${CXXFLAGS}"
 export CPPFLAGS="-I${INSTALL_PREFIX}/include"
 export LDFLAGS="-L${INSTALL_PREFIX}/lib"
 export PATH="${INSTALL_PREFIX}/bin:$PATH"
@@ -42,7 +42,7 @@ then
     scratch
     tar xzvf ${VENDOR}/libav-0.8.1.tar.gz
     cd libav-0.8.1
-    ./configure --prefix=${INSTALL_PREFIX} --disable-shared --enable-debug=3 --disable-optimizations
+    CFLAGS="-O2 -ggdb" ./configure --prefix=${INSTALL_PREFIX} --disable-shared --enable-debug=3 --disable-optimizations
     make
     make install
     stamp libav

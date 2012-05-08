@@ -139,13 +139,13 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 
   // make sure it's a real track
   Track *track = [library_ get:[NSNumber numberWithLongLong:trackID]];
-  if (!track) {
+  if (!track || !track.url.isFileURL) {
     DEBUG(@"no track");
     [request respondNotFound];
     return true;
   }
   
-  int fd = open(track.url.UTF8String, O_RDONLY);
+  int fd = open(track.url.path.UTF8String, O_RDONLY);
   if (fd < 0) {
     DEBUG(@"missing fd");
     [request respondNotFound];

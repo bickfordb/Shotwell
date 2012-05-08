@@ -19,69 +19,52 @@ static NSString * const kStatus = @"status";
 @synthesize library = library_;
 
 - (void)delete:(id)sender { 
-  NSIndexSet *indices = self.tableView.selectedRowIndexes;
+  [self cutSelectedTracks];
   [self.tableView deselectAll:self];
-  ForkWith(^{
-    [self cutTracksAtIndices:indices];  
-  });
-
 }
 
-- (NSArray *)cutTracksAtIndices:(NSIndexSet *)indices { 
+- (NSArray *)selectedTracks { 
+  NSIndexSet *indices = self.tableView.selectedRowIndexes;
+  return [self.tracks getMany:indices];
+}
+
+- (NSArray *)cutSelectedTracks {
+  NSIndexSet *indices = self.tableView.selectedRowIndexes;
   NSArray *tracks = [self.tracks getMany:indices];
-  for (Track *o in tracks) {
-    [self.library delete:o];
-  }
+  ForkWith(^{ 
+    for (Track *t in tracks) {
+      [self.library delete:t];
+    }
+  });
   return tracks;
 }
 
 - (void)copy:(id)sender { 
-  NSIndexSet *indices = self.tableView.selectedRowIndexes;
+  NSArray *tracks = self.selectedTracks;
   ForkWith(^{ 
-    NSUInteger i = indices.lastIndex;
-    NSMutableArray *urls = [NSMutableArray array];
     NSPasteboard *pb = [NSPasteboard generalPasteboard];
     [pb clearContents];
     [pb declareTypes:[NSArray arrayWithObject:NSURLPboardType] owner:nil];
-    for (Track *t in [self.tracks getMany:indices]) {
-      NSURL *url = [NSURL fileURLWithPath:t.url];
-      [urls addObject:url];
-    }
-    [pb writeObjects:urls];
+    [pb writeObjects:[tracks valueForKey:kURL]];
   });
 }
 
 - (void)cut:(id)sender { 
-  NSIndexSet *indices = self.tableView.selectedRowIndexes;
+  NSArray *tracks = self.cutSelectedTracks;
   [self.tableView deselectAll:self];
-  ForkWith(^{
-    NSUInteger i = [indices lastIndex];
-    NSMutableArray *urls = [NSMutableArray array];
-    NSPasteboard *pb = [NSPasteboard generalPasteboard];
-    [pb clearContents];
-    [pb declareTypes:[NSArray arrayWithObject:NSURLPboardType] owner:nil];
-    NSArray *tracks = [self cutTracksAtIndices:indices];
-    NSArray *paths = [tracks valueForKey:kURL];
-    for (NSString *i in paths) {
-      [urls addObject:[NSURL fileURLWithPath:i]];
-    }
-    [pb writeObjects:urls];
-  });
+  NSPasteboard *pb = [NSPasteboard generalPasteboard];
+  [pb clearContents];
+  [pb declareTypes:[NSArray arrayWithObject:NSURLPboardType] owner:nil];
+  [pb writeObjects:[tracks valueForKey:kURL]];
 }
 
-
-
-- (NSComparator)comparatorForKey:(NSString *)key { 
-  if (key == kDuration || key == kID)
-    return DefaultComparison;
-  else
-    return NaturalComparison;   
-}
 
 - (void)search:(NSString *)term after:(On0)after {
   after = [after copy];
-  ForkWith(^{
-    self.tracks.predicate = ParseSearchQuery(term);
+  ForkToMainWith(^{
+    @synchronized(tracks_) {
+      tracks_.predicate = ParseSearchQuery(term);
+    }
     [self reload];
     if (after)
       after();
@@ -93,35 +76,8 @@ static NSString * const kStatus = @"status";
   if (self) {
     self.library = library;
     self.tracks = [[[SortedSeq alloc] init] autorelease];
-    
-    TrackBrowser *weakSelf = self;
-    self.onCellValue = ^(int rowIndex, NSTableColumn *aTableColumn) {
-      Track *t = [weakSelf.tracks get:rowIndex];
-      AppDelegate *appDelegate = (AppDelegate *)[NSApp delegate];
-      NSString *identifier = aTableColumn.identifier;
-      id ret = nil;
-      bool isPlaying = SharedAppDelegate().track && [t.url isEqual:SharedAppDelegate().track.url];
-      if (isPlaying) {
-        [[aTableColumn dataCell] setFont:isPlaying ? playingFont_ : font_];
-      }
-      if (identifier == kDuration) {
-        ret = [((NSNumber *)[t valueForKey:kDuration]) formatSeconds];
-      } else if (identifier == kStatus) {
-        if (isPlaying) {
-          ret = playImage_;
-          [[aTableColumn dataCell] setImageScaling:0.5];
-        }
-      } else if (identifier == kArtist
-          || identifier == kAlbum
-          || identifier == kGenre
-          || identifier == kURL 
-          || identifier == kTitle
-          || identifier == kYear
-          || identifier == kTrackNumber) {
-        ret = [t valueForKey:identifier];
-      }
-      return ret;
-    };
+     
+    __block TrackBrowser *weakSelf = self;
     self.font = [NSFont systemFontOfSize:11.0];
     self.playingFont = [NSFont boldSystemFontOfSize:11.0];
     self.tableView.onKeyDown = ^(NSEvent *e) {
@@ -136,17 +92,55 @@ static NSString * const kStatus = @"status";
     NSMenuItem *cut = [tableMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"c"];
     NSMenuItem *delete_ = [tableMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:@""];
     self.tableView.menu = tableMenu;
-
+  
+    /* 
+    [self.tracks 
+      bind:@"sortDescriptors" 
+      toObject:self.tableView
+      withKeyPath:@"sortDescriptors"
+      options:nil];
+    */
 
     NSTableColumn *statusColumn = [[[NSTableColumn alloc] initWithIdentifier:kStatus] autorelease];
+
     NSTableColumn *artistColumn = [[[NSTableColumn alloc] initWithIdentifier:kArtist] autorelease];
+    [artistColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.artist" options:nil];
+    artistColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:@"artist" ascending:YES comparator:NaturalComparison];
     NSTableColumn *albumColumn = [[[NSTableColumn alloc] initWithIdentifier:kAlbum] autorelease];
+    //albumColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:@"album" ascending:YES];
+    [albumColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.album"
+      options:nil];
+    
+    albumColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:@"album" ascending:YES comparator:NaturalComparison];
     NSTableColumn *titleColumn = [[[NSTableColumn alloc] initWithIdentifier:kTitle] autorelease];
+    [titleColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.title"
+      options:nil];
+
     NSTableColumn *trackNumberColumn = [[[NSTableColumn alloc] initWithIdentifier:kTrackNumber] autorelease];
+    [trackNumberColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.trackNumber"
+      options:nil];
+    trackNumberColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:@"trackNumber" ascending:YES comparator:NaturalComparison];
+
     NSTableColumn *genreColumn = [[[NSTableColumn alloc] initWithIdentifier:kGenre] autorelease];
+    [genreColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.genre"
+      options:nil];
+    genreColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:@"genre" ascending:YES comparator:NaturalComparison];
+
+
     NSTableColumn *durationColumn = [[[NSTableColumn alloc] initWithIdentifier:kDuration] autorelease];
+    [durationColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.duration.formatSeconds"
+      options:nil];
+    durationColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:@"duration" ascending:YES comparator:DefaultComparison];
+
+
     NSTableColumn *yearColumn = [[[NSTableColumn alloc] initWithIdentifier:kYear] autorelease];
+    [yearColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.year"
+      options:nil];
+    yearColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:@"year" ascending:YES comparator:NaturalComparison];
+
     NSTableColumn *pathColumn = [[[NSTableColumn alloc] initWithIdentifier:kURL] autorelease];
+    [pathColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.url" options:nil];
+    pathColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:@"url" ascending:YES comparator:URLComparison];
 
     self.emptyImage = [[[NSImage alloc] initWithSize:NSMakeSize(22, 22)] autorelease];
     self.playImage = [NSImage imageNamed:@"dot"];
@@ -204,46 +198,35 @@ static NSString * const kStatus = @"status";
     self.onDoubleAction = ^(int row){
       [SharedAppDelegate() playTrackAtIndex:row];
     };
-    for (NSString *key in [NSArray arrayWithObjects:kArtist, kAlbum, kTrackNumber, kTitle, kURL, nil]) { 
-      SortField *s = [[[SortField alloc] initWithKey:key direction:Ascending comparator:NaturalComparison] autorelease];
-      [self.sortFields addObject:s];
-    }
-    self.onSortComparatorChanged = ^{ 
-      weakSelf.tracks.comparator = weakSelf.sortComparator;
-      [weakSelf reload];
-    };
-    [self updateTableColumnHeaders];
-    self.tracks.comparator = self.sortComparator;
     self.onCellValue = ^(int row, NSTableColumn *tableColumn) {
       Track *t = [weakSelf.tracks get:row];
       NSString *ident = tableColumn.identifier;
       bool isPlaying = [SharedAppDelegate().track isEqual:t];
-      if (ident != kStatus) {
-        id ret = [t valueForKey:ident];
-        if (ident == kDuration) {
-          ret = [ret formatSeconds];
-        }
-        [[tableColumn dataCell] setFont:isPlaying ? playingFont_ : font_];
-        return ret;
-      } else {
+      [[tableColumn dataCell] setFont:isPlaying ? playingFont_ : font_];
+      if (ident == kStatus) {
         return isPlaying ? playImage_ : emptyImage_;  
       }
+      return nil;
     };
     self.onRowCount = ^{ 
-      return weakSelf.tracks.count;
+      return (int)[weakSelf.tracks count];
     };
-    
     ForkWith(^{
+      NSMutableSet *a = [NSMutableSet set];
       [self.library each:^(Track *t) {
-        [self.tracks add:t]; 
+        [tracks_ addObject:t];
       }];
-      [self reload];
     });
     [[NSNotificationCenter defaultCenter] 
       addObserver:self
       selector:@selector(onTrackChange:)
       name:kLibraryTrackChanged
       object:library_];
+    [self.tableView 
+      bind:@"content"
+      toObject:tracks_
+      withKeyPath:@"arrangedObjects"
+      options:nil];
   }
   return self;
 }
@@ -251,18 +234,20 @@ static NSString * const kStatus = @"status";
 - (void)onTrackChange:(NSNotification *)notification {
   NSString *change = [notification.userInfo valueForKey:@"change"];
   Track *t = [notification.userInfo valueForKey:@"track"];
-  if (change == kLibraryTrackAdded) {
-    [self.tracks add:t];
-  } else if (change == kLibraryTrackDeleted) {
-    [self.tracks remove:t];
-  } else if (change == kLibraryTrackSaved) {
-    [self.tracks remove:t];
-    [self.tracks add:t];
-  }
-  [self reload];
+  ForkWith(^{
+    if (change == kLibraryTrackAdded) {
+      [self.tracks addObject:t];
+    } else if (change == kLibraryTrackDeleted) {
+      [self.tracks removeObject:t];
+    } else if (change == kLibraryTrackSaved) {
+      [self.tracks removeObject:t];
+      [self.tracks addObject:t];
+    }
+  });
 }
 
 - (void)dealloc { 
+  [self.tableView unbind:@"content"];
   [[NSNotificationCenter defaultCenter] removeObserver:self];
   [library_ release];
   [playingFont_ release];

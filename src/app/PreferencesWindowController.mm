@@ -34,7 +34,7 @@ static NSString * const kGeneral = @"General";
 - (NSToolbarItem *)toolbar:(NSToolbar *)toolbar itemForItemIdentifier:(NSString *)itemIdentifier willBeInsertedIntoToolbar:(BOOL)flag {
   NSToolbarItem *item = [[[NSToolbarItem alloc] initWithItemIdentifier:itemIdentifier] autorelease];
   NSView *view = nil;
-  PreferencesWindowController *weakSelf = self;
+  __block PreferencesWindowController *weakSelf = self;
   if (itemIdentifier == kGeneral) { 
     item.label = @"General";
     item.target = self;

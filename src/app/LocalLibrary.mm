@@ -44,9 +44,7 @@ static int64_t kPollCoverArtInterval = 1000000;
 
 - (id)decodeValue:(const char *)bytes length:(size_t)length {
   NSDictionary *v = [super decodeValue:bytes length:length];
-  Track *t = [[[Track alloc] init] autorelease];
-  [t setValuesForKeysWithDictionary:v];
-  return t;
+  return [Track fromJSON:v];
 }
 @end
 
@@ -174,8 +172,9 @@ static void OnFileEvent(
 }
 
 - (void)queueCheckCoverArt:(int64_t)interval {
+  __block LocalLibrary *weakSelf = self;
   [coverArtLoop_ onTimeout:interval with:^(Event *e, short flags) {
-    [self checkCoverArt];
+    [weakSelf checkCoverArt];
   }];
 }
 
@@ -203,7 +202,6 @@ static void OnFileEvent(
     NSString *url = nil;
     if (data && data.length) {
       mkdir(weakSelf.coverArtPath.UTF8String, 0755);
-      INFO(@"sha1: %@ => %@", term, term.sha1);
       NSString *path = [weakSelf.coverArtPath stringByAppendingPathComponent:term.sha1];
       if ([data writeToFile:path atomically:YES]) {
         url = [[NSURL fileURLWithPath:path] absoluteString];
@@ -215,7 +213,7 @@ static void OnFileEvent(
         if (url)
           t.coverArtURL = url;
         t.isCoverArtChecked = [NSNumber numberWithBool:YES];
-        [self save:t];
+        [weakSelf save:t];
       }
     }];
     [weakSelf queueCheckCoverArt:kPollCoverArtInterval];
@@ -305,13 +303,14 @@ static void OnFileEvent(
     pool = [[NSAutoreleasePool alloc] init];
     if (node->fts_info & FTS_F) {
       NSString *filename = [NSString stringWithUTF8String:node->fts_path];
-      
       if (!filename)
         continue;
-      NSNumber *trackID = [urlTable_ get:filename];
+      NSURL *url = [NSURL fileURLWithPath:filename] ;
+      NSNumber *trackID = [urlTable_ get:url.absoluteString];
       if (!trackID) {
-        Track *t = [[Track alloc] init];
-        t.url = filename;
+        Track *t = [[[Track alloc] init] autorelease];
+        t.url = [NSURL fileURLWithPath:filename];
+        t.folder = filename.stringByDeletingLastPathComponent.lastPathComponent;
         int st = [t readTag];
         // Only index things with audio:
         // This will skip JPEG/photo files but allow almost other media files that LibAV can read through.
@@ -320,8 +319,9 @@ static void OnFileEvent(
           @synchronized(pendingCoverArtTracks_) {
             [pendingCoverArtTracks_ addObject:t.id];
           }
-        } 
-        [t release];
+        } else { 
+        }
+      } else { 
       }
     }
   }
@@ -345,15 +345,15 @@ static void OnFileEvent(
   [trackTable_ each:^(id key, id val) {
     Track *track = (Track *)val;    
     struct stat fsStatus;
-    if (stat(track.url.UTF8String, &fsStatus) < 0 && errno == ENOENT) {
+    if (stat(track.url.path.UTF8String, &fsStatus) < 0 && errno == ENOENT) {
       [self delete:track];
     }
   }];
 }     
 
 - (void)save:(Track *)track { 
-  NSString *url = track.url;
-  if (!url || !url.length) { 
+  NSURL *url = track.url;
+  if (!url) { 
     return;
   }
   bool isNew = false;
@@ -361,7 +361,7 @@ static void OnFileEvent(
     track.id = [trackTable_ nextID];
     isNew = true;
   }
-  [urlTable_ put:track.id forKey:track.url];
+  [urlTable_ put:track.id forKey:track.url.absoluteString];
   [trackTable_ put:track forKey:track.id];
   if (isNew) {
     [self notifyTrack:track change:kLibraryTrackAdded];
@@ -384,7 +384,7 @@ static void OnFileEvent(
 - (void)delete:(Track *)track { 
   [trackTable_ delete:track.id];
   if (track.url) 
-    [urlTable_ delete:track.url];
+    [urlTable_ delete:track.url.absoluteString];
   self.lastUpdatedAt = Now();
   [self notifyTrack:track change:kLibraryTrackDeleted];
 

@@ -31,8 +31,7 @@ void GetITunesTracks(OnITunesTrack block) {
     t.trackNumber = [trackInfo objectForKey:@"Track Number"];
     NSString *location = [trackInfo objectForKey:@"Location"];
     if (location)  {
-      NSURL *url = [NSURL URLWithString:location];
-      t.url = url.isFileURL ? [url path] : [url absoluteString];
+      t.url = [NSURL URLWithString:location];
     }
     NSNumber *year = [trackInfo objectForKey:@"year"];
     if (year)

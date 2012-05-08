@@ -32,8 +32,8 @@ function renderPlaying() {
   $("div.title").html(playing.title());
   $("div.year").html(playing.year());
   $("div.genre").html(playing.genre());
-  $("div.url").html(playing.url());
-  var url = playing.coverArtURL()
+  $("div.url").html(playing.url().absoluteString());
+  var url = playing.coverArtURL();
   if (url && url.length > 0) {
     $("img.cover-art").show().attr("src", playing.coverArtURL());
     $("div.cover-art-container").show();

@@ -6,6 +6,7 @@ extern NSString * const kArtist;
 extern NSString * const kCoverArtURL;
 extern NSString * const kCreatedAt;
 extern NSString * const kDuration;
+extern NSString * const kFolder;
 extern NSString * const kGenre;
 extern NSString * const kID;
 extern NSString * const kIsAudio;
@@ -30,13 +31,15 @@ extern NSArray *allTrackKeys;
   NSString *album_;
   NSString *artist_;
   NSString *coverArtURL_;
+  NSString *folder_;
   NSString *genre_;
   NSString *publisher_;
   NSString *title_;
   NSString *trackNumber_;
-  NSString *url_;
+  NSURL *url_;
   NSString *year_;
   NSNumber *isCoverArtChecked_;
+  long long int idCache_;
 }
 
 - (bool)isAudioOrVideo;
@@ -44,26 +47,26 @@ extern NSArray *allTrackKeys;
 /* Read the ID3 tag stored at URL */
 - (int)readTag;
 
-@property (retain, nonatomic) NSString *album;
-@property (retain, nonatomic) NSString *artist;
-@property (retain, nonatomic) NSString *coverArtURL;
-@property (retain, nonatomic) NSString *genre;
-@property (retain, nonatomic) NSString *title;
-@property (retain, nonatomic) NSString *publisher;
-@property (retain, nonatomic) NSString *trackNumber;
-@property (retain, nonatomic) NSString *url;
-@property (retain, nonatomic) NSString *year;
-@property (retain, nonatomic) NSNumber *isVideo;
-@property (retain, nonatomic) NSNumber *isCoverArtChecked;
-@property (retain, nonatomic) NSNumber *isAudio;
-@property (retain, nonatomic) NSNumber *createdAt;
-@property (retain, nonatomic) NSNumber *duration;
-@property (retain, nonatomic) NSNumber *id;
-@property (retain, nonatomic) NSNumber *lastPlayedAt;
-@property (retain, nonatomic) NSNumber *updatedAt;
-- (bool)isLocalMediaURL;
-- (NSString *)artistAlbumYearTitle;
+@property (retain) NSString *album;
+@property (retain) NSString *folder;
+@property (retain) NSString *artist;
+@property (retain) NSString *coverArtURL;
+@property (retain) NSString *genre;
+@property (retain) NSString *title;
+@property (retain) NSString *publisher;
+@property (retain) NSString *trackNumber;
+@property (retain) NSURL *url;
+@property (retain) NSString *year;
+@property (retain) NSNumber *isVideo;
+@property (retain) NSNumber *isCoverArtChecked;
+@property (retain) NSNumber *isAudio;
+@property (retain) NSNumber *createdAt;
+@property (retain) NSNumber *duration;
+@property (retain) NSNumber *id;
+@property (retain) NSNumber *lastPlayedAt;
+@property (retain) NSNumber *updatedAt;
 
++ (Track *)fromJSON:(NSDictionary *)json;
 
 @end
  
