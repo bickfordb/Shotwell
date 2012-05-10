@@ -25,7 +25,7 @@ CXXFLAGS += -Werror
 CXXFLAGS += -ferror-limit=2
 CXXFLAGS += -I$(VENDOR_BUILD)/vendor/include
 CXXFLAGS += -ggdb 
-CXXFLAGS += -O2
+CXXFLAGS += -O0
 LDFLAGS += -L$(VENDOR_BUILD)/vendor/lib
 LDFLAGS += -lleveldb
 LDFLAGS += -ljansson
@@ -112,6 +112,7 @@ run: program
 
 $(BUILD)/gdb-commands:
 	echo break malloc_error_break >$@
+	echo break objc_exception_throw >>$@
 	echo handle SIGPIPE nostop noprint pass >>$@
 	echo run >>$@
 

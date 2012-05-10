@@ -233,7 +233,6 @@ typedef void (^Action)(void);
     AlbumBrowserItem *item = nil;
     NSString *key = track.folder;
     if (!key) {
-      ERROR(@"%@ is missing a folder", track);
       continue;
     }
     @synchronized(titleToItem_) {
@@ -266,6 +265,7 @@ typedef void (^Action)(void);
 
 - (void)dealloc { 
   [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [self.browserView unbind:@"content"];
   [library_ release];
   [browserView_ release];
   [scrollView_ release];

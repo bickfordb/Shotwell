@@ -12,8 +12,12 @@ VENDOR=$projectroot/vendor
 INSTALL_PREFIX=${BUILDROOT}/vendor
 STAMP=${BUILDROOT}/stamp
 
-function stamp {
-  touch $STAMP/$1  
+function is_stamped { 
+  [ -e "$STAMP/$1" ];
+}
+
+function stamp { 
+  touch $STAMP/$1 
 }
 
 function scratch {
@@ -37,7 +41,7 @@ export CPPFLAGS="-I${INSTALL_PREFIX}/include"
 export LDFLAGS="-L${INSTALL_PREFIX}/lib"
 export PATH="${INSTALL_PREFIX}/bin:$PATH"
 
-if [ ! -e "${STAMP}/libav" ];
+if ! is_stamped libav 
 then
     scratch
     tar xzvf ${VENDOR}/libav-0.8.1.tar.gz
@@ -48,7 +52,7 @@ then
     stamp libav
 fi  
 
-if [ ! -e "${STAMP}/leveldb" ];
+if ! is_stamped leveldb
 then
     echo "building leveldb"
     scratch
@@ -61,7 +65,7 @@ then
     stamp leveldb
 fi  
 
-if [ ! -e "${STAMP}/libevent" ]
+if ! is_stamped libevent
 then
   scratch
   tar xzvf ${VENDOR}/libevent-2.0.17-stable.tar.gz
@@ -72,7 +76,7 @@ then
   stamp libevent
 fi
 
-if [ ! -e "${STAMP}/jansson" ]
+if ! is_stamped jansson
 then
   scratch
   tar xzvf ${VENDOR}/jansson-2.3.tar.gz
@@ -83,7 +87,7 @@ then
   stamp jansson
 fi
 
-if [ ! -e "${STAMP}/icu" ]
+if ! is_stamped icu
 then
   echo "Building icu" 
   scratch
@@ -96,7 +100,7 @@ then
 fi
 
 
-if [ ! -e "${STAMP}/gtest" ];
+if ! is_stamped gtest 
 then
   scratch
   unzip ${VENDOR}/gtest-1.6.0.zip
@@ -106,6 +110,19 @@ then
   rm -rf ${INSTALL_PREFIX}/include/gtest
   cp -r gtest-1.6.0/include/gtest ${INSTALL_PREFIX}/include
   stamp gtest
+fi
+
+if ! is_stamped chromaprint
+then
+  echo "building chromaprint"
+  scratch
+  tar xzvf ${VENDOR}/chromaprint-0.6.tar.gz
+  pushd chromaprint-0.6
+  cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF .
+  make 
+  make install
+  popd
+  stamp chromaprint
 fi
 
 stamp vendor

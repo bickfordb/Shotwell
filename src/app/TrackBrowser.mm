@@ -9,6 +9,7 @@
 
 static NSString * const kStatus = @"status";
 static NSString * const kOnSortDescriptorsChanged = @"OnSortDescriptorsChanged";
+static double const kTrackFontSize = 11.0;
 
 @implementation TrackBrowser 
 @synthesize emptyImage = emptyImage_;
@@ -108,8 +109,8 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
     self.tracks = [[[SortedSeq alloc] init] autorelease];
      
     __block TrackBrowser *weakSelf = self;
-    self.font = [NSFont systemFontOfSize:11.0];
-    self.playingFont = [NSFont boldSystemFontOfSize:11.0];
+    self.font = [NSFont systemFontOfSize:kTrackFontSize];
+    self.playingFont = [NSFont boldSystemFontOfSize:kTrackFontSize];
     self.tableView.onKeyDown = ^(NSEvent *e) {
       if (e.keyCode == 49) {
         [SharedAppDelegate() playClicked:nil];
@@ -168,6 +169,8 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
     [pathColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.url" options:nil];
     pathColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:@"url" ascending:YES comparator:URLComparison];
 
+    self.tableView.sortDescriptors = [NSArray arrayWithObjects:artistColumn.sortDescriptorPrototype, albumColumn.sortDescriptorPrototype, trackNumberColumn.sortDescriptorPrototype, titleColumn.sortDescriptorPrototype, pathColumn.sortDescriptorPrototype, nil];
+
     self.emptyImage = [[[NSImage alloc] initWithSize:NSMakeSize(22, 22)] autorelease];
     self.playImage = [NSImage imageNamed:@"dot"];
     [statusColumn setDataCell:[[[NSImageCell alloc] initImageCell:emptyImage_] autorelease]];
@@ -184,30 +187,30 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
 
     [[statusColumn headerCell] setStringValue:@""];
     [[artistColumn headerCell] setStringValue:@"Artist"];
-    [[artistColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
+    [[artistColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
     [[albumColumn headerCell] setStringValue:@"Album"];
-    [[albumColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
+    [[albumColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
     [[titleColumn headerCell] setStringValue:@"Title"];
-    [[titleColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
+    [[titleColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
     [[yearColumn headerCell] setStringValue:@"Year"];
-    [[yearColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
+    [[yearColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
     [[genreColumn headerCell] setStringValue:@"Genre"];
-    [[genreColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
+    [[genreColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
     [[durationColumn headerCell] setStringValue:@"Duration"];
-    [[durationColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
+    [[durationColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
     [[trackNumberColumn headerCell] setStringValue:@"#"];
-    [[trackNumberColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
+    [[trackNumberColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
     [[pathColumn headerCell] setStringValue:@"URL"];
-    [[pathColumn headerCell] setFont:[NSFont boldSystemFontOfSize:11.0]];
+    [[pathColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
 
-    [[artistColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
-    [[albumColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
-    [[titleColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
-    [[genreColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
-    [[durationColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
-    [[yearColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
-    [[pathColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
-    [[trackNumberColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];
+    [[artistColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
+    [[albumColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
+    [[titleColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
+    [[genreColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
+    [[durationColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
+    [[yearColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
+    [[pathColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
+    [[trackNumberColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
 
     [self.tableView addTableColumn:statusColumn];
     [self.tableView addTableColumn:trackNumberColumn];
@@ -283,7 +286,6 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
 - (void)dealloc { 
   [self.tableView unbind:@"content"];
   [self.tableView removeObserver:self forKeyPath:@"sortDescriptors" context:kOnSortDescriptorsChanged];
-
   [[NSNotificationCenter defaultCenter] removeObserver:self];
   [library_ release];
   [playingFont_ release];

@@ -287,9 +287,13 @@ done:
 }
 
 - (json_t *)getJSON {
-  NSMutableDictionary *data = [NSMutableDictionary dictionaryWithDictionary:[self dictionaryWithValuesForKeys:allTrackKeys]];
-  [data setObject:[[data objectForKey:kURL] absoluteString] forKey:kURL]; 
-  [data setObject:[[data objectForKey:kCoverArtURL] absoluteString] forKey:kCoverArtURL]; 
+  NSMutableDictionary *data = [NSMutableDictionary dictionary];
+  for (NSString *key in allTrackKeys) {
+    id val = [self valueForKey:key];
+    if (!val)
+      continue;
+    [data setValue:val forKey:key];
+  }
   return [data getJSON];
 }
 + (Track *)fromJSON:(NSDictionary *)json { 

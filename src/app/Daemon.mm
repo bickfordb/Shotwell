@@ -112,11 +112,15 @@ static void OnRequest(evhttp_request *r, void *ctx) {
     return false;
   [r addResponseHeader:@"Content-Type" value:@"application/json"];
   NSMutableArray *tracks = [NSMutableArray array];
-  NSArray *keys = [NSArray arrayWithObjects:kArtist, kID, kAlbum, kGenre, kTitle, kDuration, kTrackNumber, kYear, nil];
+  NSArray *keys = [NSArray arrayWithObjects:kArtist, kID, kAlbum, kGenre, kFolder, kPublisher, kCreatedAt, kTitle, kDuration, kTrackNumber, kYear, nil];
 
   [library_ each:^(Track *t) { 
     NSMutableDictionary *d = [NSMutableDictionary dictionary]; 
     for (NSString *k in keys) { 
+      id val = [t valueForKey:k];
+      if (!val) {
+        continue;
+      }
       [d setValue:[t valueForKey:k] forKey:k];
     }
     [tracks addObject:d];

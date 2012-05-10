@@ -121,6 +121,20 @@ id FromJSONBytes(const char *s) {
 }
 @end
 
+@implementation NSURL (JSON) 
+- (json_t *)getJSON {
+  return [self.absoluteString getJSON];
+}
+@end
+
+@implementation NSNull (JSON) 
+- (json_t *)getJSON {
+  return json_null();
+}
+@end
+
+
+
 @implementation NSData (JSON) 
 - (id)decodeJSON {
   json_t *o = json_loadb((const char *)self.bytes, self.length, JSON_DECODE_ANY, NULL);
@@ -130,4 +144,5 @@ id FromJSONBytes(const char *s) {
   return ret;
 }
 @end
+
 

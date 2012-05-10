@@ -61,10 +61,7 @@ int kRefreshInterval = 10000;
     NSArray *trackDicts = [response.body decodeJSON];
     NSMutableArray *tracks = [NSMutableArray array];
     for (NSDictionary *d in trackDicts) {
-      Track *t = [[[Track alloc] init] autorelease];   
-      [d enumerateKeysAndObjectsUsingBlock:^(id key, id val, BOOL *stop) {
-        [t setValue:val forKey:key];
-      }];
+      Track *t = [Track fromJSON:d];
       t.url = [NSURL URLWithString:[NSString stringWithFormat:@"http://%s:%d/tracks/%d",
         address.UTF8String, port, (int)t.id.intValue]];
       [tracks addObject:t];

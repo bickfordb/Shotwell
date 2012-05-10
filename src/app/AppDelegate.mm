@@ -284,7 +284,6 @@ static NSString *CoverArtPath() {
     [self.mainWindowController trackEnded:track_];
   }
   self.track = [self.mainWindowController.trackBrowser.tracks get:index];
-  INFO(@"track: %@", self.track);
   [self.mainWindowController trackStarted:track_];
   self.audioSource = [[((LibAVSource *)[LibAVSource alloc]) initWithURL:self.track.url] autorelease];
   self.audioSource.isPaused = false;
