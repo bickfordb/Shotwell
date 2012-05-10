@@ -24,6 +24,7 @@ extern NSString * const kScanPathsChanged;
   Loop *scanLoop_;
   Loop *coverArtLoop_;
   bool pruneRequested_;
+  int numCoverArtQueries_;
   NSMutableSet *pathsToScan_;
   FSEventStreamRef fsEventStreamRef_;
   NSMutableSet *pendingCoverArtTracks_;
@@ -51,6 +52,8 @@ extern NSString * const kScanPathsChanged;
 - (void)checkITunesImport;
 - (void)noteAddedPath:(NSString *)aPath;
 - (void)checkAutomaticPaths;
+- (void)checkCoverArtForTrack:(Track *)t;
+- (void)checkCoverArt;
 
 @property bool isITunesImported;
 @property (copy) NSArray *pathsToAutomaticallyScan;

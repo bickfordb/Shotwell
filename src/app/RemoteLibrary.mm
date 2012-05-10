@@ -65,8 +65,8 @@ int kRefreshInterval = 10000;
       [d enumerateKeysAndObjectsUsingBlock:^(id key, id val, BOOL *stop) {
         [t setValue:val forKey:key];
       }];
-      t.url = [NSString stringWithFormat:@"http://%s:%d/tracks/%d",
-        address.UTF8String, port, (int)t.id.intValue];
+      t.url = [NSURL URLWithString:[NSString stringWithFormat:@"http://%s:%d/tracks/%d",
+        address.UTF8String, port, (int)t.id.intValue]];
       [tracks addObject:t];
     }
     self.tracks = tracks; 

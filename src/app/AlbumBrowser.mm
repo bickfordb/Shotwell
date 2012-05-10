@@ -9,31 +9,7 @@
 static NSString * const kTotal = @"total";
 static NSImage *blankImage = nil; 
 static int64_t kReloadInterval = 5 * 1000000;
-static NSString *GetAlbumTitle(NSSet *tracks) { 
-  NSString *artist = nil;
-  NSString *album = nil;
-  for (Track *t in tracks) { 
-    if (!artist) {
-      artist = t.artist;
-    } else if (t.artist && ![t.artist isEqual:artist]) {
-      artist = @"Various Artists";
-    }
-    if (!album) {
-      album = t.album;
-    } else if (t.album && ![t.album isEqual:album]) {
-      album = @"Various Albums";
-    }
-  }
-  if (album && artist) {
-    return [NSString stringWithFormat:@"%@ - %@", artist, album];
-  } else if (album) {
-    return album;
-  } else if (artist) {
-    return artist;
-  } else { 
-    return @"";
-  }
-}
+
 
 typedef void (^Action)(void);
 
@@ -72,7 +48,35 @@ typedef void (^Action)(void);
 }
 
 - (NSString *)imageTitle {
-  return GetAlbumTitle(self.tracks);
+  @synchronized(tracks_) { 
+    NSString *artist = nil;
+    NSString *album = nil;
+    NSString *title = nil;
+    for (Track *t in tracks_) { 
+      if (!artist) {
+        artist = t.artist;
+      } else if (t.artist && ![t.artist isEqual:artist]) {
+        artist = @"Various Artists";
+      }
+      if (!album) {
+        album = t.album;
+      } else if (t.album && ![t.album isEqual:album]) {
+        album = @"Various Albums";
+      }
+      title = t.title;
+    }
+    if (album && artist) {
+      return [NSString stringWithFormat:@"%@ - %@", artist, album];
+    } else if (album) {
+      return album;
+    } else if (artist) {
+      return artist;
+    } else if (title) { 
+      return title;
+    } else { 
+      return [[[tracks_ anyObject] url] absoluteString];
+    }
+  }
 }
 
 - (NSString *)imageSubtitle { 
@@ -89,7 +93,7 @@ typedef void (^Action)(void);
 - (id)imageRepresentation {
   for (Track *t in self.tracks) {
     if (t.coverArtURL) {
-      return [[[NSImage alloc] initByReferencingURL:[NSURL URLWithString:t.coverArtURL]] autorelease];
+      return [[[NSImage alloc] initByReferencingURL:t.coverArtURL] autorelease];
     }
   }
   return blankImage;
@@ -132,7 +136,7 @@ typedef void (^Action)(void);
   if (self) {
     self.items = [[[SortedSeq alloc] init] autorelease];
     self.items.comparator = ^(id left, id right) { 
-      return NaturalComparison([left imageTitle], [right imageTitle]);
+      return DefaultComparison([left imageTitle], [right imageTitle]);
     };
     self.library = library;
     [[NSNotificationCenter defaultCenter]
@@ -159,7 +163,6 @@ typedef void (^Action)(void);
     self.scrollView.hasHorizontalScroller = YES;
     self.scrollView.hasVerticalScroller = YES;
     [self.view addSubview:self.scrollView];
-    [self.browserView bind:@"content" toObject:items_ withKeyPath:@"arrangedObjects" options:nil];
     self.titleToItem = [NSMutableDictionary dictionary];
     self.isBusy = true;
     ForkWith(^{ 
@@ -168,6 +171,9 @@ typedef void (^Action)(void);
         [seq addObject:t];
       }];
       [self addTracks:seq];
+      ForkToMainWith(^{
+        [self.browserView bind:@"content" toObject:items_ withKeyPath:@"arrangedObjects" options:nil];
+      });
       self.isBusy = false;
     });
   }
@@ -234,6 +240,7 @@ typedef void (^Action)(void);
       item = [titleToItem_ objectForKey:key];      
     }
     bool isNew = false;
+    NSString *oldTitle;
     if (!item) {
       isNew = true;
       item = [[[AlbumBrowserItem alloc] init] autorelease];
@@ -241,10 +248,18 @@ typedef void (^Action)(void);
       @synchronized(titleToItem_) {
         [titleToItem_ setObject:item forKey:key];
       }
-      [self.items add:item];
+      isNew = true;
+    } else { 
+      oldTitle = item.imageTitle;
     }
     @synchronized(item.tracks) {
       [item.tracks addObject:track];
+    }
+    if (isNew) { 
+      [self.items add:item];
+    } else if (![item.imageTitle isEqualToString:oldTitle]) {
+      [self.items remove:item];
+      [self.items add:item];
     }
   }
 }

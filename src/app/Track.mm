@@ -289,12 +289,15 @@ done:
 - (json_t *)getJSON {
   NSMutableDictionary *data = [NSMutableDictionary dictionaryWithDictionary:[self dictionaryWithValuesForKeys:allTrackKeys]];
   [data setObject:[[data objectForKey:kURL] absoluteString] forKey:kURL]; 
+  [data setObject:[[data objectForKey:kCoverArtURL] absoluteString] forKey:kCoverArtURL]; 
   return [data getJSON];
 }
 + (Track *)fromJSON:(NSDictionary *)json { 
   Track *t = [[[Track alloc] init] autorelease];
   t.album = [json valueForKey:kAlbum];
   t.artist = [json valueForKey:kArtist];
+  NSString *coverArt = [json valueForKey:kCoverArtURL];
+  t.coverArtURL = coverArt ? [NSURL URLWithString:coverArt] : nil;
   t.duration = [json valueForKey:kDuration];
   t.folder = [json valueForKey:kFolder];
   t.genre = [json valueForKey:kGenre];

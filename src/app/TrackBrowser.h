@@ -1,6 +1,5 @@
 #import <Cocoa/Cocoa.h>
 #import "app/Library.h"
-#import "app/ArrayController.h"
 #import "app/TableViewController.h"
 
 @interface TrackBrowser : TableViewController {

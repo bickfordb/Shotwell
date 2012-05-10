@@ -42,7 +42,6 @@
 }
 
 - (void)netServiceBrowser:(NSNetServiceBrowser *)netServiceBrowser didFindService:(NSNetService *)netService moreComing:(BOOL)moreServicesComing {
-  INFO(@"found service: %@", netService);
   [netService retain];
   [netService setDelegate:self];
   [netService resolveWithTimeout:10.0];

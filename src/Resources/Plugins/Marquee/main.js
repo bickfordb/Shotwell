@@ -27,15 +27,15 @@ function renderPlaying() {
     plugin.hide();
     return;
   }
-  $("div.artist").html(playing.artist());
-  $("div.album").html(playing.album());
-  $("div.title").html(playing.title());
-  $("div.year").html(playing.year());
-  $("div.genre").html(playing.genre());
-  $("div.url").html(playing.url().absoluteString());
+  $("div.artist").html(playing.artist() || "");
+  $("div.album").html(playing.album() || "");
+  $("div.title").html(playing.title() || "");
+  $("div.year").html(playing.year() || "");
+  $("div.genre").html(playing.genre() || "");
+  $("div.url").html(playing.url().absoluteString() || "");
   var url = playing.coverArtURL();
-  if (url && url.length > 0) {
-    $("img.cover-art").show().attr("src", playing.coverArtURL());
+  if (url) {
+    $("img.cover-art").show().attr("src", url.absoluteString());
     $("div.cover-art-container").show();
   } else {
     $("div.cover-art-container").hide();
@@ -73,8 +73,6 @@ function fillArtistInfo(artistID) {
     url: "http://musicbrainz.org/ws/2/artist/" + artistID,
     data: {inc: "url-rels"},
     success: function(doc) {
-      console.log("artist urls");
-      console.log(doc);
       if (!doc)
         return;
       var relations = doc.getElementsByTagName("relation");
@@ -116,7 +114,7 @@ function updateSize() {
   var h = window.innerHeight;
   var imgWidth = 0;
   var imgHeight = 0;
-  if (playing && playing.coverArtURL()) { 
+  if (playing && playing.coverArtURL().absoluteString()) { 
     imgWidth = Math.min(w, h);
     imgHeight = Math.min(w, h);
   }

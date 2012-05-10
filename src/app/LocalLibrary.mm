@@ -26,15 +26,16 @@ NSString * const kScanPathsChanged = @"ScanPathsChanged";
 static CFTimeInterval kMonitorLatency = 2.0;
 static NSString * const kITunesAffiliateURL = @"http://itunes.apple.com/search";
 static int64_t kPollCoverArtInterval = 1000000;
+static int kMaxConcurrentCoverArtQueries = 1;
+static int kCheckCoverArtDelay = 10 * 1000000;
 
 @interface LocalLibrary (P)  
 - (void)scanQueuedPaths;
 - (void)pruneQueued;
 - (void)monitorPaths;
-- (void)checkCoverArt;
 - (void)search:(NSString *)d entity:(NSString *)entity withResult:(void(^)(int status, NSArray *results))onResults;
 - (void)searchCoverArt:(NSString *)term withArtworkData:(void (^)(int status, NSData *d))block;
-- (void)queueCheckCoverArt:(int64_t)interval;
+- (void)popPendingCoverArt;
 @end
 
 @implementation TrackTable 
@@ -139,8 +140,8 @@ static void OnFileEvent(
     self.pendingCoverArtTracks = [NSMutableSet set];
     self.pathsToScan = [NSMutableSet set];
     self.pruneRequested = false;
-    self.pruneLoop = [[[Loop alloc] init] autorelease];
-    self.scanLoop = [[[Loop alloc] init] autorelease];
+    self.pruneLoop = [Loop loop];
+    self.scanLoop = [Loop loop];
     __block LocalLibrary *weakSelf = self;
     [pruneLoop_ onTimeout:1000000 with:^(Event *e, short flags) {
       LocalLibrary *self0 = (LocalLibrary *)weakSelf;
@@ -154,15 +155,10 @@ static void OnFileEvent(
       [weakSelf scanQueuedPaths];
       [e add:1000000];
     }];
-    [coverArtLoop_ onTimeout:1 with:^(Event *e, short flags) {
-      [weakSelf each:^(Track *t) {
-        if (!t.isCoverArtChecked.boolValue) {
-          @synchronized(weakSelf.pendingCoverArtTracks) { 
-            [weakSelf.pendingCoverArtTracks addObject:t.id];
-          }
-        }
-      }];
-      [weakSelf queueCheckCoverArt:1];
+   
+    numCoverArtQueries_ = 0; 
+    [coverArtLoop_ every:10000 with:^{
+      [weakSelf popPendingCoverArt];
     }];
 
     fsEventStreamRef_ = nil;
@@ -171,40 +167,55 @@ static void OnFileEvent(
   return self;
 }
 
-- (void)queueCheckCoverArt:(int64_t)interval {
+- (void)checkCoverArt {
   __block LocalLibrary *weakSelf = self;
-  [coverArtLoop_ onTimeout:interval with:^(Event *e, short flags) {
-    [weakSelf checkCoverArt];
+  [coverArtLoop_ onTimeout:kCheckCoverArtDelay with:^(Event *e, short flags) {
+    [weakSelf each:^(Track *t) {
+      if (!t.coverArtURL) 
+        return;
+      if (t.isCoverArtChecked.boolValue) 
+        return;  
+      @synchronized(weakSelf.pendingCoverArtTracks) {
+        [weakSelf.pendingCoverArtTracks addObject:t.id];
+      }
+    }];
   }];
 }
 
-- (void)checkCoverArt {
-  __block LocalLibrary *weakSelf = self;
-  Track *track = nil;
-  @synchronized(pendingCoverArtTracks_) {
+- (void)popPendingCoverArt {
+  if (numCoverArtQueries_ >= kMaxConcurrentCoverArtQueries)
+    return;
+  @synchronized(pendingCoverArtTracks_) { 
     NSNumber *trackID = pendingCoverArtTracks_.anyObject;
-    track = [self get:trackID];
+    Track *track = [self get:trackID];
     if (trackID) {
       [pendingCoverArtTracks_ removeObject:trackID];
     }
+    if (track) {
+      [self checkCoverArtForTrack:track];
+    }
   }
+}
+
+- (void)checkCoverArtForTrack:(Track *)track { 
+  __block LocalLibrary *weakSelf = self;
   NSString *artist = track.artist;
   NSString *album = track.album;
   if (!track || !artist || !artist.length || !album || !album.length
     || track.isCoverArtChecked) {
-    [self queueCheckCoverArt:1000]; 
     return;
   }
-
   NSString *term = [NSString stringWithFormat:@"%@ %@", artist, album];
+  numCoverArtQueries_++;
   [self search:term withArtworkData:^(int status, NSData *data) { 
+    numCoverArtQueries_--;
     NSMutableSet *tracksToUpdate = [NSMutableSet set];
-    NSString *url = nil;
+    NSURL *url = nil;
     if (data && data.length) {
       mkdir(weakSelf.coverArtPath.UTF8String, 0755);
       NSString *path = [weakSelf.coverArtPath stringByAppendingPathComponent:term.sha1];
       if ([data writeToFile:path atomically:YES]) {
-        url = [[NSURL fileURLWithPath:path] absoluteString];
+        url = [NSURL fileURLWithPath:path];
       }
     }
     // FIXME: this is could use an index.
@@ -216,7 +227,6 @@ static void OnFileEvent(
         [weakSelf save:t];
       }
     }];
-    [weakSelf queueCheckCoverArt:kPollCoverArtInterval];
   }];
 }
 
@@ -312,6 +322,9 @@ static void OnFileEvent(
         t.url = [NSURL fileURLWithPath:filename];
         t.folder = filename.stringByDeletingLastPathComponent.lastPathComponent;
         int st = [t readTag];
+        if (!t.title || !t.title.length) {
+          t.title = filename.lastPathComponent.stringByDeletingPathExtension;
+        }
         // Only index things with audio:
         // This will skip JPEG/photo files but allow almost other media files that LibAV can read through.
         if (t.isAudio.boolValue) {

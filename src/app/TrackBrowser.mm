@@ -8,7 +8,7 @@
 #import "app/TrackBrowser.h"
 
 static NSString * const kStatus = @"status";
-
+static NSString * const kOnSortDescriptorsChanged = @"OnSortDescriptorsChanged";
 
 @implementation TrackBrowser 
 @synthesize emptyImage = emptyImage_;
@@ -17,6 +17,36 @@ static NSString * const kStatus = @"status";
 @synthesize playingFont = playingFont_;
 @synthesize tracks = tracks_;
 @synthesize library = library_;
+
+NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
+  NSMutableArray *sds = [NSMutableArray array];
+  for (NSSortDescriptor *sd in sortDescriptors) {
+    [sds addObject:[sd copy]];
+  }
+  return Block_copy(^(id left, id right) {
+    NSComparisonResult ret = NSOrderedSame;
+    for (NSSortDescriptor *sd in sds) {
+      NSString *key = sd.key;
+      id valLeft = [left valueForKey:key];
+      id valRight = [right valueForKey:key];
+      if (valLeft && !valRight) 
+        ret = NSOrderedAscending;
+      else if (!valRight && !valLeft) 
+        ret = NSOrderedSame;
+      else if (!valLeft && valRight) 
+        ret = NSOrderedDescending;
+      else
+        ret = sd.comparator(valLeft, valRight);
+      if (!sd.ascending) 
+        ret *= -1;
+      if (ret != NSOrderedSame) {
+        break;
+      }
+    }
+    return ret;
+  });
+}
+
 
 - (void)delete:(id)sender { 
   [self cutSelectedTracks];
@@ -87,27 +117,23 @@ static NSString * const kStatus = @"status";
       }
       return true;
     };
+    [self.tableView 
+      addObserver:self 
+      forKeyPath:@"sortDescriptors"
+      options:(NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld)
+      context:kOnSortDescriptorsChanged];
+
     NSMenu *tableMenu = [[[NSMenu alloc] initWithTitle:@"Track Menu"] autorelease];
     NSMenuItem *copy = [tableMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
     NSMenuItem *cut = [tableMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"c"];
     NSMenuItem *delete_ = [tableMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:@""];
     self.tableView.menu = tableMenu;
   
-    /* 
-    [self.tracks 
-      bind:@"sortDescriptors" 
-      toObject:self.tableView
-      withKeyPath:@"sortDescriptors"
-      options:nil];
-    */
-
     NSTableColumn *statusColumn = [[[NSTableColumn alloc] initWithIdentifier:kStatus] autorelease];
-
     NSTableColumn *artistColumn = [[[NSTableColumn alloc] initWithIdentifier:kArtist] autorelease];
     [artistColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.artist" options:nil];
     artistColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:@"artist" ascending:YES comparator:NaturalComparison];
     NSTableColumn *albumColumn = [[[NSTableColumn alloc] initWithIdentifier:kAlbum] autorelease];
-    //albumColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:@"album" ascending:YES];
     [albumColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.album"
       options:nil];
     
@@ -231,6 +257,14 @@ static NSString * const kStatus = @"status";
   return self;
 }
 
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
+  if (context == kOnSortDescriptorsChanged) {
+    self.tracks.comparator = GetComparatorFromSortDescriptors(self.tableView.sortDescriptors); 
+  } else { 
+    [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+  }
+}
+
 - (void)onTrackChange:(NSNotification *)notification {
   NSString *change = [notification.userInfo valueForKey:@"change"];
   Track *t = [notification.userInfo valueForKey:@"track"];
@@ -248,6 +282,8 @@ static NSString * const kStatus = @"status";
 
 - (void)dealloc { 
   [self.tableView unbind:@"content"];
+  [self.tableView removeObserver:self forKeyPath:@"sortDescriptors" context:kOnSortDescriptorsChanged];
+
   [[NSNotificationCenter defaultCenter] removeObserver:self];
   [library_ release];
   [playingFont_ release];
