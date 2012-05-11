@@ -14,7 +14,6 @@ static NSString * const kPlayButton = @"PlayButton";
 static NSString * const kPreviousButton = @"PreviousButton";
 static NSString * const kProgressControl = @"ProgressControl";
 static NSString * const kGroupControl = @"GroupControl";
-static NSSize kStartupSize = {1300, 650};
 static CGRect kStartupFrame = {{50, 50}, {1300, 650}};
 static int64_t kPollMovieInterval = 100000;
 static int64_t kPollProgressInterval = 500000;
@@ -241,7 +240,6 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)setupWindow {
-  __block MainWindowController *weakSelf = self; 
   [self.window setFrame:kStartupFrame display:YES];
   [self.window display];
   [self.window makeKeyAndOrderFront:self];
@@ -285,7 +283,6 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)setupStatusBarText { 
-  CGRect frame;
   int windowWidth = ((NSView *)[self.window contentView]).bounds.size.width;
   int w = 300;
   int x = (windowWidth / 2.0) - (300.0 / 2.0) + 5.0;
@@ -353,7 +350,6 @@ static NSString *GetWindowTitle(Track *t) {
 - (NSToolbarItem *)toolbar:(NSToolbar *)toolbar itemForItemIdentifier:(NSString *)itemIdentifier willBeInsertedIntoToolbar:(BOOL)flag {
   NSToolbarItem *item = [[[NSToolbarItem alloc] initWithItemIdentifier:itemIdentifier] autorelease];
   NSView *view = nil;
-  __block MainWindowController *weakSelf = self;
   if (itemIdentifier == kPlayButton) { 
       self.playButton = [[[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)] autorelease];
       view = playButton_;
@@ -423,7 +419,6 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (NSArray *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar { 
-  NSArray *ret = [NSArray array];
   return [NSArray arrayWithObjects:kPreviousButton, kPlayButton, kNextButton,
          kVolumeControl, kProgressControl, kGroupControl, kSearchControl, nil];
 }

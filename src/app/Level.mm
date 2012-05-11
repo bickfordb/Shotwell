@@ -23,6 +23,23 @@ using namespace std;
   [super dealloc];
 }
 
+
+- (void)setData:(NSData *)data forKey:(NSData *)key {
+  leveldb::Slice key0((const char *)key.bytes, key.length);
+  leveldb::Slice data0((const char *)data.bytes, data.length);
+  db_->Put(leveldb::WriteOptions(), key0, data0);
+}
+
+- (NSData *)getDataForKey:(NSData *)key {
+  leveldb::Slice key0((const char *)key.bytes, key.length);
+  std::string val;
+  NSData *ret = nil;
+  leveldb::Status st = db_->Get(leveldb::ReadOptions(), key0, &val);
+  if (st.ok() && !st.IsNotFound())  {
+    ret = [NSData dataWithBytes:val.c_str() length:val.length()];
+  }
+  return ret;
+}
 @end
 
 @implementation LevelTable 
@@ -159,7 +176,6 @@ using namespace std;
   leveldb::Slice prefix([self keyPrefix]);
   leveldb::Iterator *i = level_.db->NewIterator(leveldb::ReadOptions());
   i->Seek(prefix);
-  int ret = 0;
   while (i->Valid() && i->key().starts_with(prefix)) {
     level_.db->Delete(leveldb::WriteOptions(), i->key());
     i->Next();

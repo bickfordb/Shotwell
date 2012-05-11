@@ -22,5 +22,13 @@ NSString * const kLibraryTrackChanged = @"LibraryTrackChanged";
       t, @"track",
       change, @"change", nil]];
 }
+
+- (NSURL *)coverArtURLForTrack:(Track *)t {
+  return nil;
+}
+
+- (NSURL *)urlForTrack:(Track *)t {
+  return nil;
+}
 @end
 

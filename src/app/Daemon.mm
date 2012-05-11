@@ -112,7 +112,7 @@ static void OnRequest(evhttp_request *r, void *ctx) {
     return false;
   [r addResponseHeader:@"Content-Type" value:@"application/json"];
   NSMutableArray *tracks = [NSMutableArray array];
-  NSArray *keys = [NSArray arrayWithObjects:kArtist, kID, kAlbum, kGenre, kFolder, kPublisher, kCreatedAt, kTitle, kDuration, kTrackNumber, kYear, nil];
+  NSArray *keys = [NSArray arrayWithObjects:kArtist, kID, kAlbum, kCreatedAt, kUpdatedAt, kCoverArtID, kGenre, kLastPlayedAt, kPath, kPublisher, kCreatedAt, kTitle, kDuration, kTrackNumber, kYear, nil];
 
   [library_ each:^(Track *t) { 
     NSMutableDictionary *d = [NSMutableDictionary dictionary]; 
@@ -129,8 +129,32 @@ static void OnRequest(evhttp_request *r, void *ctx) {
   return true;
 }
 
-- (bool)handleTrackRequest:(Request *)request { 
+- (bool)handleArtworkRequest:(Request *)request { 
+  NSScanner *scanner = [NSScanner scannerWithString:request.path];
+  NSString *s = nil;
+  if (![scanner scanString:@"/art/" intoString:&s]) {
+    return false;  
+  }
+  NSString *coverArtID = nil;
+  [scanner scanUpToCharactersFromSet:[NSCharacterSet characterSetWithCharactersInString:@"/"] intoString:&coverArtID];
+  if (!coverArtID || !coverArtID.length) 
+    return false;
+  NSData *data = [library_ getCoverArt:coverArtID];
+  struct evbuffer *buf = NULL;
+  if (data) {
+    [request addResponseHeader:@"Content-Type" value:@"application/octet-stream"];
+    buf = evbuffer_new();
+    evbuffer_add(buf, data.bytes, data.length);
+  }
+  [request 
+    respondWithStatus:data ? 200 : 404 
+    message:data ? @"OK" : @"Not Found" 
+    buffer:buf];
+  return true;
+}
 
+
+- (bool)handleTrackRequest:(Request *)request { 
   NSScanner *scanner = [NSScanner scannerWithString:request.path];
   NSString *s = nil;
   if (![scanner scanString:@"/tracks/" intoString:&s]) {
@@ -207,6 +231,8 @@ static void OnRequest(evhttp_request *r, void *ctx) {
   if ([self handleHomeRequest:request])
     return;
   else if ([self handleLibraryRequest:request]) 
+    return;
+  else if ([self handleArtworkRequest:request])
     return;
   else if ([self handleTrackRequest:request])
     return;

@@ -25,7 +25,6 @@ static NSString * const kIsITunesImported = @"IsITunesImported";
 NSString * const kScanPathsChanged = @"ScanPathsChanged";
 static CFTimeInterval kMonitorLatency = 2.0;
 static NSString * const kITunesAffiliateURL = @"http://itunes.apple.com/search";
-static int64_t kPollCoverArtInterval = 1000000;
 static int kMaxConcurrentCoverArtQueries = 1;
 static int kCheckCoverArtDelay = 10 * 1000000;
 
@@ -90,7 +89,7 @@ static void OnFileEvent(
 @synthesize scanLoop = scanLoop_;
 @synthesize pathsToAutomaticallyScan = pathsToAutomaticallyScan_;
 @synthesize pendingCoverArtTracks = pendingCoverArtTracks_;
-@synthesize coverArtPath = coverArtPath_;
+@synthesize coverArtDB = coverArtDB_;
 
 - (void)search:(NSString *)term withArtworkData:(void (^)(int code, NSData *d))block {
   __block LocalLibrary *weakSelf = self;
@@ -133,10 +132,11 @@ static void OnFileEvent(
   self = [super init];
   if (self) {
     self.coverArtLoop = [Loop loop];
-    self.coverArtPath = coverArtPath;
+    //self.coverArtPath = coverArtPath;
     Level *level = [[[Level alloc] initWithPath:dbPath] autorelease]; 
     urlTable_ = [[URLTable alloc] initWithLevel:level];
     trackTable_ = [[TrackTable alloc] initWithLevel:level];
+    self.coverArtDB = [[[Level alloc] initWithPath:coverArtPath] autorelease];
     self.pendingCoverArtTracks = [NSMutableSet set];
     self.pathsToScan = [NSMutableSet set];
     self.pruneRequested = false;
@@ -202,32 +202,46 @@ static void OnFileEvent(
   NSString *artist = track.artist;
   NSString *album = track.album;
   if (!track || !artist || !artist.length || !album || !album.length
-    || track.isCoverArtChecked) {
+    || track.isCoverArtChecked.boolValue) {
     return;
   }
   NSString *term = [NSString stringWithFormat:@"%@ %@", artist, album];
+  NSString *coverArtID = term.sha1;
+  if ([self hasCoverArt:coverArtID]) {
+    track.coverArtID = coverArtID;
+    track.isCoverArtChecked = [NSNumber numberWithBool:YES];
+    [self save:track];
+    return;
+  }
   numCoverArtQueries_++;
   [self search:term withArtworkData:^(int status, NSData *data) { 
     numCoverArtQueries_--;
-    NSMutableSet *tracksToUpdate = [NSMutableSet set];
-    NSURL *url = nil;
-    if (data && data.length) {
-      mkdir(weakSelf.coverArtPath.UTF8String, 0755);
-      NSString *path = [weakSelf.coverArtPath stringByAppendingPathComponent:term.sha1];
-      if ([data writeToFile:path atomically:YES]) {
-        url = [NSURL fileURLWithPath:path];
-      }
+    if (data) {
+      [self saveCoverArt:coverArtID data:data];
     }
-    // FIXME: this is could use an index.
-    [weakSelf each:^(Track *t) {
-      if ([t.artist isEqualToString:artist] && [t.album isEqualToString:album]) {
-        if (url)
-          t.coverArtURL = url;
-        t.isCoverArtChecked = [NSNumber numberWithBool:YES];
-        [weakSelf save:t];
-      }
-    }];
+    Track *t = [weakSelf get:track.id];
+    if (data) {
+      t.coverArtID = coverArtID;
+    }
+    t.isCoverArtChecked = [NSNumber numberWithBool:YES];
+    [self save:t];
   }];
+}
+
+- (bool)hasCoverArt:(NSString *)coverArtID {
+  return [self getCoverArt:coverArtID] != nil;
+}
+
+- (void)saveCoverArt:(NSString *)coverArtID data:(NSData *)data {
+  const char *s = coverArtID.UTF8String;
+  NSData *coverArtID0 = [NSData dataWithBytes:s length:strlen(s)];
+  return [coverArtDB_ setData:data forKey:coverArtID0];
+}
+
+- (NSData *)getCoverArt:(NSString *)coverArtID {
+  const char *s = coverArtID.UTF8String;
+  NSData *coverArtID0 = [NSData dataWithBytes:s length:strlen(s)];
+  return [coverArtDB_ getDataForKey:coverArtID0];
 }
 
 - (void)monitorPaths {
@@ -269,7 +283,7 @@ static void OnFileEvent(
   }
 
   [pendingCoverArtTracks_ release];
-  [coverArtPath_ release];
+  [coverArtDB_ release];
   [pathsToScan_ release];
   [trackTable_ release];
   [urlTable_ release];
@@ -319,9 +333,9 @@ static void OnFileEvent(
       NSNumber *trackID = [urlTable_ get:url.absoluteString];
       if (!trackID) {
         Track *t = [[[Track alloc] init] autorelease];
-        t.url = [NSURL fileURLWithPath:filename];
-        t.folder = filename.stringByDeletingLastPathComponent.lastPathComponent;
-        int st = [t readTag];
+        t.path = filename;
+        t.library = self;
+        [t readTag];
         if (!t.title || !t.title.length) {
           t.title = filename.lastPathComponent.stringByDeletingPathExtension;
         }
@@ -357,6 +371,7 @@ static void OnFileEvent(
 - (void)pruneQueued {
   [trackTable_ each:^(id key, id val) {
     Track *track = (Track *)val;    
+    track.library = self;
     struct stat fsStatus;
     if (stat(track.url.path.UTF8String, &fsStatus) < 0 && errno == ENOENT) {
       [self delete:track];
@@ -386,7 +401,9 @@ static void OnFileEvent(
 
 
 - (Track *)get:(NSNumber *)trackID {
-  return [trackTable_ get:trackID]; 
+  Track *t = [trackTable_ get:trackID]; 
+  t.library = self;
+  return t;
 }
 
 - (void)clear {
@@ -409,7 +426,9 @@ static void OnFileEvent(
 
 - (void)each:(void (^)(Track *track))block {
   [trackTable_ each:^(id key, id val) {
-    block((Track *)val);
+    Track *t = (Track *)val;
+    t.library = self;
+    block(t);
   }];
 }
 
@@ -481,5 +500,14 @@ static void OnFileEvent(
   [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
+- (NSURL *)coverArtURLForTrack:(Track *)t {
+  NSString *c = t.coverArtID;
+  return c ? [NSURL URLWithString:[NSString stringWithFormat:@"http://127.0.0.1:6226/art/%@", c]] : nil;
+}
+
+- (NSURL *)urlForTrack:(Track *)t {
+  NSString *path = t.path;
+  return path ? [NSURL fileURLWithPath:path] : nil;
+}
 @end
 

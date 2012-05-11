@@ -61,13 +61,11 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
 
   evbuffer_remove(in, pcm, pcm_len);
   int bsize = pcm_len / 4;
-  size_t max_len = pcm_len + 64;
   uint8_t alac[pcm_len];
 
   int count = 0;
   int bpos = 0;
   uint8_t *bp = alac;
-  int nodata = 0;
   BitsWrite(&bp, 1, 3, &bpos); // channel=1, stereo
   BitsWrite(&bp, 0, 4, &bpos); // unknown
   BitsWrite(&bp, 0, 8, &bpos); // unknown
@@ -302,7 +300,7 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
   evbuffer_remove(in, alac, alac_len);
   size_t packet_len = alac_len + header_size;
   uint8_t packet[packet_len];
-  uint16_t len = alac_len + header_size - 4;
+  //uint16_t len = alac_len + header_size - 4;
   //header[2] = len >> 8;
   //header[3] = len & 0xff;
   memcpy(packet, header, header_size);

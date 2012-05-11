@@ -1,7 +1,7 @@
 #import "app/AutomaticPathsEditor.h"
 
 static const int kSpace = 5;
-static NSString * const kPath = @"path";
+static NSString * const kAutomaticPath = @"path";
 
 @implementation AutomaticPathsEditor
 @synthesize table = table_;
@@ -32,7 +32,7 @@ static NSString * const kPath = @"path";
     CGRect tableRect = CGRectMake(10, buttonSize.height + removeRect.origin.y + 5, tableSize.width, tableSize.height);
     CGRect labelRect = CGRectMake(10, tableRect.origin.y + tableRect.size.height, labelSize.width, labelSize.height);
     CGRect contentRect = CGRectMake(0, 0, contentSize.width, contentSize.height);
-    NSTableColumn *pathColumn = [[[NSTableColumn alloc] initWithIdentifier:kPath] autorelease];
+    NSTableColumn *pathColumn = [[[NSTableColumn alloc] initWithIdentifier:kAutomaticPath] autorelease];
     [pathColumn setWidth:480];
     [[pathColumn headerCell] setStringValue:@"Path"];
     [[pathColumn dataCell] setFont:[NSFont systemFontOfSize:11.0]];

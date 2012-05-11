@@ -79,9 +79,6 @@ static int64_t kReloadInterval = 500000;
     onDoubleAction_(tableView_.clickedRow);
   }
 }
-- (NSComparator)comparatorForKey:(NSString *)key {
-  return DefaultComparison;
-}
 
 - (NSTableColumn *)appendColumn:(NSString *)name key:(NSString *)key {
   return nil;
@@ -97,62 +94,6 @@ static int64_t kReloadInterval = 500000;
   [super dealloc];
 }
 
-//- (void)tableView:(NSTableView *)tableView didClickTableColumn:(NSTableColumn *)tableColumn {
-//  NSString *ident = tableColumn.identifier;
-//  @synchronized(sortFields_) { 
-//    int found = -1;
-//    int idx = 0;
-//    for (SortField *f in sortFields_) {
-//      if ([f.key isEqualToString:ident]) {
-//        found = idx; 
-//        break;
-//      }
-//      idx++;
-//    }
-//    if (found < 0) {
-//      SortField *s = [[[SortField alloc] 
-//        initWithKey:ident
-//        direction:Ascending
-//        comparator:[self comparatorForKey:ident]] autorelease];
-//      [sortFields_ insertObject:s atIndex:0];
-//    } else if (found > 0) {
-//      // Pop the field off a non-zero index, set the direction to ascending
-//      SortField *s = [[[SortField alloc] 
-//        initWithKey:ident
-//        direction:Ascending
-//        comparator:[self comparatorForKey:ident]] autorelease];
-//      [sortFields_ removeObjectAtIndex:found];
-//      [sortFields_ insertObject:s atIndex:0];
-//    } else { 
-//      SortField *s = [sortFields_ objectAtIndex:0];
-//      // Flip the direction
-//      s.direction = s.direction == Ascending ? Descending : Ascending;
-//    }
-//  }
-//  [self updateTableColumnHeaders];
-//  ForkWith(^{
-//    if (onSortComparatorChanged_) {
-//      onSortComparatorChanged_();
-//    }
-//  });
-//}
-//
-
-
-//- (void)updateTableColumnHeaders {
-//  ForkToMainWith(^{
-//    for (NSTableColumn *c in tableView_.tableColumns) { 
-//      [tableView_ setIndicatorImage:nil inTableColumn:c];
-//    }
-//    for (SortField *f in sortFields_) {
-//      Direction d = f.direction;
-//      NSImage *img = [NSImage imageNamed:d == Ascending ? @"NSAscendingSortIndicator" : @"NSDescendingSortIndicator"];
-//      [tableView_ setIndicatorImage:img inTableColumn:[tableView_ tableColumnWithIdentifier:f.key]];
-//      break;
-//    }
-//  });
-//}
-//
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView { 
   return self.onRowCount ? self.onRowCount() : 0;
 }
@@ -170,8 +111,5 @@ static int64_t kReloadInterval = 500000;
     [self.tableView scrollRowToVisible:row];
   });
 }
-//
-//- (NSComparator)sortComparator {
-//  return GetSortComparatorFromSortFields(self.sortFields);
-//}
+
 @end

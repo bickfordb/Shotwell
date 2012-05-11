@@ -8,9 +8,9 @@
 
 @property (nonatomic) leveldb::DB *db;
 - (id)initWithPath:(NSString *)path;
-
+- (void)setData:(NSData *)data forKey:(NSData *)key;
+- (NSData *)getDataForKey:(NSData *)key;
 @end
-
 
 @interface LevelTable : NSObject { 
   Level *level_;

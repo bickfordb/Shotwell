@@ -13,6 +13,7 @@
 #import "app/JSON.h"
 #include <objc/runtime.h>
 
+#import "app/Library.h"
 #import "app/Track.h"
 #import "app/Log.h"
 
@@ -49,15 +50,15 @@ static NSString *ToUTF8(const char *src) {
 NSString * const kAlbum = @"album";
 NSString * const kArtist = @"artist";
 NSString * const kCreatedAt = @"createdAt";
-NSString * const kCoverArtURL = @"coverArtURL";
+NSString * const kCoverArtID = @"coverArtID";
 NSString * const kDuration = @"duration";
-NSString * const kFolder = @"folder";
 NSString * const kIsCoverArtChecked = @"isCoverArtChecked";
 NSString * const kGenre = @"genre";
 NSString * const kID = @"id";
 NSString * const kIsAudio = @"isAudio";
 NSString * const kIsVideo = @"isVideo";
 NSString * const kLastPlayedAt = @"lastPlayedAt";
+NSString * const kPath = @"path";
 NSString * const kPublisher = @"publisher";
 NSString * const kTitle = @"title";
 NSString * const kTrackNumber = @"trackNumber";
@@ -73,40 +74,48 @@ static NSArray *ignoreExtensions = nil;
 @implementation Track
 @synthesize album = album_;
 @synthesize artist = artist_;
-@synthesize coverArtURL = coverArtURL_;
+@synthesize coverArtID = coverArtID_;
 @synthesize createdAt = createdAt_;
 @synthesize duration = duration_;
-@synthesize folder = folder_;
+@synthesize library = library_;
 @synthesize isCoverArtChecked = isCoverArtChecked_;
 @synthesize genre = genre_;
 @synthesize isAudio = isAudio_;
 @synthesize isVideo = isVideo_;
 @synthesize lastPlayedAt = lastPlayedAt_;
+@synthesize path = path_;
 @synthesize title = title_;
 @synthesize publisher = publisher_;
 @synthesize trackNumber = trackNumber_;
 @synthesize updatedAt = updatedAt_;
-@synthesize url = url_;
 @synthesize year = year_;
+
+- (NSURL *)url { 
+  return [library_ urlForTrack:self];  
+}
+
+- (NSURL *)coverArtURL {
+  return [library_ coverArtURLForTrack:self];
+}
 
 - (void)dealloc { 
   [album_ release];
   [artist_ release];
-  [coverArtURL_ release];
+  [coverArtID_ release];
   [createdAt_ release];
   [duration_ release];
-  [folder_ release];
   [genre_ release];
   [isCoverArtChecked_ release];
   [id_ release];
   [isAudio_ release];
   [isVideo_ release];
   [lastPlayedAt_ release];
+  [library_ release];
+  [path_ release];
   [publisher_ release];
   [title_ release];
   [trackNumber_ release];
   [updatedAt_ release];
-  [url_ release];
   [year_ release];
   [super dealloc];
 }
@@ -129,20 +138,19 @@ static NSArray *ignoreExtensions = nil;
   allTrackKeys = [[NSArray arrayWithObjects:
     kAlbum,
     kArtist,
-    kCoverArtURL,
+    kCoverArtID,
     kCreatedAt,
     kDuration,
-    kFolder,
     kGenre,
     kID, 
     kIsAudio,
     kIsCoverArtChecked,
     kIsVideo,
     kLastPlayedAt,
+    kPath,
     kPublisher,
     kTitle,
     kTrackNumber,
-    kURL,
     kUpdatedAt,
     kYear, 
     nil] retain];
@@ -206,28 +214,25 @@ static NSArray *ignoreExtensions = nil;
   int ret = 0;
   AVFormatContext *c = NULL;
   struct stat st;
-  AVDictionary *d = NULL;
   AVDictionaryEntry *tag = NULL;
   int audioStreamIndex = -1;
-  int format_ret = -1;
   NSString *s;
 
-  NSString *path0 = url_.path.lowercaseString;
-  if (!url_ || !url_.isFileURL || !url_.path.length)
+  if (!path_ || !path_.length)
     return -1;
 
   for (NSString *ext in ignoreExtensions) {
-    if ([path0 hasSuffix:ext]) {
+    if ([path_ hasSuffix:ext]) {
       return -1;
     }
   }
 
   memset(&st, 0, sizeof(st));
-  if (stat(url_.path.UTF8String, &st) < 0) {
+  if (stat(self.url.path.UTF8String, &st) < 0) {
     ret = -2;
     goto done;
   }
-  s = url_.isFileURL ? url_.path: url_.absoluteString; 
+  s = self.url.isFileURL ? self.path : self.url.absoluteString; 
   if (avformat_open_input(&c, s.UTF8String, NULL, NULL) < 0) {
     ret = -3;
     goto done;
@@ -289,6 +294,8 @@ done:
 - (json_t *)getJSON {
   NSMutableDictionary *data = [NSMutableDictionary dictionary];
   for (NSString *key in allTrackKeys) {
+    if (key == kURL)
+      continue;
     id val = [self valueForKey:key];
     if (!val)
       continue;
@@ -300,23 +307,20 @@ done:
   Track *t = [[[Track alloc] init] autorelease];
   t.album = [json valueForKey:kAlbum];
   t.artist = [json valueForKey:kArtist];
-  NSString *coverArt = [json valueForKey:kCoverArtURL];
-  t.coverArtURL = coverArt ? [NSURL URLWithString:coverArt] : nil;
+  t.coverArtID = [json valueForKey:kCoverArtID];
   t.duration = [json valueForKey:kDuration];
-  t.folder = [json valueForKey:kFolder];
   t.genre = [json valueForKey:kGenre];
   t.id = [json valueForKey:kID];
   t.isAudio = [json valueForKey:kIsAudio];
   t.isCoverArtChecked = [json valueForKey:kIsCoverArtChecked];
   t.isVideo = [json valueForKey:kIsVideo];
   t.lastPlayedAt = [json valueForKey:kLastPlayedAt];
+  t.path = [json valueForKey:kPath];
   t.publisher = [json valueForKey:kPublisher];
   t.title = [json valueForKey:kTitle];
   t.trackNumber = [json valueForKey:kTrackNumber];
   t.updatedAt = [json valueForKey:kUpdatedAt];
   t.year = [json valueForKey:kYear];
-  NSString *url = [json valueForKey:kURL];
-  t.url = url ? [NSURL URLWithString:url] : nil;
   return t;
 }
 

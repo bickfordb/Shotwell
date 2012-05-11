@@ -39,7 +39,6 @@ void RSAEncrypt(
   rsa->n = BN_bin2bn(modules, size, NULL);
   size = base64_decode(kPublicExponent, exponent);
   rsa->e = BN_bin2bn(exponent, size, NULL);
-  unsigned char res[RSA_size(rsa)];
   *out_len = RSA_size(rsa);
   *out = (uint8_t *)malloc(*out_len);
   size = RSA_public_encrypt(text_len, text, *out, rsa, RSA_PKCS1_OAEP_PADDING);

@@ -130,8 +130,8 @@ static NSString *CoverArtPath() {
   [playItem setKeyEquivalentModifierMask:0];
   NSString *leftArrow = [NSString stringWithFormat:@"%C", 0xF702];
   NSString *rightArrow = [NSString stringWithFormat:@"%C", 0xF703];
-  NSMenuItem *previousItem = [playbackMenu addItemWithTitle:@"Previous" action:@selector(previousClicked:) keyEquivalent:leftArrow];
-  NSMenuItem *nextItem = [playbackMenu addItemWithTitle:@"Next" action:@selector(nextClicked:) keyEquivalent:rightArrow];
+  [playbackMenu addItemWithTitle:@"Previous" action:@selector(previousClicked:) keyEquivalent:leftArrow];
+  [playbackMenu addItemWithTitle:@"Next" action:@selector(nextClicked:) keyEquivalent:rightArrow];
 }
 
 - (void)addToLibrary:(id)sender { 

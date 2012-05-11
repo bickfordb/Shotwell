@@ -21,7 +21,7 @@ PROG = $(APP_DIR)/Contents/MacOS/$(APPNAME)
 CXX = clang
 VENDOR = $(VENDOR_BUILD)/stamp/vendor
 CXXFLAGS += -iquote src
-CXXFLAGS += -Werror
+CXXFLAGS += -Werror -Wall
 CXXFLAGS += -ferror-limit=2
 CXXFLAGS += -I$(VENDOR_BUILD)/vendor/include
 CXXFLAGS += -ggdb 

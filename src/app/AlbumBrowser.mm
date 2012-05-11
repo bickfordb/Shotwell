@@ -4,12 +4,11 @@
 #import "app/Log.h"
 #import "app/Pthread.h"
 #import "app/Search.h"
+#import "app/Sort.h"
 #import "app/Track.h"
 
 static NSString * const kTotal = @"total";
 static NSImage *blankImage = nil; 
-static int64_t kReloadInterval = 5 * 1000000;
-
 
 typedef void (^Action)(void);
 
@@ -92,8 +91,8 @@ typedef void (^Action)(void);
 
 - (id)imageRepresentation {
   for (Track *t in self.tracks) {
-    if (t.coverArtURL) {
-      return [[[NSImage alloc] initByReferencingURL:t.coverArtURL] autorelease];
+    if (t.coverArtID) {
+      return [[[NSImage alloc] initWithContentsOfURL:t.coverArtURL] autorelease];
     }
   }
   return blankImage;
@@ -136,7 +135,7 @@ typedef void (^Action)(void);
   if (self) {
     self.items = [[[SortedSeq alloc] init] autorelease];
     self.items.comparator = ^(id left, id right) { 
-      return DefaultComparison([left imageTitle], [right imageTitle]);
+      return NaturalComparison([left imageTitle], [right imageTitle]);
     };
     self.library = library;
     [[NSNotificationCenter defaultCenter]
@@ -182,7 +181,7 @@ typedef void (^Action)(void);
 
 - (void)removeTrack:(Track *)t {
   AlbumBrowserItem *item = nil;
-  NSString *key = t.folder;
+  NSString *key = t.path.stringByDeletingLastPathComponent;
   if (!key) {
     return;
   }
@@ -197,14 +196,13 @@ typedef void (^Action)(void);
   }
   if (item.tracks.count == 0) {
     @synchronized(titleToItem_) {
-      [titleToItem_ setObject:nil forKey:key];
+      [titleToItem_ removeObjectForKey:key];
     }
     ForkToMainWith(^{
       [items_ removeObject:item];
     });
   }
 }
-
 
 - (void)imageBrowser:(IKImageBrowserView *)aBrowser cellWasDoubleClickedAtIndex:(NSUInteger)index {
   NSArray *items = self.items.array;
@@ -231,7 +229,7 @@ typedef void (^Action)(void);
 - (void)addTracks:(NSArray *)tracks { 
   for (Track *track in tracks) {
     AlbumBrowserItem *item = nil;
-    NSString *key = track.folder;
+    NSString *key = track.path.stringByDeletingLastPathComponent;
     if (!key) {
       continue;
     }

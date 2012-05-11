@@ -3,10 +3,9 @@
 /* Track keys */
 extern NSString * const kAlbum;
 extern NSString * const kArtist;
-extern NSString * const kCoverArtURL;
+extern NSString * const kCoverArtID;
 extern NSString * const kCreatedAt;
 extern NSString * const kDuration;
-extern NSString * const kFolder;
 extern NSString * const kGenre;
 extern NSString * const kID;
 extern NSString * const kIsAudio;
@@ -16,10 +15,12 @@ extern NSString * const kPublisher;
 extern NSString * const kTitle;
 extern NSString * const kTrackNumber;
 extern NSString * const kURL;
+extern NSString * const kPath;
 extern NSString * const kUpdatedAt;
 extern NSString * const kYear;
 extern NSArray *allTrackKeys;
 
+@class Library;
 @interface Track : NSObject {
   NSNumber *createdAt_;
   NSNumber *duration_;
@@ -30,13 +31,13 @@ extern NSArray *allTrackKeys;
   NSNumber *updatedAt_;
   NSString *album_;
   NSString *artist_;
-  NSURL *coverArtURL_;
-  NSString *folder_;
+  NSString *coverArtID_;
+  Library *library_;
   NSString *genre_;
+  NSString *path_;
   NSString *publisher_;
   NSString *title_;
   NSString *trackNumber_;
-  NSURL *url_;
   NSString *year_;
   NSNumber *isCoverArtChecked_;
   long long int idCache_;
@@ -46,25 +47,26 @@ extern NSArray *allTrackKeys;
 
 /* Read the ID3 tag stored at URL */
 - (int)readTag;
-
-@property (retain) NSString *album;
-@property (retain) NSString *folder;
-@property (retain) NSString *artist;
-@property (retain) NSURL *coverArtURL;
-@property (retain) NSString *genre;
-@property (retain) NSString *title;
-@property (retain) NSString *publisher;
-@property (retain) NSString *trackNumber;
-@property (retain) NSURL *url;
-@property (retain) NSString *year;
-@property (retain) NSNumber *isVideo;
-@property (retain) NSNumber *isCoverArtChecked;
-@property (retain) NSNumber *isAudio;
+@property (readonly) NSURL *coverArtURL;
+@property (readonly) NSURL *url;
+@property (retain) Library *library;
 @property (retain) NSNumber *createdAt;
 @property (retain) NSNumber *duration;
 @property (retain) NSNumber *id;
+@property (retain) NSNumber *isAudio;
+@property (retain) NSNumber *isCoverArtChecked;
+@property (retain) NSNumber *isVideo;
 @property (retain) NSNumber *lastPlayedAt;
 @property (retain) NSNumber *updatedAt;
+@property (retain) NSString *album;
+@property (retain) NSString *artist;
+@property (retain) NSString *coverArtID;
+@property (retain) NSString *genre;
+@property (retain) NSString *path;
+@property (retain) NSString *publisher;
+@property (retain) NSString *title;
+@property (retain) NSString *trackNumber;
+@property (retain) NSString *year;
 
 + (Track *)fromJSON:(NSDictionary *)json;
 

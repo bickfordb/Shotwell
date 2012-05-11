@@ -3,7 +3,7 @@
 #import "app/NSNumberTimeFormat.h"
 #import "app/Pthread.h"
 #import "app/Search.h"
-#import "app/SortField.h"
+#import "app/Sort.h"
 #import "app/Track.h"
 #import "app/TrackBrowser.h"
 
@@ -125,9 +125,9 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
       context:kOnSortDescriptorsChanged];
 
     NSMenu *tableMenu = [[[NSMenu alloc] initWithTitle:@"Track Menu"] autorelease];
-    NSMenuItem *copy = [tableMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
-    NSMenuItem *cut = [tableMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"c"];
-    NSMenuItem *delete_ = [tableMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:@""];
+    [tableMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
+    [tableMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"c"];
+    [tableMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:@""];
     self.tableView.menu = tableMenu;
   
     NSTableColumn *statusColumn = [[[NSTableColumn alloc] initWithIdentifier:kStatus] autorelease];
@@ -241,7 +241,6 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
       return (int)[weakSelf.tracks count];
     };
     ForkWith(^{
-      NSMutableSet *a = [NSMutableSet set];
       [self.library each:^(Track *t) {
         [tracks_ addObject:t];
       }];

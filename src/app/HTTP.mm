@@ -60,7 +60,7 @@ NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv) {
       resp.status = evhttp_request_get_response_code(req);
       resp.headers = FromEvKeyValQ(evhttp_request_get_input_headers(req));
       const char *buf = (const char *)evbuffer_pullup(evhttp_request_get_input_buffer(req), -1);
-      ssize_t buf_len =  evbuffer_get_length(evhttp_request_get_input_buffer(req));
+      evbuffer_get_length(evhttp_request_get_input_buffer(req));
       resp.body = [NSData dataWithBytes:buf length:evbuffer_get_length(evhttp_request_get_input_buffer(req))];
     } else { 
       resp.status = 0;
@@ -74,8 +74,6 @@ NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv) {
   struct evhttp_request *req = evhttp_request_new(OnRequestComplete, onReqContext);
   [request.headers setValue:@"close" forKey:@"Connection"];
   [request.headers enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
-    NSString *key0 = (NSString *)key;
-    NSString *value0 = (NSString *)obj;
     evhttp_add_header(
         evhttp_request_get_output_headers(req),
         ((NSString *)key).UTF8String,

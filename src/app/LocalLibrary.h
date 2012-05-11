@@ -28,7 +28,7 @@ extern NSString * const kScanPathsChanged;
   NSMutableSet *pathsToScan_;
   FSEventStreamRef fsEventStreamRef_;
   NSMutableSet *pendingCoverArtTracks_;
-  NSString *coverArtPath_;
+  Level *coverArtDB_;
 }
 
 @property (retain) TrackTable *trackTable;
@@ -36,10 +36,10 @@ extern NSString * const kScanPathsChanged;
 @property (retain) Loop *pruneLoop;
 @property (retain) Loop *scanLoop;
 @property (retain) Loop *coverArtLoop;
+@property (retain) Level *coverArtDB;
 @property bool pruneRequested;
 @property (retain) NSMutableSet *pathsToScan;
 @property (retain) NSMutableSet *pendingCoverArtTracks;
-@property (retain) NSString *coverArtPath;
 
 - (id)initWithDBPath:(NSString *)dbPath coverArtPath:(NSString *)coverArtPath;
 - (void)save:(Track *)t;
@@ -54,6 +54,9 @@ extern NSString * const kScanPathsChanged;
 - (void)checkAutomaticPaths;
 - (void)checkCoverArtForTrack:(Track *)t;
 - (void)checkCoverArt;
+- (bool)hasCoverArt:(NSString *)coverArtID;
+- (void)saveCoverArt:(NSString *)coverArtID data:(NSData *)data;
+- (NSData *)getCoverArt:(NSString *)coverArtID;
 
 @property bool isITunesImported;
 @property (copy) NSArray *pathsToAutomaticallyScan;

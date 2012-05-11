@@ -1,6 +1,5 @@
 #import <Cocoa/Cocoa.h>
 #import "app/Loop.h"
-#import "app/SortField.h"
 #import "app/TableView.h"
 #import "app/ViewController.h"
 

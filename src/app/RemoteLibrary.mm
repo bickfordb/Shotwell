@@ -62,8 +62,7 @@ int kRefreshInterval = 10000;
     NSMutableArray *tracks = [NSMutableArray array];
     for (NSDictionary *d in trackDicts) {
       Track *t = [Track fromJSON:d];
-      t.url = [NSURL URLWithString:[NSString stringWithFormat:@"http://%s:%d/tracks/%d",
-        address.UTF8String, port, (int)t.id.intValue]];
+      t.library = self;
       [tracks addObject:t];
     }
     self.tracks = tracks; 
@@ -80,5 +79,13 @@ int kRefreshInterval = 10000;
   return self.tracks ? self.tracks.count : 0;
 }
 
+- (NSURL *)coverArtURLForTrack:(Track *)t {
+  NSString *c = t.coverArtID;
+  return c ? [NSURL URLWithString:[NSString stringWithFormat:@"http://%@:%d/art/%@", netService_.ipv4Address, netService_.port, c]] : nil;
+}
+
+- (NSURL *)urlForTrack:(Track *)t {
+  return [NSURL URLWithString:[NSString stringWithFormat:@"http://%@:%d/tracks/%@", netService_.ipv4Address, netService_.port, t.id]];
+}
 @end
 

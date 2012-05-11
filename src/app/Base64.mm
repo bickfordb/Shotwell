@@ -139,7 +139,7 @@ int base64_decode(const char *str, void *data)
 @implementation NSData (Base64) 
 - (NSString *)encodeBase64 { 
   char *s = NULL;
-  int len = base64_encode(self.bytes, self.length, &s);
+  base64_encode(self.bytes, self.length, &s);
   NSString *ret = [NSString stringWithUTF8String:s];
   free(s);
   ret = [ret stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"="]];

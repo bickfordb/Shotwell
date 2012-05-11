@@ -5,7 +5,6 @@ void GetITunesTracks(OnITunesTrack block) {
   NSString *homePath = NSHomeDirectory();
   NSString *itunesXMLPath = [NSString stringWithFormat:@"%@/Music/iTunes/iTunes Music Library.xml", homePath];
   NSURL *itunesURL = [NSURL fileURLWithPath:itunesXMLPath];
-  NSError *xmlError = nil;
   NSData *data = [NSData dataWithContentsOfURL:itunesURL];
   NSError *error = nil;
 
@@ -31,7 +30,10 @@ void GetITunesTracks(OnITunesTrack block) {
     t.trackNumber = [trackInfo objectForKey:@"Track Number"];
     NSString *location = [trackInfo objectForKey:@"Location"];
     if (location)  {
-      t.url = [NSURL URLWithString:location];
+      NSURL *u = [NSURL URLWithString:location];
+      if (u.isFileURL) {
+        t.path = u.path;
+      }
     }
     NSNumber *year = [trackInfo objectForKey:@"year"];
     if (year)

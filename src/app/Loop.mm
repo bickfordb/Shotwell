@@ -8,8 +8,6 @@
 #import "app/Signals.h"
 #import "app/PThread.h"
 
-static NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv);
-static void OnRequestComplete(struct evhttp_request *req, void *context);
 
 static const int kDispatchInterval = 10000; // .01 seconds
 static const int kCheckRunningInterval = 1000; // .001 seconds
@@ -147,7 +145,6 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
     flags:EV_READ
     timeout:-1
     with:^(Event *event, short flag) {
-      NSString *s = nil;
       for (;;) {
         if (evbuffer_get_length(buffer) == length)
           break;
