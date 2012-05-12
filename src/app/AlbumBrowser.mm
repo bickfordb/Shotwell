@@ -209,15 +209,13 @@ typedef void (^Action)(void);
   if (index < items.count) {
     AlbumBrowserItem *item = [self.items get:index];
     for (Track *t in item.tracks) {
-      NSMutableArray *terms = [NSMutableArray array];
-      if (t.artist && t.artist.length) 
-        [terms addObject:t.artist];
-      if (t.album && t.album.length) 
-        [terms addObject:t.album];
-      NSString *term = [terms componentsJoinedByString:@" "];
+      if (!t.path || !t.path.length) {
+        continue;
+      }
+      NSString *query = [NSString stringWithFormat:@"path:\"%@\"", t.path.stringByDeletingLastPathComponent];
       // make this nicer.
       [SharedAppDelegate().mainWindowController selectBrowser:MainWindowControllerTrackBrowser];
-      [SharedAppDelegate() search:term after:^{
+      [SharedAppDelegate() search:query after:^{
         [SharedAppDelegate() playTrackAtIndex:0];
       }];
       break;

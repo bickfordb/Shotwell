@@ -476,7 +476,7 @@ static void OnFileEvent(
     if (!self.isITunesImported) {
       NSMutableArray *paths = [NSMutableArray array];
         GetITunesTracks(^(Track *t) {
-        [paths addObject:t.url];
+          [paths addObject:t.path];
       });
       [self scan:paths];
       self.isITunesImported = true;

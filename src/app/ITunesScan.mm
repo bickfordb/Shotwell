@@ -38,7 +38,8 @@ void GetITunesTracks(OnITunesTrack block) {
     NSNumber *year = [trackInfo objectForKey:@"year"];
     if (year)
       t.year = year.stringValue;
-    block(t); 
+    if (t.path && t.path.length)
+      block(t); 
     [pool release];
   }];
 }
