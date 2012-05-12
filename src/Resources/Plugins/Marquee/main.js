@@ -114,7 +114,7 @@ function updateSize() {
   var h = window.innerHeight;
   var imgWidth = 0;
   var imgHeight = 0;
-  if (playing && playing.coverArtURL().absoluteString()) { 
+  if (playing && playing.coverArtURL() && playing.coverArtURL().absoluteString()) { 
     imgWidth = Math.min(w, h);
     imgHeight = Math.min(w, h);
   }
