@@ -30,28 +30,40 @@ const static int kV1FrameHeaderSize = 16;  // Used by gen. 1
 const static int kAESKeySize = 16;  // Used by gen. 1
 const static int kV2FrameHeaderSize = 12;   // Used by gen. 2
 static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
+const static int kLoopTimeoutInterval = 10000;
+
+static NSString const *kObserveState = @"ObserveState";
 
 @interface RAOPSink (Private)
-- (void)stop;
-- (void)start;
+- (bool)connectRTP;
+- (bool)iterate;
+- (void)encodePCM:(struct evbuffer *)in out:(struct evbuffer *)out;
+- (void)encodePacketV1:(struct evbuffer *)in out:(struct evbuffer *)out;
+- (void)encodePacketV2:(struct evbuffer *)in out:(struct evbuffer *)out;
+- (void)encrypt:(uint8_t *)data size:(size_t)size;
+- (void)read;
+- (void)reset;
+- (void)write;
 @end
 
 @implementation RAOPSink
-@synthesize audioSource = audioSource_;
-@synthesize rtsp = rtsp_;
 @synthesize address = address_;
-@synthesize port = port_;
+@synthesize audioSource = audioSource_;
+@synthesize isConnected = isConnected_;
+@synthesize isPaused = isPaused_;
 @synthesize loop = loop_;
 @synthesize packetNumber = packetNumber_;
+@synthesize port = port_;
 @synthesize raopVersion = raopVersion_;
 @synthesize rtpSeq = rtpSeq_;
 @synthesize rtpTimestamp = rtpTimestamp_;
-@synthesize ssrc = ssrc_;
+@synthesize rtsp = rtsp_;
+@synthesize state = state_;
 
 - (void)flush {
   self.rtpTimestamp = 0;
   self.rtpSeq = 0;
-  [rtsp_ flush:^(int st) { }];
+  [self.rtsp flush];
 }
 
 - (void)encodePCM:(struct evbuffer *)in out:(struct evbuffer *)out {
@@ -115,7 +127,17 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
   }
 }
 
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
+  if (context == &kObserveState)  {
+    //INFO(@"rtsp state: %d, raop state: %d", (int)rtsp_.state, (int)self.state);
+  } else { 
+    [super observeValueForKeyPath:keyPath ofObject:object change:change context:context]; 
+  }
+}
+
 - (void)dealloc { 
+  [rtsp_ removeObserver:self forKeyPath:@"state" context:&kObserveState];
+  [self removeObserver:self forKeyPath:@"state" context:&kObserveState];
   close(fd_);
   close(controlFd_);
   [loop_ release];
@@ -131,77 +153,72 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
     self.loop = [Loop loop];
     self.address = address;
     self.port = port;
-    volume_ = 0.5;
-    self.raopVersion = RAOPV1;
-    self.rtsp = [[[RTSPClient alloc] initWithLoop:loop_ address:address_ port:port_] autorelease];
-    self.rtsp.framesPerPacket = self.raopVersion == RAOPV1 ? kSamplesPerFrameV1 : kSamplesPerFrameV2;
+    self.state = kInitialRAOPState;
+    self.raopVersion = kRAOPV1;
+    self.rtsp = [[[RTSPClient alloc] initWithLoop:[Loop loop] address:address_ port:port_] autorelease];
+    self.rtsp.framesPerPacket = self.raopVersion == kRAOPV1 ? kSamplesPerFrameV1 : kSamplesPerFrameV2;
+
+    [self.rtsp addObserver:self forKeyPath:@"state" options:NSKeyValueObservingOptionNew context:&kObserveState];
+    [self addObserver:self forKeyPath:@"state" options:NSKeyValueObservingOptionNew context:&kObserveState];
+    isReading_ = false;
+    isWriting_ = false;
     aes_set_key(&aesContext_, (uint8_t *)[rtsp_.key bytes], 128); 
     fd_ = -1;
     controlFd_ = -1;
     self.rtpTimestamp = 0;
     self.rtpSeq = 0;
-    RAND_bytes((unsigned char *)&ssrc_, sizeof(ssrc_));
+    __block RAOPSink *weakSelf = self;
+    [self.loop every:kLoopTimeoutInterval with:^{ [weakSelf iterate]; }];
   }
   return self;
 }
 
-- (bool)isPaused { 
-  return fd_ >= 0;
-}
-
-- (void)setIsPaused:(bool)paused { 
-  @synchronized(self) { 
-    if (paused) {
-      [self stop];
-    } else { 
-      [self start]; 
-    }
-  }
-}
-
-- (void)stop { 
-  if (fd_ < 0)
-    return;
-  [rtsp_ tearDown:^(int succ) { }];
-  close(fd_);
-  fd_ = -1;
-  close(controlFd_);
-  controlFd_ = -1;
-}
-
-- (void)start { 
+- (void)close { 
   if (fd_ >= 0) {
-    INFO(@"already started");
-    return;
+    close(fd_);
+    fd_ = -1;
   }
-  DEBUG(@"starting RAOP");
-  [rtsp_ connect:^(int status) {
-    if (status != 200) {
-      DEBUG(@"failed to connect to RTSP: %d", status);
-      return;
-    }
-    [self.rtsp sendVolume:volume_ with:^(int st) { }]; 
+  if (controlFd_ >= 0) {
+    close(controlFd_);
+    controlFd_ = -1;
+  }
+}
 
-    if ([self connectRTP]) {
-      [self write];
-      [self read];
+- (void)iterate { 
+  if (!self.isPaused) { 
+    if (self.rtsp.isPaused) {
+      self.rtsp.isPaused = false;
+    } else if (self.rtsp.isConnected) { 
+      if (self.state == kInitialRAOPState) {
+        if ([self connectRTP]) {
+          self.state = kConnectedRAOPState;
+        } else { 
+          ERROR(@"failed to connect to rtp"); 
+        }
+      } else if (self.state == kConnectedRAOPState) {
+        [self read];
+        [self write];
+      }
+    } 
+  } else { 
+    if (!self.rtsp.isPaused) {
+      self.rtsp.isPaused = true;
     }
-  }];
+    [self close];
+  }
 }
 
 - (double)volume {
-  return volume_;
+  return self.rtsp.volume;
 }
 
 - (void)setVolume:(double)pct { 
-  volume_ = pct;
-  [self.rtsp sendVolume:pct with:^(int st) { }];
+  self.rtsp.volume = pct;
 }
 
 - (bool)connectRTP { 
-  close(fd_);
-  close(controlFd_);
-  fd_ = socket(AF_INET, (self.raopVersion == RAOPV1) ? SOCK_STREAM : SOCK_DGRAM, 0);
+  [self close];
+  fd_ = socket(AF_INET, (self.raopVersion == kRAOPV1) ? SOCK_STREAM : SOCK_DGRAM, 0);
   struct sockaddr_in addr;
   addr.sin_family = AF_INET;
   addr.sin_port = htons(6000);
@@ -215,7 +232,7 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
   }
   fcntl(fd_, F_SETFL, fcntl(fd_, F_GETFL, 0) | O_NONBLOCK);
   
-  if (self.raopVersion == RAOPV2) {
+  if (self.raopVersion == kRAOPV2) {
     struct sockaddr_in ctrlAddr;
     ctrlAddr.sin_family = AF_INET;
     ctrlAddr.sin_port = htons(6001);
@@ -233,6 +250,15 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
 }
 
 - (void)write {
+  if (isWriting_) {
+    return;
+  }
+  if (!audioSource_)
+    return;
+  if (fd_ < 0) 
+    return;
+  isWriting_ = true;
+
   int numFrames = self.rtsp.framesPerPacket;
   int frameLen = numFrames * kNumChannels * kBytesPerChannel;
   void *rawdata = malloc(frameLen);
@@ -246,37 +272,36 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
   [self encodePCM:pcm out:alac];
   evbuffer_free(pcm);
   struct evbuffer *rtp = evbuffer_new();
-  if (self.raopVersion == RAOPV1)
+
+  if (self.raopVersion == kRAOPV1)
     [self encodePacketV1:alac out:rtp];
   else
     [self encodePacketV2:alac out:rtp];
   evbuffer_free(alac);
 
-  void *weakSelf = (void *)self;
-  int64_t sleepInterval = (numFrames * 1000000) / 44100;
-  //DEBUG(@"write: %d", (int)evbuffer_get_length(rtp));
+  __block RAOPSink *weakSelf = self;
+  //int64_t sleepInterval = (numFrames * 1000000) / 44100;
+
   [loop_ writeBuffer:rtp fd:fd_ with:^(int succ) { 
-    if (succ == 0) {
-      if (((RAOPSink *)weakSelf).raopVersion == RAOPV1) {
-        [((RAOPSink *)weakSelf) write];
-      } else  {
-        [((RAOPSink *)weakSelf).loop onTimeout:sleepInterval with:^(Event *e, short flags) {
-          [((RAOPSink *)weakSelf) write];
-        }];
-      }
-    } else {
+    weakSelf->isWriting_ = false;
+    if (succ != 0) {
       DEBUG(@"failed to write: %d", succ);
-      [self stop];
+      [weakSelf reset];
     }
   }];
   self.rtpSeq += 1;
-  self.rtpTimestamp += self.raopVersion == RAOPV1 ? kSamplesPerFrameV1 : kSamplesPerFrameV2;
+  self.rtpTimestamp += self.raopVersion == kRAOPV1 ? kSamplesPerFrameV1 : kSamplesPerFrameV2;
+}
+
+- (void)reset { 
+
 }
 
 - (void)encodePacketV2:(struct evbuffer *)in out:(struct evbuffer *)out {
   uint16_t seq = htons(self.rtpSeq);
   uint16_t ts = htonl(self.rtpTimestamp);
   
+  uint32_t ssrc = self.rtsp.ssrc;
   // 12 byte header
   uint8_t header[] = {
     0x80,
@@ -290,10 +315,10 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
     (ts >> 8) & 0xff,
     ts & 0xff,
     // 8-11 are are the ssrc
-    (ssrc_ >> 24) & 0xff,
-    (ssrc_ >> 16) & 0xff,
-    (ssrc_ >> 8) & 0xff,
-    ssrc_ & 0xff};
+    (ssrc >> 24) & 0xff,
+    (ssrc >> 16) & 0xff,
+    (ssrc >> 8) & 0xff,
+    ssrc & 0xff};
   const int header_size = kV2FrameHeaderSize;
   int alac_len = evbuffer_get_length(in);
   uint8_t alac[alac_len];
@@ -332,8 +357,16 @@ static inline void BitsWrite(uint8_t **p, uint8_t d, int blen, int *bpos);
 }
 
 - (void)read {
+  if (isReading_)
+    return;
+  isReading_ = true;
   int fd = fd_;
+  __block RAOPSink *weakSelf = self;
   [loop_ monitorFd:fd_ flags:EV_READ timeout:-1 with:^(Event *e, short flags) {
+    if (weakSelf->fd_ < 0) {
+      weakSelf->isReading_ = false;
+      return;
+    }
     char c;
     while (read(fd, &c, 1) > 0);
     [e add:-1];

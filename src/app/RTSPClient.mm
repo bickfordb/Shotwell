@@ -1,3 +1,4 @@
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations" 
 #include <Security/SecKey.h>
 #include <arpa/inet.h>
 #include <errno.h>
@@ -6,24 +7,25 @@
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <stdlib.h>
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations" 
 
 #import "app/Base64.h"
 #import "app/Log.h"
-#import "app/RTSPClient.h"
-#import "app/RTSPClient.h"
 #import "app/Random.h"
+#import "app/RTSPClient.h"
 
-static const int kBytesPerChannel = 2;
-static const int kNumChannels = 2;
-static const int kBitRate = 44100;
+static const int kOK = 200;
+static const int64_t kLoopTimeoutInterval = 10000;
+
+typedef void (^OnResponse)(RTSPResponse *response);
+
+void RSAEncrypt(uint8_t *text, size_t text_len, uint8_t **out, size_t *out_len);
 
 static NSString * const kUserAgent = @"iTunes/4.6 (Macintosh; U; PPC Mac OS X 10.3)";
 static const char * kPublicExponent = "AQAB";
 static const char * kPublicKey = "59dE8qLieItsH1WgjrcFRKj6eUWqi+bGLOX1HL3U3GhC/j0Qg90u3sG/1CUtwC5vOYvfDmFI6oSFXi5ELabWJmT2dKHzBJKa3k9ok+8t9ucRqMd6DZHJ2YCCLlDRKSKv6kDqnw4UwPdpOMXziC/AMj3Z/lUVX1G7WSHCAWKf1zNS1eLvqr+boEjXuBOitnZ/bDzPHrTOZz0Dew0uowxf/+sG+NCK3eQJVxqcaJ/vEHKIVd2M+5qL71yJQ+87X6oV3eaYvt3zWZYD6z5vYTcrtij2VZ9Zmni/UAaHqn9JdsBWLUEpVviYnhimNVvYFZeCXg/IdTQ+x4IRdiXNv5hEew==";
-
-static OnResponse ToStatus(OnStatus block);
-void RSAEncrypt(uint8_t *text, size_t text_len, uint8_t **out, size_t *out_len);
+static const int kBitRate = 44100;
+static const int kBytesPerChannel = 2;
+static const int kNumChannels = 2;
 
 void RSAEncrypt(
     uint8_t *text, 
@@ -67,6 +69,22 @@ void RSAEncrypt(
 }
 @end
 
+@interface RTSPClient (Private)
+- (RTSPRequest *)createRequest;
+- (bool)connectSocket;
+- (void)iterate;
+- (void)readHeader:(RTSPResponse *)response with:(OnResponse)block;
+- (void)readResponseWithBlock:(OnResponse)block;
+- (void)sendAnnounce;
+- (void)sendFlush;
+- (void)sendRecord;
+- (void)sendRequest:(RTSPRequest *)request with:(OnResponse)block;
+- (void)sendSetup;
+- (void)sendTeardown;
+- (void)sendVolume;
+- (void)reset;
+@end
+
 @implementation RTSPClient 
 @synthesize address = address_;
 @synthesize challenge = challenge_;
@@ -79,6 +97,13 @@ void RSAEncrypt(
 @synthesize port = port_;
 @synthesize sessionID = sessionID_;
 @synthesize urlAbsPath = urlAbsPath_;
+@synthesize ssrc = ssrc_;
+@synthesize state = state_;
+@synthesize isPaused;
+
+- (void)flush { 
+  isRequestFlush_ = true;
+}
 
 - (void)dealloc { 
   [address_ release];
@@ -96,33 +121,79 @@ void RSAEncrypt(
   self = [super init];
   if (self) { 
     fd_ = -1;
+    self.isPaused = true;
+    volume_ = 0.5;
+    self.state = kInitialRTSPState;
     self.loop = loop;
     self.address = address;
     self.port = port;
     self.dataPort = 6000;
-    self.key = [NSData randomDataWithLength:AES_BLOCK_SIZE];
-    self.iv = [NSData randomDataWithLength:AES_BLOCK_SIZE];
-    self.framesPerPacket = 0;
-
-    assert(iv_);
-    assert(key_);
-
-    self.sessionID = nil;
-    RAND_bytes((unsigned char *)&ssrc_, sizeof(ssrc_));
-    uint32_t urlKeyBytes;
-    RAND_bytes((unsigned char *)&urlKeyBytes, sizeof(urlKeyBytes));
-    self.urlAbsPath = [NSString stringWithFormat:@"%u", urlKeyBytes];
-    int64_t cidNum;
-    RAND_bytes((unsigned char *)&cidNum, sizeof(cidNum));
-    self.cid = [NSString stringWithFormat:@"%08X%08X", cidNum >> 32, cidNum];
-    cseq_ = 0;
-    self.challenge = [[NSData randomDataWithLength:AES_BLOCK_SIZE] encodeBase64];
+    [self reset];
+    __block RTSPClient *weakSelf = self;
+    [self.loop every:kLoopTimeoutInterval with:^{ [weakSelf iterate]; }];
   }
   return self;
 }
 
+- (void)reset { 
+  if (fd_ >= 0) {
+    close(fd_);
+    fd_ = -1;
+  }
+  isRequestFlush_ = false;
+  isRequestVolume_ = true;
+  self.state = kInitialRTSPState;
+  self.key = [NSData randomDataWithLength:AES_BLOCK_SIZE];
+  self.iv = [NSData randomDataWithLength:AES_BLOCK_SIZE];
+  self.framesPerPacket = 0;
+  assert(iv_);
+  assert(key_);
+  self.sessionID = nil;
+  RAND_bytes((unsigned char *)&ssrc_, sizeof(ssrc_));
+  uint32_t urlKeyBytes;
+  RAND_bytes((unsigned char *)&urlKeyBytes, sizeof(urlKeyBytes));
+  self.urlAbsPath = [NSString stringWithFormat:@"%u", urlKeyBytes];
+  int64_t cidNum;
+  RAND_bytes((unsigned char *)&cidNum, sizeof(cidNum));
+  self.cid = [NSString stringWithFormat:@"%08X%08X", cidNum >> 32, cidNum];
+  cseq_ = 0;
+  self.challenge = [[NSData randomDataWithLength:AES_BLOCK_SIZE] encodeBase64];
+}
+
+- (void)iterate {
+  if (!isPaused_) {
+    if (self.state == kInitialRTSPState) {
+      if (![self connectSocket]) {
+        ERROR(@"failed to setup control socket");
+        return;
+      }
+      [self sendAnnounce];
+    } else if (self.state == kAnnouncedRTSPState) {
+      [self sendSetup];
+    } else if (self.state == kSendingSetupRTSPState) {
+    } else if (self.state == kSetupRTSPState) {
+      [self sendRecord];
+    } else if (self.state == kSendingRecordRTSPState) {
+    } else if (self.state == kRecordRTSPState) {
+      self.state = kConnectedRTSPState;
+    } else if (self.state == kErrorRTSPState) {
+      [self reset];
+    } else if (self.state == kSendingTeardownRTSPState) {
+    } else if (self.state == kSendingVolumeRTSPState) {
+    } else if (self.state == kConnectedRTSPState) {
+      if (isRequestVolume_) {
+        [self sendVolume];
+      } else if (isRequestFlush_) {
+        [self sendFlush];
+      }
+    }    
+  } else { 
+  }
+}
+
 - (void)sendRequest:(RTSPRequest *)request with:(void (^)(RTSPResponse *response))block {
   block = Block_copy(block);
+  //INFO(@"request: %@", request);
   struct evbuffer *buf = evbuffer_new();
   evbuffer_add_printf(buf, "%s %s RTSP/1.0\r\n", request.method.UTF8String,
       request.uri.UTF8String);
@@ -139,9 +210,6 @@ void RSAEncrypt(
   evbuffer_add_printf(buf, "\r\n");
   evbuffer_add(buf, request.body.bytes, request.body.length);
    
-  // write buffer
-  //DEBUG(@"sending request: %@", [[NSString alloc] initWithCString:(const char *)evbuffer_pullup(buf, evbuffer_get_length(buf)) length:evbuffer_get_length(buf)]);
-
   [loop_ writeBuffer:buf fd:fd_ with:^(int succ) {
       if (succ == 0) {
         [self readResponseWithBlock:block];
@@ -152,7 +220,7 @@ void RSAEncrypt(
 - (void)readResponseWithBlock:(OnResponse)block {
   block = Block_copy(block);
   RTSPResponse *response = [[[RTSPResponse alloc] init] autorelease];
-  void *weakSelf = (void *)self;
+  __block RTSPClient *weakSelf = self;
   [loop_ readLine:fd_ with:^(NSString *line){
     line = [line stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     NSScanner *scanner = [NSScanner scannerWithString:line];
@@ -161,13 +229,23 @@ void RSAEncrypt(
     int status = 0;
     [scanner scanInt:&status];
     response.status = status;
-    [((RTSPClient *)weakSelf) readHeader:response with:block];
+    [weakSelf readHeader:response with:block];
   }];
 }
 
 - (void)readHeader:(RTSPResponse *)response with:(OnResponse)block {
-  void *weakLoop = (void *)loop_;
-  void *weakSelf = (void *)self;
+  block = [block copy];
+  OnResponse x = ^(RTSPResponse *r) {
+    if (response.status != kOK) {
+      ERROR(@"error response: %@", response);
+    } else {
+      //DEBUG(@"response: %@", response);
+    }
+    block(response);
+  };
+  x = [x copy];
+  __block RTSPClient *weakSelf = self;
+  __block Loop *weakLoop = self.loop;
   int fd = fd_;
   [loop_ readLine:fd_ with:^(NSString *line) {
     line = [line stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -178,17 +256,17 @@ void RSAEncrypt(
       [scanner scanHeader:&key value:&value];
       if (key) 
         [response.headers setValue:value forKey:key];
-      [((RTSPClient *)weakSelf) readHeader:response with:block];
+      [weakSelf readHeader:response with:block];
     } else {
       NSString *c = [response.headers objectForKey:@"Content-Length"];
       int contentLength = c ? c.intValue : 0;
       if (contentLength) { 
-        [((Loop *)weakLoop) readData:fd length:contentLength with:^(NSData *data) {
+        [weakLoop readData:fd length:contentLength with:^(NSData *data) {
           response.body = data;
-          block(response);
+          x(response);
         }];
       } else { 
-        block(response);
+        x(response);
       }
     }
   }];
@@ -206,21 +284,32 @@ void RSAEncrypt(
   return request;
 }
 
-
-- (void)tearDown:(OnStatus)block {
-  block = [block copy];
+- (void)sendTeardown {
+  self.state = kSendingTeardownRTSPState;
   RTSPRequest *request = [self createRequest];
   request.method = @"TEARDOWN";
-  [self sendRequest:request with:ToStatus(block)];
+  __block RTSPClient *weakSelf = self;
+  [self sendRequest:request with:^(RTSPResponse *response){
+    if (response && response.status == kOK) {
+      weakSelf.state = kInitialRTSPState;
+    } else { 
+      ERROR(@"failed to teardown: %@", response);
+      weakSelf.state = kErrorRTSPState;
+    }
+  }];
 }
 
-- (void)flush:(OnStatus)block {
-  block = Block_copy(block);
+- (void)sendFlush { 
+  self.state = kSendingFlushRTSPState;
+  isRequestFlush_ = false;
   RTSPRequest *request = [self createRequest];
   request.method = @"FLUSH";
   [request.headers setValue:@"ntp=0-" forKey:@"Range"];
   [request.headers setValue:[NSString stringWithFormat:@"seq=%d;rtptime=%d", 0, 0] forKey:@"RTP-Info"];
-  [self sendRequest:request with:ToStatus(block)];
+  __block RTSPClient *weakSelf = self;
+  [self sendRequest:request with:^(RTSPResponse *response) {
+    weakSelf.state = response.status == kOK ? kConnectedRTSPState : kErrorRTSPState;
+  }];
 }
 
 - (bool)connectSocket { 
@@ -243,39 +332,8 @@ void RSAEncrypt(
   return true;
 }
 
-- (void)connect:(OnStatus)block {
-  block = [block copy];
-  if (![self connectSocket]) {
-    ERROR(@"failed to setup control socket");
-    block(-1);
-    return;
-  }
-  [self announce:^(int st) {
-    if (st != 200) { 
-      ERROR(@"Failed to announce");
-      block(st);
-      return;
-    }
-    [self setup:^(int st) { 
-      if (st != 200) {
-        ERROR(@"Failed to setup");
-        block(st);
-        return;
-      }
-      [self record:^(int st) {
-        if (st != 200) {
-          ERROR(@"Failed to record");
-          block(st);
-          return;
-        } else { 
-          block(st);
-        }
-      }];
-    }];
-  }];
-} 
-
-- (void)announce:(OnStatus)block {
+- (void)sendAnnounce {
+  self.state = kSendingAnnounceRTSPState;
   assert(key_.length == AES_BLOCK_SIZE);
   uint8_t *rsa;
   size_t rsaLen;
@@ -319,44 +377,68 @@ void RSAEncrypt(
   [req.headers setValue:challenge_ forKey:@"Apple-Challenge"];
   free(iv64);
   free(rsa64);
-  [self sendRequest:req with:ToStatus(block)]; 
+  __block RTSPClient *weakSelf = self;
+  [self sendRequest:req with:^(RTSPResponse *response) {
+    weakSelf.state = response.status == kOK ? kAnnouncedRTSPState : kErrorRTSPState;
+  }];
 }
 
-- (void)setup:(OnStatus)block { 
+- (void)sendSetup { 
+  self.state = kSendingSetupRTSPState;
   RTSPRequest *req = [self createRequest];
   req.method = @"SETUP";
   [req.headers setValue:@"RTP/AVP/TCP;unicast;interleaved=0-1;mode=record" forKey:@"Transport"];
+  __block RTSPClient *weakSelf = self;
   [self sendRequest:req with:Block_copy(^(RTSPResponse *response) {
     [response.headers enumerateKeysAndObjectsUsingBlock:^(id key, id val, BOOL *stop) {
-      if ([((NSString *)key) caseInsensitiveCompare:@"session"] == 0) 
-        self.sessionID = (NSString *)val;
-        //DEBUG(@"got session ID: %@", self.sessionID);
+      NSString *key0 = (NSString *)key;
+      if ([key0 caseInsensitiveCompare:@"session"] == 0) {
+        weakSelf.sessionID = val;
+      }
     }];
-    block(response ? response.status : -1);
+    weakSelf.state = response.status == kOK ? kSetupRTSPState : kErrorRTSPState;
   })];
 }
 
-- (void)record:(OnStatus)block { 
+- (void)setVolume:(double)volume {
+  volume_ = volume;
+  isRequestVolume_ = true;
+}
+
+- (double)volume { 
+  return volume_;
+}
+
+- (void)sendRecord {
+  self.state = kSendingRecordRTSPState;
   RTSPRequest *request = [self createRequest];
   request.method = @"RECORD";
   [request.headers setValue:@"ntp=0-" forKey:@"Range"];
   [request.headers setValue:@"seq=0;rtptime=0" forKey:@"RTP-Info"];
-  [self sendRequest:request with:ToStatus(block)];
+  __block RTSPClient *weakSelf = self;
+  [self sendRequest:request with:^(RTSPResponse *response) { 
+    weakSelf.state = response.status == kOK ? kRecordRTSPState : kErrorRTSPState;
+  }];
 }
 
-- (void)sendVolume:(double)pct with:(OnStatus)block { 
-  if (fd_ <= 0) {
-    return;
-  }
+- (bool)isConnected {
+  return self.state == kSendingVolumeRTSPState
+    || self.state == kSendingFlushRTSPState 
+    || self.state == kConnectedRTSPState;
+}
+
+- (void)sendVolume {
+  self.state = kSendingVolumeRTSPState;
+  isRequestVolume_ = false;
   // value appears to be in some sort of decibel value 
   // 0 is max, -144 is min  
   double volume = 0;  
-  if (pct < 0.01) 
+  if (volume_ < 0.01) 
     volume = -144;
   else {
     double max = 0;
     double min = -30;
-    volume = (pct * (max - min)) + min;
+    volume = (volume_ * (max - min)) + min;
   }
 
   RTSPRequest *req = [self createRequest];
@@ -364,16 +446,11 @@ void RSAEncrypt(
 
   [req.headers setValue:@"text/parameters" forKey:@"Content-Type"];
   req.body = [[NSString stringWithFormat:@"volume: %.6f\r\n", volume] dataUsingEncoding:NSUTF8StringEncoding];
-  [self sendRequest:req with:ToStatus(block)];
+  __block RTSPClient *weakSelf = self;
+  [self sendRequest:req with:^(RTSPResponse *r) { 
+    weakSelf.state = r.status == kOK ? kConnectedRTSPState : kErrorRTSPState;
+  }];
 }
 
 @end
-
-static OnResponse ToStatus(OnStatus block) {
-   block = [block copy];
-   return Block_copy(^(RTSPResponse *response) {
-      //DEBUG(@"got response: %@", response);
-      block(response ? response.status : 0);
-   });
-}
 

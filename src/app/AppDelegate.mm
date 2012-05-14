@@ -200,6 +200,11 @@ static NSString *CoverArtPath() {
   [self.localLibrary checkAutomaticPaths];
   [self.localLibrary checkCoverArt];
   [self setupMenu];
+  [self.localLibrary each:^(Track *t) {
+    if (!t.url) {
+      ERROR(@"%@ is missing a URL");
+    }
+  }];
 }
 
 - (void)setupSharing { 
@@ -223,6 +228,7 @@ static NSString *CoverArtPath() {
     WebPlugin *webPlugin = [[[WebPlugin alloc] initWithURL:u] autorelease];
     [plugins_ addObject:webPlugin]; 
   }
+  
 }
 
 
@@ -285,9 +291,10 @@ static NSString *CoverArtPath() {
   }
   self.track = [self.mainWindowController.trackBrowser.tracks get:index];
   [self.mainWindowController trackStarted:track_];
-  self.audioSource = [[((LibAVSource *)[LibAVSource alloc]) initWithURL:self.track.url] autorelease];
+  self.audioSource = [[[LibAVSource alloc] initWithURL:self.track.url] autorelease];
   self.audioSource.isPaused = false;
   self.audioSink.audioSource = self.audioSource;
+  INFO(@"audiosink: %@", audioSink_);
   if (self.audioSink.isPaused) 
     self.audioSink.isPaused = false;
   self.audioSink.volume = self.mainWindowController.volumeControl.level;

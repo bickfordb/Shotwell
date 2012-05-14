@@ -314,11 +314,17 @@ static NSString *GetWindowTitle(Track *t) {
     serviceTypes:[NSSet setWithObjects:kRAOPServiceType, nil]] autorelease];
   self.audioOutputPopUpButton.onService = ^(id v) { 
     NSNetService *netService = (NSNetService *)v;
+    bool isPaused = SharedAppDelegate().audioSink.isPaused;
+    id <AudioSource> audioSource = SharedAppDelegate().audioSink.audioSource;
+    SharedAppDelegate().audioSink.audioSource = nil;
+    SharedAppDelegate().audioSink.isPaused = true;
     if (netService) {
       SharedAppDelegate().audioSink = [[[RAOPSink alloc] initWithAddress:netService.ipv4Address port:netService.port] autorelease];
     } else {
       SharedAppDelegate().audioSink = [[[CoreAudioSink alloc] init] autorelease];
     }
+    SharedAppDelegate().audioSink.audioSource = audioSource;
+    SharedAppDelegate().audioSink.isPaused = isPaused;
   };
   [self.audioOutputPopUpButton appendItemWithTitle:@"Computer Speakers" value:nil];
   self.audioOutputPopUpButton.autoresizingMask = NSViewMinXMargin | NSViewMaxYMargin;

@@ -8,7 +8,6 @@
 #include <openssl/aes.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
-#include <openssl/rsa.h>
 #include <stdlib.h>
 #include <string>
 #include <unistd.h>
@@ -18,25 +17,35 @@
 #include "app/AudioSource.h"
 #include "app/RTSPClient.h"
 
-typedef enum { RAOPV1 = 0, RAOPV2 = 1} RAOPVersion;
+typedef enum { 
+  kRAOPV1, 
+  kRAOPV2
+} RAOPVersion;
+
+typedef enum {
+  kInitialRAOPState,
+  kConnectedRAOPState
+} RAOPState;
 
 @interface RAOPSink : NSObject <AudioSink> {
   Loop *loop_;
   RTSPClient *rtsp_;
   int fd_;
   int controlFd_;
-  double volume_;
   NSString *address_;
   uint16_t port_;
   id <AudioSource> audioSource_;
   int packetNum_;
   uint16_t rtpSeq_;
   uint32_t rtpTimestamp_;
-  uint32_t ssrc_;
   aes_context aesContext_;
   RAOPVersion raopVersion_;
   struct timeval lastSync_;
-
+  bool isPaused_;
+  bool isConnected_;
+  bool isReading_;
+  bool isWriting_;
+  RAOPState state_;
 }
 
 @property RAOPVersion raopVersion;
@@ -48,16 +57,11 @@ typedef enum { RAOPV1 = 0, RAOPV2 = 1} RAOPVersion;
 @property int packetNumber;
 @property uint16_t rtpSeq;
 @property uint32_t rtpTimestamp;
-@property uint32_t ssrc;
+@property bool isPaused;
+@property bool isConnected;
+@property RAOPState state;
 
 - (id)initWithAddress:(NSString *)address port:(uint16_t)port;
-- (void)read;
-- (bool)connectRTP;
-- (void)write;
-- (void)encrypt:(uint8_t *)data size:(size_t)size;
-- (void)encodePCM:(struct evbuffer *)in out:(struct evbuffer *)out;
-- (void)encodePacketV2:(struct evbuffer *)in out:(struct evbuffer *)out;
-- (void)encodePacketV1:(struct evbuffer *)in out:(struct evbuffer *)out;
 
 @end
 

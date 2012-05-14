@@ -53,6 +53,11 @@ static AVPacket flushPacket;
 
 - (id)initWithURL:(NSURL *)url { 
   self = [super init];
+  if (!url) {
+    [self release];
+    return nil;
+  }
+
   if (self) {
     url_ = [url retain];
     // Don't retain:
