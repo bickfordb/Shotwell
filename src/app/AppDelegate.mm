@@ -294,7 +294,6 @@ static NSString *CoverArtPath() {
   self.audioSource = [[[LibAVSource alloc] initWithURL:self.track.url] autorelease];
   self.audioSource.isPaused = false;
   self.audioSink.audioSource = self.audioSource;
-  INFO(@"audiosink: %@", audioSink_);
   if (self.audioSink.isPaused) 
     self.audioSink.isPaused = false;
   self.audioSink.volume = self.mainWindowController.volumeControl.level;
