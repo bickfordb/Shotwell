@@ -4,5 +4,9 @@
 @property double volume;
 @property (retain, atomic) id <AudioSource> audioSource;
 @property bool isPaused;
-- (void)flush;
+
+- (int64_t)elapsed;
+- (int64_t)duration;
+- (void)seek:(int64_t)usec;
+- (bool)isSeeking;
 @end

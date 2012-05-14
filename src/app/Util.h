@@ -3,8 +3,19 @@
 /* The number of microseconds per second */
 extern const int64_t kSPerUS;
 
+typedef int64_t usec;
+
 /* Get the Unix epoch time in microseconds */
-int64_t Now();
+usec Now();
 
 /* Get a list of subdirectories inside of dirs */
 NSArray *GetSubDirectories(NSArray *dirs);
+
+typedef struct {
+  uint32_t sec;
+  uint32_t frac; 
+} NTPTime;
+
+NTPTime NowNTPTime();
+
+

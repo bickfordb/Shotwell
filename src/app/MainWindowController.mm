@@ -84,14 +84,15 @@ static NSString *GetWindowTitle(Track *t) {
 
     __block MainWindowController *weakSelf = self;
     [loop_ every:kPollMovieInterval with:^{
-      id <AudioSource> movie = SharedAppDelegate().audioSource;
-      if (movie) {
-        if (!movie.isSeeking) {
+      //id <AudioSource> movie = SharedAppDelegate().audioSource;
+      id <AudioSink> sink = SharedAppDelegate().audioSink;
+      if (sink) {
+        if (!sink.isSeeking) {
           weakSelf.progressControl.isEnabled = true;
-          weakSelf.progressControl.duration = movie.duration;
-          weakSelf.progressControl.elapsed = movie.elapsed;
+          weakSelf.progressControl.duration = sink.duration;
+          weakSelf.progressControl.elapsed = sink.elapsed;
         }
-        playButton_.image = (movie.state == kPlayingAudioSourceState) ? stopImage_ : startImage_;
+        playButton_.image = (sink.audioSource.state == kPlayingAudioSourceState) ? stopImage_ : startImage_;
         weakSelf.volumeControl.level = SharedAppDelegate().audioSink.volume;
       } else {
         weakSelf.progressControl.duration = 0;
@@ -371,7 +372,8 @@ static NSString *GetWindowTitle(Track *t) {
       self.progressControl = [[[ProgressControl alloc]
         initWithFrame:CGRectMake(0, 0, 5 + 60 + 5 + 300 + 5 + + 60 + 5, 22)] autorelease];
       self.progressControl.onElapsed = ^(int64_t amt) {
-        [SharedAppDelegate().audioSource seek:amt];
+        //[SharedAppDelegate().audioSink flush];
+        [SharedAppDelegate().audioSink seek:amt];
       };
     }
     view = self.progressControl.view;

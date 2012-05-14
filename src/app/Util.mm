@@ -27,3 +27,11 @@ NSArray *GetSubDirectories(NSArray *dirs) {
   return ret;
 }
 
+NTPTime TimeValToNTP(struct timeval t) {
+  NTPTime ret;
+  ret.sec = t.tv_sec + 0x83aa7e80;
+#define FRAC 0
+  ret.frac = (uint32_t)((double)t.tv_usec * 1e-6 * FRAC);
+  return ret;
+}
+

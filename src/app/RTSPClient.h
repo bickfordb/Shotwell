@@ -38,6 +38,8 @@ typedef enum {
   uint16_t port_;
   uint32_t ssrc_;
   RTSPState state_;
+  uint32_t rtpSequence_;
+  uint32_t rtpTimestamp_;
 }
 
 @property (retain) Loop *loop;
@@ -52,6 +54,8 @@ typedef enum {
 @property bool isPaused;
 @property double volume;
 @property int framesPerPacket;
+@property uint32_t rtpSequence;
+@property uint32_t rtpTimestamp;
 @property uint16_t dataPort;
 @property uint16_t port;
 @property RTSPState state;
@@ -59,6 +63,7 @@ typedef enum {
 
 - (id)initWithLoop:(Loop *)loop address:(NSString *)address port:(uint16_t)port;
 - (void)flush;
+
 @end
 
 // vim: filetype=objcpp

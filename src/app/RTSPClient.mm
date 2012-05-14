@@ -91,15 +91,17 @@ void RSAEncrypt(
 @synthesize cid = cid_;
 @synthesize dataPort = dataPort_;
 @synthesize framesPerPacket = framesPerPacket_;
+@synthesize isPaused;
 @synthesize iv = iv_;
 @synthesize key = key_;
 @synthesize loop = loop_;
 @synthesize port = port_;
+@synthesize rtpSequence = rtpSequence_;
+@synthesize rtpTimestamp = rtpTimestamp_;
 @synthesize sessionID = sessionID_;
-@synthesize urlAbsPath = urlAbsPath_;
 @synthesize ssrc = ssrc_;
 @synthesize state = state_;
-@synthesize isPaused;
+@synthesize urlAbsPath = urlAbsPath_;
 
 - (void)flush { 
   isRequestFlush_ = true;
@@ -125,6 +127,8 @@ void RSAEncrypt(
     volume_ = 0.5;
     self.state = kInitialRTSPState;
     self.loop = loop;
+    self.rtpSequence = 0;
+    self.rtpTimestamp = 0; 
     self.address = address;
     self.port = port;
     self.dataPort = 6000;
@@ -305,9 +309,12 @@ void RSAEncrypt(
   RTSPRequest *request = [self createRequest];
   request.method = @"FLUSH";
   [request.headers setValue:@"ntp=0-" forKey:@"Range"];
-  [request.headers setValue:[NSString stringWithFormat:@"seq=%d;rtptime=%d", 0, 0] forKey:@"RTP-Info"];
+  [request.headers setValue:[NSString stringWithFormat:@"seq=%d;rtptime=%d",
+   (int)self.rtpSequence, (int)self.rtpTimestamp] forKey:@"RTP-Info"];
   __block RTSPClient *weakSelf = self;
+  INFO(@"request: %@", request);
   [self sendRequest:request with:^(RTSPResponse *response) {
+    INFO(@"response: %@", response);
     weakSelf.state = response.status == kOK ? kConnectedRTSPState : kErrorRTSPState;
   }];
 }

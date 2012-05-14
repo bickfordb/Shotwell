@@ -57,3 +57,48 @@ static void EventCallback(int fd, short flags, void *ctx) {
 }
 @end
 
+@implementation EventBuffer 
+
+- (id)init { 
+  self = [super init];
+  if (self) {
+    buffer_ = evbuffer_new();
+  }
+  return self;
+}
+
++ (EventBuffer *)eventBuffer { 
+  return [[[EventBuffer alloc] init] autorelease];
+}
+
+- (void)dealloc { 
+  evbuffer_free(buffer_);
+  [super dealloc];
+}
+
+- (struct evbuffer *)buffer { 
+  return buffer_;
+}
+
+@end
+
+bool Pull8(struct evbuffer *buf, uint8_t *dst) {
+  return evbuffer_remove(buf, dst, 1) == 1;
+}
+
+bool Pull16(struct evbuffer *buf, uint16_t *dst) {
+  uint16_t x = 0;
+  int amt = evbuffer_remove(buf, &x, 2);
+  if (amt == 2)
+    *dst = ntohs(x);
+  return amt == 2; 
+}
+
+bool Pull32(struct evbuffer *buf, uint32_t *dst) {
+  uint32_t x = 0;
+  int amt = evbuffer_remove(buf, &x, 4);
+  if (amt == 4)
+    *dst = ntohl(x);
+  return amt == 4; 
+}
+

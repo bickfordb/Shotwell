@@ -1,8 +1,10 @@
 #import <Cocoa/Cocoa.h>
 #include <event2/event.h>
+#include <event2/buffer.h>
 
 @class Event;
 @class Loop;
+@class EventBuffer;
 typedef void (^OnFireEvent)(Event *event, short flags);
 
 @interface Event : NSObject { 
@@ -18,3 +20,15 @@ typedef void (^OnFireEvent)(Event *event, short flags);
 - (void)add:(int64_t)timeout;
 @end
 
+@interface EventBuffer : NSObject { 
+  struct evbuffer *buffer_;
+}
+
+- (struct evbuffer *)buffer;
++ (id)eventBuffer;
+@end
+
+
+bool Pull8(struct evbuffer *buf, uint8_t *dst);
+bool Pull16(struct evbuffer *buf, uint16_t *dst);
+bool Pull32(struct evbuffer *buf, uint32_t *dst);

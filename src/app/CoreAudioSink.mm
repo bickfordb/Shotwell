@@ -144,8 +144,20 @@ static OSStatus GetAudioCallback(void *context,
     ERROR(@"failed to set volume (%d)", status);
 }
 
-
-- (void)flush { 
-
+- (int64_t)elapsed { 
+  return self.audioSource.elapsed;
 }
+
+- (int64_t)duration { 
+  return self.audioSource.duration;
+}
+
+- (void)seek:(int64_t)seconds {
+  [self.audioSource seek:seconds];
+}
+
+- (bool)isSeeking {
+  return self.audioSource.isSeeking;
+}
+
 @end
