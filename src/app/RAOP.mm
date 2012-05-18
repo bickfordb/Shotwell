@@ -271,6 +271,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
     rtspFd_ = - 1;
     timingFd_ = -1;
     volume_ = 0.5;
+    // v2 doesn't work for now =(
     version_ = kRAOPV1;
     self.loop = [Loop loop];
     self.address = address;
@@ -310,11 +311,16 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
 
 - (void)iterateRAOP {
   if (!isPaused_) { 
+    if (controlFd_ < 0) {
+      [self openControl];
+    }
+    if (timingFd_ < 0) {
+      [self openTiming];
+    }
+
     if (rtspState_ == kConnectedRTSPState) {
       if (raopState_ == kInitialRAOPState) {
         [self openData];
-        [self openTiming];
-        [self openControl];
         raopState_ = kConnectedRAOPState;
       } else {
         if (seekTo_ >= 0) {
@@ -365,47 +371,56 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   return true; 
 }
 
-- (bool)openControl {
-  if (!version_ == kRAOPV1) {
-    return true;
-  }
-
-  // Control socket
-  controlFd_ = socket(AF_INET, SOCK_DGRAM, 0);
-  struct sockaddr_in controlAddr;
-  controlAddr.sin_family = AF_INET;
-  controlAddr.sin_port = htons(kControlPort);
-  if (!inet_aton(address_.UTF8String, &controlAddr.sin_addr)) {
-    DEBUG(@"failed to parse address: %@", address_);
-  }
-  int ret = connect(controlFd_, (struct sockaddr *)&controlAddr, sizeof(controlAddr));
-  if (ret < 0) {
-    ERROR(@"unable to connect to control port");
-    return false;
-  }
-  fcntl(controlFd_, F_SETFL, fcntl(controlFd_, F_GETFL, 0) | O_NONBLOCK); 
-  return true;
-}
 - (bool)openTiming {
+  INFO(@"binding timing");
   if (self.version == kRAOPV1) { 
     return true;
   }
   // Timing socket 
   timingFd_ = socket(AF_INET, SOCK_DGRAM, 0);
-  struct sockaddr_in timingAddr;
-  timingAddr.sin_family = AF_INET;
-  timingAddr.sin_port = htons(kTimingPort);
-  if (!inet_aton(address_.UTF8String, &timingAddr.sin_addr)) {
-    DEBUG(@"failed to parse address: %@", address_);
+  fcntl(timingFd_, F_SETFL, fcntl(timingFd_, F_GETFL, 0) | O_NONBLOCK); 
+  struct sockaddr_in addr;
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(kTimingPort);
+  addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  int opt = 1;
+  if (setsockopt(timingFd_, SOL_SOCKET, SO_REUSEADDR, (const void *)&opt, sizeof(opt))) {
+    INFO(@"failed to set sockopt");
   }
-  int ret = connect(timingFd_, (struct sockaddr *)&timingAddr, sizeof(timingAddr));
+  int ret = bind(timingFd_, (struct sockaddr *)&addr, sizeof(addr));
   if (ret < 0) {
-    ERROR(@"unable to connect to timing port");
+    ERROR(@"failed to bind: %d", ret);
     return false;
   }
-  fcntl(timingFd_, F_SETFL, fcntl(timingFd_, F_GETFL, 0) | O_NONBLOCK); 
+  INFO(@"done binding timing");
   return true;
 }
+
+- (bool)openControl {
+  INFO(@"binding control");
+  if (self.version == kRAOPV1) { 
+    return true;
+  }
+  // Control socket 
+  controlFd_ = socket(AF_INET, SOCK_DGRAM, 0);
+  struct sockaddr_in addr;
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(kControlPort);
+  addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  fcntl(controlFd_, F_SETFL, fcntl(controlFd_, F_GETFL, 0) | O_NONBLOCK); 
+  int opt = 1;
+  if (setsockopt(timingFd_, SOL_SOCKET, SO_REUSEADDR, (const void *)&opt, sizeof(opt))) {
+    INFO(@"failed to set sockopt");
+  }
+  int ret = bind(controlFd_, (struct sockaddr *)&addr, sizeof(addr));
+  if (ret < 0) {
+    ERROR(@"failed to bind: %d", ret);
+    return false;
+  }
+  INFO(@"done binding control");
+  return true;
+}
+
 
 
 - (void)writeAudio {
@@ -547,7 +562,6 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
     if (weakSelf->timingFd_ < 0) {
       return;
     }
-    
     int n = kTimingPacketSize - evbuffer_get_length(b.buffer);
     if (n > 0) { 
       int amt = evbuffer_read(b.buffer, weakSelf->timingFd_, n);
