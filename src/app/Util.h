@@ -1,7 +1,7 @@
 #include <stdint.h>
 #import <Cocoa/Cocoa.h>
 /* The number of microseconds per second */
-extern const int64_t kSPerUS;
+extern const int64_t kUSPerS;
 
 typedef int64_t usec;
 

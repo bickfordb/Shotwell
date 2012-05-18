@@ -15,7 +15,7 @@
 #include "app/AES.h"
 #include "app/AudioSink.h"
 #include "app/AudioSource.h"
-#include "app/RTSPClient.h"
+#include "app/Loop.h"
 #include "app/Util.h"
 
 typedef enum { 
@@ -71,44 +71,79 @@ typedef struct {
   RTPTimestamp now;
 } RAOPSyncPacket;
 
+typedef enum {
+  kInitialRTSPState = 0,
+  kSendingAnnounceRTSPState = 1,
+  kAnnouncedRTSPState = 2,
+  kSendingSetupRTSPState = 3,
+  kSetupRTSPState = 4,
+  kSendingRecordRTSPState = 5,
+  kRecordRTSPState = 6,
+  kSendingVolumeRTSPState = 7,
+  kSendingTeardownRTSPState = 8,
+  kConnectedRTSPState = 9,
+  kSendingFlushRTSPState = 10,
+  kErrorRTSPState = 11,
+} RTSPState;
+
 @interface RAOPSink : NSObject <AudioSink> {
   Loop *loop_;
-  RTSPClient *rtsp_;
-  int fd_;
-  int controlFd_;
-  int timingFd_;
+  NSData *iv_;
+  NSData *key_;
   NSString *address_;
-  uint16_t port_;
-  id <AudioSource> audioSource_;
-  int packetNum_;
-  uint16_t rtpSeq_;
-  uint32_t rtpTimestamp_;
+  NSString *challenge_;
+  NSString *cid_;
+  NSString *pathID_;
+  NSString *sessionID_;
+  RAOPState raopState_;
+  RAOPTimingPacket lastTimingPacket_;
+  RAOPVersion version_;
+  RTSPState rtspState_;
   aes_context aesContext_;
-  RAOPVersion raopVersion_;
-  struct timeval lastSync_;
   bool isPaused_;
-  bool isConnected_;
+  bool isReadingTimeSocket_;
   bool isReading_;
+  bool isRequestFlush_;
+  bool isRequestVolume_;
   bool isWriting_;
-  RAOPState state_;
+  double volume_;
+  id <AudioSource> audioSource_;
+  int controlFd_;
+  int cseq_; 
+  int dataFd_;
+  int packetNum_;
+  int rtspFd_;
+  int timingFd_;
   int64_t lastWriteAt_;
   int64_t seekTo_;
-  RAOPTimingPacket lastTimingPacket_;
-  bool isReadingTimeSocket_;
+  uint16_t rtpSequence_;
+  uint32_t rtpTimestamp_;
+  uint32_t ssrc_;
 }
 
 - (id)initWithAddress:(NSString *)address port:(uint16_t)port;
 
-@property RAOPVersion raopVersion;
 @property (retain) Loop *loop;
-@property (retain) RTSPClient *rtsp;
 @property (retain) NSString *address;
-@property uint16_t port;
-@property int packetNumber;
-@property uint16_t rtpSeq;
+@property bool isPaused;
+@property (readonly) bool isUDP;
+@property double volume;
+@property RAOPVersion version;
+@property (retain) NSString *challenge;
+@property (retain) NSString *cid;
+@property (retain) NSString *sessionID;
+@property (retain) NSString *pathID;
+@property (retain) NSData *iv;
+@property (retain) NSData *key;
+@property uint16_t rtpSequence;
 @property uint32_t rtpTimestamp;
-@property bool isConnected;
-@property RAOPState state;
+@property uint32_t ssrc;
+@property int packetNumber;
+@property int64_t lastWriteAt;
+
+- (int64_t)writeAudioDataInterval;
+- (int)framesPerPacket;
+- (void)flush;
 @end
 
 // vim: filetype=objcpp

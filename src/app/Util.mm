@@ -1,13 +1,13 @@
 #include <sys/time.h>
 #import "app/Util.h"
 
-const int64_t kSPerUS = 1000000;
+const int64_t kUSPerS = 1000000;
 
 int64_t Now() {
   struct timeval t;
   gettimeofday(&t, NULL);
   int64_t ret = t.tv_usec;
-  ret += t.tv_sec * kSPerUS;
+  ret += t.tv_sec * kUSPerS;
   return ret;
 }
 
