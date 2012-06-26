@@ -1,5 +1,5 @@
 #import <Cocoa/Cocoa.h>
-#import "app/AlbumBrowser.h"
+#import "app/CoverBrowser.h"
 #import "app/NavTable.h"
 #import "app/ProgressControl.h"
 #import "app/ServiceBrowser.h"
@@ -12,12 +12,15 @@
 #import "app/WindowController.h"
 
 typedef enum {
-  MainWindowControllerAlbumBrowser = 0,
-  MainWindowControllerTrackBrowser = 1
+  MainWindowControllerAlbumBrowser,
+  MainWindowControllerArtistBrowser,
+  MainWindowControllerTrackBrowser,
+  MainWindowControllerYearBrowser
 } MainWindowControllerBrowser;
 
 @interface MainWindowController : WindowController <NSToolbarDelegate> {
-  AlbumBrowser *albumBrowser_;
+  CoverBrowser *albumBrowser_;
+  CoverBrowser *artistBrowser_;
   Loop *loop_;
   NSButton *nextButton_;
   NSButton *playButton_;
@@ -45,6 +48,8 @@ typedef enum {
   bool isBusy_;
 }
 
+- (void)removeRemoteLibraryService:(NSNetService *)svc;
+- (void)addRemoteLibraryService:(NSNetService *)svc;
 - (void)pollStats;
 - (void)search:(NSString *)term after:(On0)after;
 - (void)selectBrowser:(MainWindowControllerBrowser)idx;
@@ -58,7 +63,8 @@ typedef enum {
 @property (retain) Loop *loop;
 @property (retain) NSButton *nextButton;
 @property (retain) NSButton *playButton;
-@property (retain) AlbumBrowser *albumBrowser;
+@property (retain) CoverBrowser *albumBrowser;
+@property (retain) CoverBrowser *artistBrowser;
 @property (retain) NavTable *navTable;
 @property (retain) NSButton *previousButton;
 @property (retain) NSImage *playImage;
@@ -72,7 +78,6 @@ typedef enum {
 @property (retain) NSView *contentView;
 @property (retain) ProgressControl *progressControl;
 @property (retain) ServicePopUpButton *audioOutputPopUpButton;
-@property (retain) Library *library;
 @property (retain) ServiceBrowser *libraryServiceBrowser;
 @property (retain) SplitView *horizontalSplit;
 @property (retain) SplitView *navSplit;

@@ -8,6 +8,9 @@
 #import "app/RAOP.h"
 #import "app/CoreAudioSink.h"
 
+static NSString * const kArtistIconName = @"album-icon";
+static NSString * const kAlbumIconName = @"album-icon";
+static NSString * const kTrackIconName = @"NSListViewTemplate";
 static NSString * const kNextButton = @"NextButton";
 static NSString * const kRAOPServiceType = @"_raop._tcp.";
 static NSString * const kPlayButton = @"PlayButton";
@@ -62,6 +65,7 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize verticalSplit = verticalSplit_;
 @synthesize volumeControl = volumeControl_;
 @synthesize albumBrowser = albumBrowser_;
+@synthesize artistBrowser = artistBrowser_;
 
 - (id)init {
   self = [super init];
@@ -131,7 +135,8 @@ static NSString *GetWindowTitle(Track *t) {
 
 - (void)addRemoteLibraryService:(NSNetService *)svc {
   NSLog(@"Added service: %@", svc);
-  for (NavNode *network in NodeGet(weakSelf.navTable.rootNode, kNodeChildren)) {
+  __block MainWindowController *weakSelf = self;
+  for (NavNode *network in NodeGet(self.navTable.rootNode, kNodeChildren)) {
     NSString *key = NodeGet(network, @"key");
     if (![key isEqualToString:@"network"]) {
       continue;
@@ -149,12 +154,15 @@ static NSString *GetWindowTitle(Track *t) {
     NavNode *tracks = NodeCreate();
     NodeAppend(library, tracks);
     NodeSet(tracks, kNodeTitle, @"Tracks");
+    NodeSet(tracks, kNodeTitleCell, NodeImageTextCell([NSImage imageNamed:kTrackIconName]));
     NodeSet(tracks, kNodeOnSelect, [^{
         SharedAppDelegate().library = [[[RemoteLibrary alloc] initWithNetService:svc] autorelease];
         [weakSelf selectBrowser:MainWindowControllerTrackBrowser];
         } copy]);
 
     NavNode *albums = NodeCreate();
+    NodeSet(albums, kNodeTitleCell, NodeImageTextCell([NSImage imageNamed:kAlbumIconName]));
+
     NodeSet(albums, kNodeTitle, @"Albums");
     NodeSet(albums, kNodeOnSelect, [^{
         SharedAppDelegate().library = [[[RemoteLibrary alloc] initWithNetService:svc] autorelease];
@@ -232,24 +240,25 @@ static NSString *GetWindowTitle(Track *t) {
   [self.window.contentView addSubview:self.progressIndicator];
 }
 
-- (Library *)library {
-  return library_;
-}
-
-- (void)setLibrary:(Library *)library {
-  @synchronized(self) {
-    Library *oldLibrary = library_;
-    library_ = [library retain];
-    [oldLibrary release];
-  }
-}
-
 - (void)selectBrowser:(MainWindowControllerBrowser)idx {
   if (idx == MainWindowControllerAlbumBrowser) {
     if (!self.albumBrowser) {
-      self.albumBrowser = [[[AlbumBrowser alloc] initWithLibrary:SharedAppDelegate().library] autorelease];
+      self.albumBrowser = [[[CoverBrowser alloc] initWithLibrary:SharedAppDelegate().library
+        toKey:CoverBrowserGroupByFolder
+        toTitle:CoverBrowserFolderTitle
+        toSubtitle:CoverBrowserFolderSubtitle
+        toPredicate:CoverBrowserSearchByFolder] autorelease];
     }
     self.content = self.albumBrowser;
+  } else if (idx == MainWindowControllerArtistBrowser) {
+    if (!self.artistBrowser) {
+      self.artistBrowser = [[[CoverBrowser alloc] initWithLibrary:SharedAppDelegate().library
+        toKey:CoverBrowserGroupByArtist
+        toTitle:CoverBrowserArtistTitle
+        toSubtitle:CoverBrowserArtistSubtitle
+        toPredicate:CoverBrowserSearchByArtist] autorelease];
+    }
+    self.content = self.artistBrowser;
   } else {
     if (!self.trackBrowser) {
       self.trackBrowser = [[[TrackBrowser alloc] initWithLibrary:SharedAppDelegate().library] autorelease];
@@ -282,22 +291,33 @@ static NSString *GetWindowTitle(Track *t) {
 
   NSMutableDictionary *tracks = NodeCreate();
   NodeSet(tracks, kNodeTitle, @"Tracks");
-  NodeSet(tracks, kNodeTitleCell, NodeImageTextCell([NSImage imageNamed:@"album-icon"]));
+  NodeSet(tracks, kNodeTitleCell, NodeImageTextCell([NSImage imageNamed:kTrackIconName]));
   NodeSet(tracks, kNodeOnSelect, [^{
     SharedAppDelegate().library = SharedAppDelegate().localLibrary;
     [self selectBrowser:MainWindowControllerTrackBrowser];
   } copy]);
   NodeAppend(library, tracks);
 
+  // Albums
   NSMutableDictionary *albums = NodeCreate();
   NodeSet(albums, kNodeTitle, @"Albums");
-  NodeSet(albums, kNodeTitleCell, NodeImageTextCell([NSImage imageNamed:@"album-icon"]));
+  NodeSet(albums, kNodeTitleCell, NodeImageTextCell([NSImage imageNamed:kAlbumIconName]));
   NodeSet(albums, kNodeOnSelect, [^{
     SharedAppDelegate().library = SharedAppDelegate().localLibrary;
     [self selectBrowser:MainWindowControllerAlbumBrowser];
   } copy]);
-
   NodeAppend(library, albums);
+
+  // Artists
+  NSMutableDictionary *artists = NodeCreate();
+  NodeSet(artists, kNodeTitle, @"Artists");
+  NodeSet(artists, kNodeTitleCell, NodeImageTextCell([NSImage imageNamed:kArtistIconName]));
+  NodeSet(artists, kNodeOnSelect, [^{
+    SharedAppDelegate().library = SharedAppDelegate().localLibrary;
+    [self selectBrowser:MainWindowControllerArtistBrowser];
+  } copy]);
+  NodeAppend(library, artists);
+
   [self.navTable reload];
   [self.navTable.outlineView expandItem:library];
   [self.navSplit addSubview:self.navTable];
