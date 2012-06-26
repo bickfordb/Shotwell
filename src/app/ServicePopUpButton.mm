@@ -7,7 +7,7 @@
 @synthesize onService = onService_;
 @synthesize browser = browser_;
 
-- (void)dealloc { 
+- (void)dealloc {
   [browser_ release];
   [loop_ release];
   [onService_ release];
@@ -15,7 +15,7 @@
   [super dealloc];
 }
 
-- (id)initWithFrame:(CGRect)frame serviceTypes:(NSSet *)serviceTypes { 
+- (id)initWithFrame:(CGRect)frame serviceTypes:(NSSet *)serviceTypes {
   self = [super initWithFrame:frame];
   if (self) {
     self.services = [NSMutableArray array];
@@ -46,6 +46,7 @@
   [netService setDelegate:self];
   [netService resolveWithTimeout:10.0];
 }
+
 - (void)appendItemWithTitle:(NSString *)title value:(id)value {
   NSMutableDictionary *d = [NSMutableDictionary dictionary];
   [d setValue:title forKey:@"title"];

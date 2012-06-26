@@ -13,7 +13,6 @@ static NSString * const kRAOPServiceType = @"_raop._tcp.";
 static NSString * const kPlayButton = @"PlayButton";
 static NSString * const kPreviousButton = @"PreviousButton";
 static NSString * const kProgressControl = @"ProgressControl";
-static NSString * const kGroupControl = @"GroupControl";
 static CGRect kStartupFrame = {{50, 200}, {1300, 650}};
 static int64_t kPollMovieInterval = 100000;
 static int64_t kPollProgressInterval = 500000;
@@ -23,7 +22,7 @@ static  const int kBottomEdgeMargin = 25;
 static NSString * const kVolumeControl = @"VolumeControl";
 static const int64_t kPollStatsInterval = 5 * 1000000;
 
-static NSString *GetWindowTitle(Track *t) { 
+static NSString *GetWindowTitle(Track *t) {
   NSString *title = t.title;
   NSString *artist = t.artist;
   NSString *album = t.album;
@@ -33,9 +32,9 @@ static NSString *GetWindowTitle(Track *t) {
     return [NSString stringWithFormat:@"%@ - %@ - %@ ", title, artist, album, nil];
   else if ([title length])
     return title;
-  else if (url) 
+  else if (url)
     return url.absoluteString;
-  else 
+  else
     return kDefaultWindowTitle;
 }
 
@@ -44,11 +43,11 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize artists = artists_;
 @synthesize audioOutputPopUpButton = audioOutputPopUpButton_;
 @synthesize contentView = contentView_;
-@synthesize groupsButton = groupsButton_;
 @synthesize horizontalSplit = horizontalSplit_;
-@synthesize libraryPopUp = libraryPopUp_;
-@synthesize libraryPopUpButton = libraryPopUpButton_; 
+@synthesize libraryServiceBrowser = libraryServiceBrowser_;
 @synthesize loop = loop_;
+@synthesize navSplit = navSplit_;
+@synthesize navTable = navTable_;
 @synthesize nextButton = nextButton_;
 @synthesize playButton = playButton_;
 @synthesize playImage = playImage_;
@@ -64,7 +63,7 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize volumeControl = volumeControl_;
 @synthesize albumBrowser = albumBrowser_;
 
-- (id)init { 
+- (id)init {
   self = [super init];
   if (self) {
     self.loop = [Loop loop];
@@ -76,12 +75,11 @@ static NSString *GetWindowTitle(Track *t) {
     self.searchField.target = self;
     self.searchField.action = @selector(onSearch:);
     [self.searchField setRecentsAutosaveName:@"recentSearches"];
-    [self setupGroupsPopupButton];
     [self setupWindow];
     [self setupStatusBarText];
     [self setupBusyIndicator];
-    [self setupLibrarySelect];
-
+//    [self setupLibrarySelect];
+//
     __block MainWindowController *weakSelf = self;
     [loop_ every:kPollMovieInterval with:^{
       //id <AudioSource> movie = SharedAppDelegate().audioSource;
@@ -115,12 +113,65 @@ static NSString *GetWindowTitle(Track *t) {
     [self.loop every:kPollStatsInterval with:^{
       [weakSelf pollStats];
     }];
+    self.libraryServiceBrowser = [[[ServiceBrowser alloc]
+      initWithType:kDaemonServiceType
+      onAdded:^(NSNetService *svc) {
+        [weakSelf addRemoteLibraryService:svc];
+      }
+      onRemoved:^(NSNetService *svc) {
+        [self removeRemoteLibraryService:svc];
+      }] autorelease];
     [self selectBrowser:MainWindowControllerTrackBrowser];
   }
   return self;
 }
 
-- (void)setContent:(ViewController *)vc { 
+- (void)removeRemoteLibraryService:(NSNetService *)svc {
+}
+
+- (void)addRemoteLibraryService:(NSNetService *)svc {
+  NSLog(@"Added service: %@", svc);
+  for (NavNode *network in NodeGet(weakSelf.navTable.rootNode, kNodeChildren)) {
+    NSString *key = NodeGet(network, @"key");
+    if (![key isEqualToString:@"network"]) {
+      continue;
+    }
+    for (NavNode *aLibrary in NodeGet(network, kNodeChildren)) {
+      NSNetService *aService = NodeGet(aLibrary, @"service");
+      if (aService && [aService isEqualTo:svc]) {
+        return;
+      }
+    }
+    NavNode *library = NodeCreate();
+    NodeSet(library, @"service", svc);
+    NodeAppend(network, library);
+    NodeSet(library, kNodeTitle, svc.name);
+    NavNode *tracks = NodeCreate();
+    NodeAppend(library, tracks);
+    NodeSet(tracks, kNodeTitle, @"Tracks");
+    NodeSet(tracks, kNodeOnSelect, [^{
+        SharedAppDelegate().library = [[[RemoteLibrary alloc] initWithNetService:svc] autorelease];
+        [weakSelf selectBrowser:MainWindowControllerTrackBrowser];
+        } copy]);
+
+    NavNode *albums = NodeCreate();
+    NodeSet(albums, kNodeTitle, @"Albums");
+    NodeSet(albums, kNodeOnSelect, [^{
+        SharedAppDelegate().library = [[[RemoteLibrary alloc] initWithNetService:svc] autorelease];
+        [weakSelf selectBrowser:MainWindowControllerAlbumBrowser];
+        } copy]);
+    NodeAppend(library, albums);
+    ForkToMainWith(^{
+        [weakSelf.navTable.outlineView reloadData];
+        [weakSelf.navTable.outlineView expandItem:network];
+        [weakSelf.navTable.outlineView expandItem:library];
+        });
+    NSLog(@"reloaded");
+    break;
+  }
+}
+
+- (void)setContent:(ViewController *)vc {
   @synchronized(self) {
     CGRect f = self.contentView.frame;
     f.origin.x = 0;
@@ -142,15 +193,13 @@ static NSString *GetWindowTitle(Track *t) {
   return content_;
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   [albums_ release];
   [artists_ release];
   [audioOutputPopUpButton_ release];
   [contentView_ release];
   [content_ release];
-  [groupsButton_ release];
   [horizontalSplit_ release];
-  [libraryPopUp_ release];
   [loop_ release];
   [nextButton_ release];
   [playButton_ release];
@@ -173,7 +222,7 @@ static NSString *GetWindowTitle(Track *t) {
   [self.content search:term after:after];
 }
 
-- (void)setupBusyIndicator { 
+- (void)setupBusyIndicator {
   CGSize sz = ((NSView *)self.window.contentView).frame.size;
   CGRect rect = CGRectMake(sz.width - 5 - 18, 2, 18, 18);
   self.progressIndicator = [[[NSProgressIndicator alloc] initWithFrame:rect] autorelease];
@@ -183,28 +232,11 @@ static NSString *GetWindowTitle(Track *t) {
   [self.window.contentView addSubview:self.progressIndicator];
 }
 
-- (void)setupGroupsPopupButton {
-  CGRect rect = CGRectMake(0, 0, 100, 32);
-  NSImage *albumImage = [NSImage imageNamed:@"album-icon"];
-  NSImage *trackImage = [NSImage imageNamed:@"NSListViewTemplate"];
-  self.groupsButton = [[[NSSegmentedControl alloc] initWithFrame:rect] autorelease]; 
-  self.groupsButton.segmentStyle = NSSegmentStyleTexturedRounded;
-  self.groupsButton.segmentCount = 2;
-  self.groupsButton.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
-  [[self.groupsButton cell] setControlSize:NSRegularControlSize];
-  self.groupsButton.selectedSegment = 1;
-  self.groupsButton.target = self;
-  self.groupsButton.action = @selector(onGroupSelect:);
-  [self.groupsButton setImage:albumImage forSegment:0];
-  [self.groupsButton setImage:trackImage forSegment:1];
-  [self.groupsButton setImageScaling:NSImageScaleProportionallyUpOrDown forSegment:0];
-}
-
-- (Library *)library { 
+- (Library *)library {
   return library_;
 }
 
-- (void)setLibrary:(Library *)library { 
+- (void)setLibrary:(Library *)library {
   @synchronized(self) {
     Library *oldLibrary = library_;
     library_ = [library retain];
@@ -212,32 +244,63 @@ static NSString *GetWindowTitle(Track *t) {
   }
 }
 
-- (void)onGroupSelect:(id)sender { 
-  [self selectBrowser:(MainWindowControllerBrowser)self.groupsButton.selectedSegment];
-}
-
-- (void)selectBrowser:(MainWindowControllerBrowser)idx { 
+- (void)selectBrowser:(MainWindowControllerBrowser)idx {
   if (idx == MainWindowControllerAlbumBrowser) {
     if (!self.albumBrowser) {
       self.albumBrowser = [[[AlbumBrowser alloc] initWithLibrary:SharedAppDelegate().library] autorelease];
     }
     self.content = self.albumBrowser;
-  } else { 
+  } else {
     if (!self.trackBrowser) {
       self.trackBrowser = [[[TrackBrowser alloc] initWithLibrary:SharedAppDelegate().library] autorelease];
     }
     self.content = self.trackBrowser;
   }
   NSString *term = self.searchField.stringValue;
-  if (term) { 
+  if (term) {
     [self.content search:term after:nil];
   }
-  if (idx != self.groupsButton.selectedSegment)
-    self.groupsButton.selectedSegment = idx;
 }
 
-- (void)onSearch:(id)sender { 
+- (void)onSearch:(id)sender {
   [[NSApp delegate] search:[sender stringValue] after:nil];
+}
+
+- (void)setupNav {
+  self.navTable = [[[NavTable alloc] initWithFrame:CGRectMake(0, 0, 148, self.navSplit.frame.size.height)] autorelease];
+  NavNode *root = self.navTable.rootNode;
+  NavNode *library = NodeCreate();
+  NodeSet(library, kNodeTitle, @"Library");
+  NodeSet(library, kNodeIsGroup, [NSNumber numberWithBool:YES]);
+  NodeAppend(root, library);
+
+  NavNode *network = NodeCreate();
+  NodeSet(network, kNodeTitle, @"Network");
+  NodeSet(network, @"key", @"network");
+  NodeSet(network, kNodeIsGroup, [NSNumber numberWithBool:YES]);
+  NodeAppend(root, network);
+
+  NSMutableDictionary *tracks = NodeCreate();
+  NodeSet(tracks, kNodeTitle, @"Tracks");
+  NodeSet(tracks, kNodeTitleCell, NodeImageTextCell([NSImage imageNamed:@"album-icon"]));
+  NodeSet(tracks, kNodeOnSelect, [^{
+    SharedAppDelegate().library = SharedAppDelegate().localLibrary;
+    [self selectBrowser:MainWindowControllerTrackBrowser];
+  } copy]);
+  NodeAppend(library, tracks);
+
+  NSMutableDictionary *albums = NodeCreate();
+  NodeSet(albums, kNodeTitle, @"Albums");
+  NodeSet(albums, kNodeTitleCell, NodeImageTextCell([NSImage imageNamed:@"album-icon"]));
+  NodeSet(albums, kNodeOnSelect, [^{
+    SharedAppDelegate().library = SharedAppDelegate().localLibrary;
+    [self selectBrowser:MainWindowControllerAlbumBrowser];
+  } copy]);
+
+  NodeAppend(library, albums);
+  [self.navTable reload];
+  [self.navTable.outlineView expandItem:library];
+  [self.navSplit addSubview:self.navTable];
 }
 
 - (void)setupWindow {
@@ -252,19 +315,30 @@ static NSString *GetWindowTitle(Track *t) {
   splitRect.origin.y += kBottomEdgeMargin;
   splitRect.size.height -= kBottomEdgeMargin;
 
+  self.navSplit = [[[SplitView alloc] initWithFrame:splitRect] autorelease];
+  [self.navSplit setDividerStyle:NSSplitViewDividerStyleThin];
+  self.navSplit.autoresizesSubviews = YES;
+  self.navSplit.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+  self.navSplit.vertical = YES;
+  self.navSplit.focusRingType = NSFocusRingTypeNone;
+  [self.window.contentView addSubview:self.navSplit];
+
+  [self setupNav];
+
   self.horizontalSplit = [[[SplitView alloc] initWithFrame:splitRect] autorelease];
   [self.horizontalSplit setDividerStyle:NSSplitViewDividerStyleThin];
   self.horizontalSplit.autoresizesSubviews = YES;
   self.horizontalSplit.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
   self.horizontalSplit.vertical = NO;
   self.horizontalSplit.focusRingType = NSFocusRingTypeNone;
-  [self.window.contentView addSubview:self.horizontalSplit];
+  //[self.window.contentView addSubview:self.horizontalSplit];
+  [self.navSplit addSubview:self.horizontalSplit];
 
   self.contentView = [[[NSView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)] autorelease];
   self.contentView.autoresizesSubviews = YES;
   self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
   self.contentView.focusRingType = NSFocusRingTypeNone;
-  
+
   self.verticalSplit = [[[SplitView alloc] initWithFrame:splitRect] autorelease];
   [self.verticalSplit setDividerStyle:NSSplitViewDividerStyleThin];
   self.verticalSplit.autoresizesSubviews = YES;
@@ -280,10 +354,10 @@ static NSString *GetWindowTitle(Track *t) {
   toolbar.delegate = self;
   toolbar. displayMode = NSToolbarDisplayModeIconOnly;
   self.window.toolbar = toolbar;
-  
+
 }
 
-- (void)setupStatusBarText { 
+- (void)setupStatusBarText {
   int windowWidth = ((NSView *)[self.window contentView]).bounds.size.width;
   int w = 300;
   int x = (windowWidth / 2.0) - (300.0 / 2.0) + 5.0;
@@ -306,14 +380,14 @@ static NSString *GetWindowTitle(Track *t) {
   [[self.window contentView] addSubview:self.statusBarText];
 }
 
-- (void)setupAudioSelect { 
+- (void)setupAudioSelect {
   int w = 160;
   int x = ((NSView *)[self.window contentView]).bounds.size.width;
   x -= w + 10;
   x -= 32;
   self.audioOutputPopUpButton = [[[ServicePopUpButton alloc] initWithFrame:CGRectMake(x, 2, w, 18)
     serviceTypes:[NSSet setWithObjects:kRAOPServiceType, nil]] autorelease];
-  self.audioOutputPopUpButton.onService = ^(id v) { 
+  self.audioOutputPopUpButton.onService = ^(id v) {
     NSNetService *netService = (NSNetService *)v;
     bool isPaused = SharedAppDelegate().audioSink.isPaused;
     id <AudioSource> audioSource = SharedAppDelegate().audioSink.audioSource;
@@ -336,28 +410,10 @@ static NSString *GetWindowTitle(Track *t) {
   [[self.window contentView] addSubview:self.audioOutputPopUpButton];
 }
 
-- (void)setupLibrarySelect { 
-  int w = 160;
-  self.libraryPopUpButton = [[[ServicePopUpButton alloc] initWithFrame:CGRectMake(5, 3, w, 18)
-    serviceTypes:[NSSet setWithObjects:kDaemonServiceType, nil]] autorelease];
-  self.libraryPopUpButton.autoresizingMask = NSViewMaxXMargin | NSViewMaxYMargin;
-  NSButtonCell *buttonCell = (NSButtonCell *)[self.libraryPopUpButton cell];
-  [buttonCell setFont:[NSFont systemFontOfSize:11.0]];
-  [buttonCell setControlSize:NSSmallControlSize];
-  [self.libraryPopUpButton appendItemWithTitle:@"Local Library" value:nil];
-  self.libraryPopUpButton.onService = ^(id v) {
-    SharedAppDelegate().library = !v ? SharedAppDelegate().localLibrary : [[[RemoteLibrary alloc] initWithNetService:v] autorelease];
-    self.trackBrowser = nil;
-    self.albumBrowser = nil;
-    [self selectBrowser:(MainWindowControllerBrowser)self.groupsButton.selectedSegment];
-  };
-  [self.window.contentView addSubview:self.libraryPopUpButton];
-}
-
 - (NSToolbarItem *)toolbar:(NSToolbar *)toolbar itemForItemIdentifier:(NSString *)itemIdentifier willBeInsertedIntoToolbar:(BOOL)flag {
   NSToolbarItem *item = [[[NSToolbarItem alloc] initWithItemIdentifier:itemIdentifier] autorelease];
   NSView *view = nil;
-  if (itemIdentifier == kPlayButton) { 
+  if (itemIdentifier == kPlayButton) {
       self.playButton = [[[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)] autorelease];
       view = playButton_;
       playButton_.title = @"";
@@ -367,7 +423,7 @@ static NSString *GetWindowTitle(Track *t) {
       playButton_.target = SharedAppDelegate();
       //[[playButton_ cell] setImageScaling:0.8];
       [[playButton_ cell] setImageScaling:NSImageScaleProportionallyUpOrDown];
-  } else if (itemIdentifier == kProgressControl) { 
+  } else if (itemIdentifier == kProgressControl) {
     if (!self.progressControl) {
       self.progressControl = [[[ProgressControl alloc]
         initWithFrame:CGRectMake(0, 0, 5 + 60 + 5 + 300 + 5 + + 60 + 5, 22)] autorelease];
@@ -379,9 +435,7 @@ static NSString *GetWindowTitle(Track *t) {
     view = self.progressControl.view;
     [item setMaxSize:NSMakeSize(1000, 22)];
     [item setMinSize:NSMakeSize(400, 22)];
-  } else if (itemIdentifier == kGroupControl) {
-    view = self.groupsButton;
-  } else if (itemIdentifier == kVolumeControl) { 
+  } else if (itemIdentifier == kVolumeControl) {
     if (!self.volumeControl) {
       self.volumeControl = [[[VolumeControl alloc] init] autorelease];
       self.volumeControl.onVolume = ^(double amt) {
@@ -389,9 +443,9 @@ static NSString *GetWindowTitle(Track *t) {
       };
     }
     view = self.volumeControl.view;
-  } else if (itemIdentifier == kSearchControl) { 
+  } else if (itemIdentifier == kSearchControl) {
     view = self.searchField;
-  } else if (itemIdentifier == kPreviousButton) { 
+  } else if (itemIdentifier == kPreviousButton) {
     NSButton *previousButton =  [[[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)] autorelease];
     view = previousButton;
     previousButton.title = @"";
@@ -426,9 +480,9 @@ static NSString *GetWindowTitle(Track *t) {
   return [self toolbarDefaultItemIdentifiers:toolbar];
 }
 
-- (NSArray *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar { 
+- (NSArray *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar {
   return [NSArray arrayWithObjects:kPreviousButton, kPlayButton, kNextButton,
-         kVolumeControl, kProgressControl, kGroupControl, kSearchControl, nil];
+         kVolumeControl, kProgressControl, kSearchControl, nil];
 }
 
 - (NSArray *)toolbarSelectableItemIdentifiers:(NSToolbar *)toolbar {
@@ -440,12 +494,12 @@ static NSString *GetWindowTitle(Track *t) {
 - (void)toolbarWillRemoveItem:(NSNotification *)notification {
 }
 
-- (void)trackStarted:(Track *)track { 
+- (void)trackStarted:(Track *)track {
   self.window.title = GetWindowTitle(track);
   [self.content reload];
 }
 
-- (void)trackEnded:(Track *)track { 
+- (void)trackEnded:(Track *)track {
   self.window.title = kDefaultWindowTitle;
   [self.content reload];
 }
@@ -457,13 +511,13 @@ static NSString *GetWindowTitle(Track *t) {
   for (Track *t in self.trackBrowser.tracks.array) {
     if (t.artist)
       [artists addObject:t.artist];
-    if (t.album) 
+    if (t.album)
       [albums addObject:t.album];
     i++;
   }
   self.artists = artists;
   self.albums = albums;
-  self.statusBarText.stringValue = [NSString stringWithFormat:@"%d Tracks, %d Artists, %d Albums", i, self.artists.count, self.albums.count]; 
+  self.statusBarText.stringValue = [NSString stringWithFormat:@"%d Tracks, %d Artists, %d Albums", i, self.artists.count, self.albums.count];
 }
 @end
 
