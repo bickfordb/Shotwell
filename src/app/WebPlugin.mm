@@ -22,7 +22,7 @@
   return self;
 }
 
-- (BOOL)hidden { 
+- (BOOL)hidden {
   return !(self.content.superview);
 }
 
@@ -30,11 +30,11 @@
   return (AppDelegate *)[[NSApplication sharedApplication] delegate];
 }
 
-- (void)trackStarted:(NSMutableDictionary *)track { 
+- (void)trackStarted:(NSMutableDictionary *)track {
   [self performSelectorOnMainThread:@selector(trackStarted0:) withObject:track waitUntilDone:NO];
 }
 
-- (void)trackStarted0:(NSMutableDictionary *)track { 
+- (void)trackStarted0:(NSMutableDictionary *)track {
   NSArray *args = [NSArray arrayWithObjects:track, nil];
   id window = [webView_ windowScriptObject];
   [window callWebScriptMethod:@"onTrackStarted" withArguments:args];
@@ -44,51 +44,51 @@
 - (void)openBrowser:(NSString *)url {
   DEBUG(@"openBrowser: %@", url);
   NSURL *url0 = [NSURL URLWithString:url];
-  if (url0) 
+  if (url0)
     [[NSWorkspace sharedWorkspace] openURL:url0];
 }
 
-- (void)trackSaved:(NSMutableDictionary *)track { 
+- (void)trackSaved:(NSMutableDictionary *)track {
   [self performSelectorOnMainThread:@selector(trackSaved0:) withObject:track waitUntilDone:NO];
 }
 
-- (void)trackSaved0:(NSMutableDictionary *)track { 
+- (void)trackSaved0:(NSMutableDictionary *)track {
   NSArray *args = [NSArray arrayWithObjects:track, nil];
   id window = [webView_ windowScriptObject];
   [window callWebScriptMethod:@"onTrackSaved" withArguments:args];
 }
 
-- (void)trackAdded:(NSMutableDictionary *)track { 
+- (void)trackAdded:(NSMutableDictionary *)track {
   [self performSelectorOnMainThread:@selector(trackAdded0:) withObject:track waitUntilDone:NO];
 }
 
-- (void)trackAdded0:(NSMutableDictionary *)track { 
+- (void)trackAdded0:(NSMutableDictionary *)track {
   NSArray *args = [NSArray arrayWithObjects:track, nil];
   id window = [webView_ windowScriptObject];
   [window callWebScriptMethod:@"onTrackAdded" withArguments:args];
 }
 
-- (void)trackDeleted:(NSMutableDictionary *)track { 
+- (void)trackDeleted:(NSMutableDictionary *)track {
   [self performSelectorOnMainThread:@selector(trackDeleted0:) withObject:track waitUntilDone:NO];
 }
 
-- (void)trackDeleted0:(NSMutableDictionary *)track { 
+- (void)trackDeleted0:(NSMutableDictionary *)track {
   NSArray *args = [NSArray arrayWithObjects:track, nil];
   id window = [webView_ windowScriptObject];
   [window callWebScriptMethod:@"onTrackDeleted" withArguments:args];
 }
 
-- (void)trackEnded:(NSMutableDictionary *)track { 
+- (void)trackEnded:(NSMutableDictionary *)track {
   [self performSelectorOnMainThread:@selector(trackEnded0:) withObject:track waitUntilDone:NO];
 }
 
-- (void)trackEnded0:(NSMutableDictionary *)track { 
+- (void)trackEnded0:(NSMutableDictionary *)track {
   NSArray *args = [NSArray arrayWithObjects:track, nil];
   id window = [webView_ windowScriptObject];
   [window callWebScriptMethod:@"onTrackEnded" withArguments:args];
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   [webView_ removeFromSuperview];
   [webView_ release];
   [url_ release];
@@ -96,7 +96,7 @@
   [content_ removeFromSuperview];
   [split adjustSubviews];
   [content_ autorelease];
-  [super dealloc]; 
+  [super dealloc];
 }
 
 - (NSView *)content {
@@ -121,7 +121,7 @@
   return s;
 }
 
-- (void)hide { 
+- (void)hide {
   NSSplitView *split = (NSSplitView *)[content_ superview];
   [content_ removeFromSuperview];
   [split adjustSubviews];
@@ -131,7 +131,7 @@
   [self hide];
   NSSplitView *split;
   AppDelegate *delegate = (AppDelegate *)[[NSApplication sharedApplication] delegate];
-  if (isVertical) 
+  if (isVertical)
     split = delegate.mainWindowController.verticalSplit;
   else
     split = delegate.mainWindowController.horizontalSplit;
@@ -142,7 +142,7 @@
     frame.size.width = size;
     firstFrame.size.width -= size;
     frame.size.height = firstFrame.size.height;
-  } else { 
+  } else {
     frame.size.height = size;
     frame.size.width = firstFrame.size.width;
     firstFrame.size.height -= size;

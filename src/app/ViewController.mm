@@ -7,10 +7,10 @@
 
 - (void)dealloc {
   [view_ release];
-  [super dealloc];  
+  [super dealloc];
 }
 
-- (id)init { 
+- (id)init {
   self = [super init];
   if (self) {
     self.view = [[[NSView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)] autorelease];
@@ -21,7 +21,7 @@
 
 - (void)search:(NSString *)query after:(On0)after { }
 
-- (void)reload { 
+- (void)reload {
 }
 
 @end

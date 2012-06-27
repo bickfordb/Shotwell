@@ -1,6 +1,6 @@
 #import <Cocoa/Cocoa.h>
 
-enum LogLevel { 
+enum LogLevel {
   ErrorLogLevel = 0,
   WarnLogLevel,
   InfoLogLevel,
@@ -11,5 +11,5 @@ enum LogLevel {
 #define WARN(msg, ...) LogMessage(__FILE__, __LINE__, WarnLogLevel, msg, ##__VA_ARGS__)
 #define LOG(msg, ...) LogMessage(__FILE__, __LINE__, InfoLogLevel, msg, ##__VA_ARGS__)
 
-void LogMessage(const char *filename, int line, enum LogLevel log_level, NSString *msg, ...); 
+void LogMessage(const char *filename, int line, enum LogLevel log_level, NSString *msg, ...);
 

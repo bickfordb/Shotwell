@@ -11,15 +11,15 @@
   [s appendFormat:@"<RTSPResponse status:%d, body:%@, headers:%@>", status_, body0, headers_];
   return s;
 }
-- (void)dealloc { 
+- (void)dealloc {
   [headers_ release];
   [body_ release];
   [super dealloc];
 }
 
-- (id)init { 
+- (id)init {
   self = [super init];
-  if (self) { 
+  if (self) {
     status_ = 0;
     self.headers = [NSMutableDictionary dictionary];
     self.body = [NSData data];

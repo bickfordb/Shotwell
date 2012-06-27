@@ -2,7 +2,7 @@
 #import "app/Daemon.h"
 
 @implementation LibraryPopUpButton
-- (NSSet *)serviceTypes { 
+- (NSSet *)serviceTypes {
   return [NSSet setWithObjects:kDaemonServiceType, nil];
 }
 @end

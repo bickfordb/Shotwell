@@ -27,7 +27,7 @@ static NSString * const kGeneralPreferenceTab = @"GeneralPreferenceTab";
 static NSString *LibraryDir();
 static NSString *LibraryPath();
 
-static NSString *LibraryDir() { 
+static NSString *LibraryDir() {
   NSArray *paths = NSSearchPathForDirectoriesInDomains(
       NSApplicationSupportDirectory,
       NSUserDomainMask,
@@ -62,7 +62,7 @@ static NSString *CoverArtPath() {
 @synthesize selectedAudioOutput = selectedAudioOutput_;
 @synthesize track = track_;
 
-- (void)dealloc { 
+- (void)dealloc {
   [[NSNotificationCenter defaultCenter]
     removeObserver:self];
   [loop_ release];
@@ -114,9 +114,9 @@ static NSString *CoverArtPath() {
   i = [fileMenu addItemWithTitle:@"Add to Library" action:@selector(addToLibrary:) keyEquivalent:@"o"];
 
   NSMenuItem *appMenu = [mainMenu itemAtIndex:0];
-  NSMenuItem *preferences = [appMenu.submenu 
-    insertItemWithTitle:@"Preferences" action:@selector(makeKeyAndOrderFront:) 
-    keyEquivalent:@"," 
+  NSMenuItem *preferences = [appMenu.submenu
+    insertItemWithTitle:@"Preferences" action:@selector(makeKeyAndOrderFront:)
+    keyEquivalent:@","
     atIndex:1];
   preferences.target = self.preferencesWindowController.window;
 
@@ -134,7 +134,7 @@ static NSString *CoverArtPath() {
   [playbackMenu addItemWithTitle:@"Next" action:@selector(nextClicked:) keyEquivalent:rightArrow];
 }
 
-- (void)addToLibrary:(id)sender { 
+- (void)addToLibrary:(id)sender {
   // Create the File Open Dialog class.
   NSOpenPanel *openPanel = [NSOpenPanel openPanel];
   [openPanel setCanChooseFiles:YES];
@@ -143,17 +143,17 @@ static NSString *CoverArtPath() {
 
   NSMutableArray *paths = [NSMutableArray array];
   if ([openPanel runModal] == NSOKButton) {
-    for (NSURL *p in [openPanel URLs]) { 
+    for (NSURL *p in [openPanel URLs]) {
       [paths addObject:p.path];
     }
   }
   [localLibrary_ scan:paths];
 }
 
-- (void)paste:(id)sender { 
+- (void)paste:(id)sender {
   NSPasteboard *pboard = [NSPasteboard generalPasteboard];
   NSArray *items = [pboard readObjectsForClasses:[NSArray arrayWithObjects:[NSURL class], nil]
-    options:nil]; 
+    options:nil];
   NSMutableArray *paths = [NSMutableArray array];
   for (NSURL *u in items) {
     if (![u isFileURL]) {
@@ -169,7 +169,7 @@ static NSString *CoverArtPath() {
 }
 
 
-- (void)parseDefaults { 
+- (void)parseDefaults {
   [[NSUserDefaults standardUserDefaults] setBool:TRUE forKey:@"WebKitDeveloperExtras"];
   [[NSUserDefaults standardUserDefaults] synchronize];
 }
@@ -191,7 +191,7 @@ static NSString *CoverArtPath() {
   self.mainWindowController = [[[MainWindowController alloc] init] autorelease];
   self.loop = [Loop loop];
   [self.loop every:kPollMovieInterval with:^{
-    [weakSelf pollMovie];  
+    [weakSelf pollMovie];
   }];
 
   [self setupPlugins];
@@ -207,9 +207,9 @@ static NSString *CoverArtPath() {
   }];
 }
 
-- (void)setupSharing { 
-  self.daemon = [[[Daemon alloc] 
-    initWithHost:@"0.0.0.0" 
+- (void)setupSharing {
+  self.daemon = [[[Daemon alloc]
+    initWithHost:@"0.0.0.0"
     port:kDaemonDefaultPort
     library:self.localLibrary] autorelease];
   self.daemonBrowser = [[[NSNetServiceBrowser alloc] init] autorelease];
@@ -226,36 +226,36 @@ static NSString *CoverArtPath() {
     p = [p stringByAppendingPathComponent:@"index.html"];
     NSURL *u = [NSURL fileURLWithPath:p];
     WebPlugin *webPlugin = [[[WebPlugin alloc] initWithURL:u] autorelease];
-    [plugins_ addObject:webPlugin]; 
+    [plugins_ addObject:webPlugin];
   }
-  
+
 }
 
 
 
-- (void)pollMovie { 
+- (void)pollMovie {
   if (audioSource_ && ([audioSource_ state] == kEOFAudioSourceState)) {
     [self playNextTrack];
     return;
   }
 }
 
-- (Library *)library { 
+- (Library *)library {
   return library_;
 }
 
-- (void)setLibrary:(Library *)library { 
+- (void)setLibrary:(Library *)library {
   @synchronized(self) {
     Library *last = library_;
-    if (last) { 
+    if (last) {
       [[NSNotificationCenter defaultCenter] removeObserver:self name:kLibraryTrackChanged object:last];
     }
     library_ = [library retain];
     [last release];
   }
-  if (library) { 
+  if (library) {
     [[NSNotificationCenter defaultCenter]
-      addObserver:self 
+      addObserver:self
       selector:@selector(onTrackChange:)
       name:kLibraryTrackChanged
       object:library];
@@ -294,7 +294,7 @@ static NSString *CoverArtPath() {
   self.audioSource = [[[LibAVSource alloc] initWithURL:self.track.url] autorelease];
   self.audioSource.isPaused = false;
   self.audioSink.audioSource = self.audioSource;
-  if (self.audioSink.isPaused) 
+  if (self.audioSink.isPaused)
     self.audioSink.isPaused = false;
   self.audioSink.volume = self.mainWindowController.volumeControl.level;
   [self.mainWindowController.trackBrowser seekTo:index];
@@ -311,7 +311,7 @@ static NSString *CoverArtPath() {
 /*
  * Play the next track.
  */
-- (void)playNextTrack { 
+- (void)playNextTrack {
   IgnoreSigPIPE();
   int idx = 0;
   int found = -1;
@@ -324,11 +324,11 @@ static NSString *CoverArtPath() {
       }
       idx++;
     }
-  } 
+  }
   [self playTrackAtIndex:found + 1];
 }
 
-- (void)playPreviousTrack { 
+- (void)playPreviousTrack {
   int idx = 0;
   int found = -1;
   int req = 0;
@@ -340,34 +340,34 @@ static NSString *CoverArtPath() {
       }
       idx++;
     }
-    if (found > 0) 
+    if (found > 0)
       req = found - 1;
-  } 
+  }
   [self playTrackAtIndex:req];
 }
 
-- (void)playClicked:(id)sender { 
+- (void)playClicked:(id)sender {
   ForkWith(^{
-    if (audioSource_) { 
+    if (audioSource_) {
         bool playing = audioSource_.state == kPlayingAudioSourceState;
-        if (playing) { 
+        if (playing) {
           audioSource_.isPaused = true;
-        } else { 
+        } else {
           audioSource_.isPaused = false;
-        } 
-      } else { 
-        [self playNextTrack]; 
-      } 
+        }
+      } else {
+        [self playNextTrack];
+      }
   });
 }
 
-- (void)nextClicked:(id)sender { 
+- (void)nextClicked:(id)sender {
   ForkWith(^{
     [self playNextTrack];
   });
 }
 
-- (void)previousClicked:(id)sender { 
+- (void)previousClicked:(id)sender {
   ForkWith(^{
     [self playPreviousTrack];
   });

@@ -2,10 +2,10 @@
 
 static NSString * const kGeneral = @"General";
 
-@implementation PreferencesWindowController 
+@implementation PreferencesWindowController
 @synthesize automaticPathsEditor = automaticPathsEditor_;
 
-- (void)dealloc { 
+- (void)dealloc {
   [automaticPathsEditor_ release];
   [super dealloc];
 }
@@ -34,7 +34,7 @@ static NSString * const kGeneral = @"General";
 - (NSToolbarItem *)toolbar:(NSToolbar *)toolbar itemForItemIdentifier:(NSString *)itemIdentifier willBeInsertedIntoToolbar:(BOOL)flag {
   NSToolbarItem *item = [[[NSToolbarItem alloc] initWithItemIdentifier:itemIdentifier] autorelease];
   NSView *view = nil;
-  if (itemIdentifier == kGeneral) { 
+  if (itemIdentifier == kGeneral) {
     item.label = @"General";
     item.target = self;
     item.action = @selector(generalSelected:);
@@ -55,7 +55,7 @@ static NSString * const kGeneral = @"General";
   return [self toolbarDefaultItemIdentifiers:toolbar];
 }
 
-- (NSArray *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar { 
+- (NSArray *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar {
   return [NSArray arrayWithObjects:kGeneral, nil];
 }
 

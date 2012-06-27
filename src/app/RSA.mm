@@ -1,4 +1,4 @@
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations" 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <openssl/rsa.h>
 #include <openssl/bn.h>
 

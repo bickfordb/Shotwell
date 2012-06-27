@@ -1,7 +1,7 @@
 #import <Cocoa/Cocoa.h>
 
 @interface HTTPRequest : NSObject {
-  NSString *method_; 
+  NSString *method_;
   NSString *uri_;
   NSMutableDictionary *headers_;
   NSData *body_;

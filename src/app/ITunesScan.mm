@@ -9,7 +9,7 @@ void GetITunesTracks(OnITunesTrack block) {
   NSError *error = nil;
 
   NSPropertyListFormat format = NSPropertyListXMLFormat_v1_0;
-  id result = [NSPropertyListSerialization 
+  id result = [NSPropertyListSerialization
     propertyListWithData:data
     options:NSPropertyListMutableContainersAndLeaves
     format:&format
@@ -17,7 +17,7 @@ void GetITunesTracks(OnITunesTrack block) {
   if (!result) {
     ERROR(@"encountered error loading itunes XML: %@", error);
     return;
-  } 
+  }
   NSDictionary *tracks = [((NSDictionary *)result) objectForKey:@"Tracks"];
   [tracks enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -39,7 +39,7 @@ void GetITunesTracks(OnITunesTrack block) {
     if (year)
       t.year = year.stringValue;
     if (t.path && t.path.length)
-      block(t); 
+      block(t);
     [pool release];
   }];
 }

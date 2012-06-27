@@ -1,7 +1,7 @@
 #import <Cocoa/Cocoa.h>
 // vim: filetype=objcpp
 
-/* 
+/*
   strnatcmp.c -- Perform 'natural order' comparisons of strings in C.
   Copyright (C) 2000, 2004 by Martin Pool <mbp sourcefrog net>
 
@@ -22,7 +22,7 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-@interface NSString (NaturalComparison) 
+@interface NSString (NaturalComparison)
 - (NSComparisonResult)naturalCompare:(NSString *)other;
 - (NSComparisonResult)naturalCompareCaseInsensitive:(NSString *)other;
 @end

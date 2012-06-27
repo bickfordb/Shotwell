@@ -3,7 +3,7 @@
 #import "app/LocalLibrary.h"
 
 @interface AutomaticPathsEditor : ViewController {
-  TableViewController *table_; 
+  TableViewController *table_;
   LocalLibrary *localLibrary_;
 }
 @property (retain) TableViewController *table;

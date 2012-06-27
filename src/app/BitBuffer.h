@@ -1,7 +1,7 @@
 #import <Cocoa/Cocoa.h>
 #import <event2/buffer.h>
 
-@interface BitBuffer : NSObject { 
+@interface BitBuffer : NSObject {
   struct evbuffer *buffer_;
   uint8_t val_;
   uint8_t size_;

@@ -23,7 +23,7 @@ extern "C" {
 #include <libavfilter/avfilter.h>
 }
 
-typedef enum { 
+typedef enum {
   IsVideoTrackFlag = 1 << 0,
   IsAudioTrackFlag = 1 << 1,
   CoverArtChecked = 1 << 2
@@ -37,7 +37,7 @@ static NSString *ToUTF8(const char *src) {
   UErrorCode err = U_ZERO_ERROR;
   int32_t sig_len = 0;
   const char *src_encoding = ucnv_detectUnicodeSignature(src, strlen(src), &sig_len, &err);
-  if (err) { 
+  if (err) {
     return @"?";
   }
   UnicodeString us(src, strlen(src), src_encoding);
@@ -63,11 +63,11 @@ NSString * const kPublisher = @"publisher";
 NSString * const kTitle = @"title";
 NSString * const kTrackNumber = @"trackNumber";
 NSString * const kURL = @"url";
-NSString * const kUpdatedAt = @"updatedAt"; 
+NSString * const kUpdatedAt = @"updatedAt";
 NSString * const kYear = @"year";
 
 NSArray *allTrackKeys = nil;
-static NSDictionary *tagKeyToTrackKey; 
+static NSDictionary *tagKeyToTrackKey;
 static NSArray *mediaExtensions = nil;
 static NSArray *ignoreExtensions = nil;
 
@@ -90,15 +90,15 @@ static NSArray *ignoreExtensions = nil;
 @synthesize updatedAt = updatedAt_;
 @synthesize year = year_;
 
-- (NSURL *)url { 
-  return [library_ urlForTrack:self];  
+- (NSURL *)url {
+  return [library_ urlForTrack:self];
 }
 
 - (NSURL *)coverArtURL {
   return [library_ coverArtURLForTrack:self];
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   [album_ release];
   [artist_ release];
   [coverArtID_ release];
@@ -142,7 +142,7 @@ static NSArray *ignoreExtensions = nil;
     kCreatedAt,
     kDuration,
     kGenre,
-    kID, 
+    kID,
     kIsAudio,
     kIsCoverArtChecked,
     kIsVideo,
@@ -152,7 +152,7 @@ static NSArray *ignoreExtensions = nil;
     kTitle,
     kTrackNumber,
     kUpdatedAt,
-    kYear, 
+    kYear,
     nil] retain];
   tagKeyToTrackKey = [[NSDictionary dictionaryWithObjectsAndKeys:
     kArtist, @"artist",
@@ -201,7 +201,7 @@ static NSArray *ignoreExtensions = nil;
   } else if ((object_getClass(other) == trackClass) || [other isKindOfClass:trackClass]) {
     Track *other0 = (Track *)other;
     return idCache_ == other0->idCache_;
-  } else { 
+  } else {
     return NO;
   }
 }
@@ -232,7 +232,7 @@ static NSArray *ignoreExtensions = nil;
     ret = -2;
     goto done;
   }
-  s = self.url.isFileURL ? self.path : self.url.absoluteString; 
+  s = self.url.isFileURL ? self.path : self.url.absoluteString;
   if (avformat_open_input(&c, s.UTF8String, NULL, NULL) < 0) {
     ret = -3;
     goto done;
@@ -262,7 +262,7 @@ static NSArray *ignoreExtensions = nil;
       self.isAudio = [NSNumber numberWithBool:YES];
       continue;
     }
-  } 
+  }
 
   while((tag = av_dict_get(c->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
     NSString *tagKey = [NSString stringWithUTF8String:tag->key];
@@ -282,7 +282,7 @@ done:
   return ret;
 }
 
-- (bool)isAudioOrVideo { 
+- (bool)isAudioOrVideo {
   if (self.isVideo) {
     return (bool)(self.isVideo.boolValue ? true : false);
   } else if (self.isAudio) {
@@ -303,7 +303,7 @@ done:
   }
   return [data getJSON];
 }
-+ (Track *)fromJSON:(NSDictionary *)json { 
++ (Track *)fromJSON:(NSDictionary *)json {
   Track *t = [[[Track alloc] init] autorelease];
   t.album = [json valueForKey:kAlbum];
   t.artist = [json valueForKey:kArtist];

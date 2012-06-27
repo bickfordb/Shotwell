@@ -1,6 +1,6 @@
 #import <Cocoa/Cocoa.h>
 
-@interface NSNetService (Address) 
+@interface NSNetService (Address)
 - (NSString *)ipv4Address;
 @end
 

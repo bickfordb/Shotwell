@@ -35,7 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static char base64_chars[] = 
+static char base64_chars[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 static int pos(char c) {
@@ -126,18 +126,18 @@ int base64_decode(const char *str, void *data)
     return q - (unsigned char *) data;
 }
 
-@implementation NSString (Base64) 
+@implementation NSString (Base64)
 - (NSData *)decodeBase64 {
   uint8_t d[self.length];
-  int sz = base64_decode(self.UTF8String, (void *)d); 
+  int sz = base64_decode(self.UTF8String, (void *)d);
   NSData *ret = [NSData dataWithBytes:d length:sz];
   assert(ret.length > 0);
   return ret;
 }
 @end
 
-@implementation NSData (Base64) 
-- (NSString *)encodeBase64 { 
+@implementation NSData (Base64)
+- (NSString *)encodeBase64 {
   char *s = NULL;
   base64_encode(self.bytes, self.length, &s);
   NSString *ret = [NSString stringWithUTF8String:s];

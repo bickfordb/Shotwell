@@ -5,7 +5,7 @@
 
 @implementation SortedSeq
 
-- (NSPredicate *)predicate { 
+- (NSPredicate *)predicate {
   @synchronized(ilock_) {
     return predicate_;
   }
@@ -30,7 +30,7 @@
 - (int)index:(id)needle {
   @synchronized (ilock_) {
     NSUInteger i = [filteredItems_ indexOfObject:needle];
-    return i == NSNotFound ? -1 : (int)i; 
+    return i == NSNotFound ? -1 : (int)i;
   }
   return -1;
 }
@@ -39,10 +39,10 @@
   NSIndexSet *indices = nil;
   @synchronized(ilock_) {
     [predicate_ release];
-    predicate_ = [predicate retain]; 
+    predicate_ = [predicate retain];
     [filteredItems_ removeAllObjects];
     for (id p in items_) {
-      if (!predicate || [predicate evaluateWithObject:p]) 
+      if (!predicate || [predicate evaluateWithObject:p])
         [filteredItems_ addObject:p];
     }
     indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, filteredItems_.count)];
@@ -57,7 +57,7 @@
   }
 }
 
-- (void)setComparator:(NSComparator)comparator { 
+- (void)setComparator:(NSComparator)comparator {
   NSIndexSet *indices = nil;
   @synchronized(ilock_) {
     indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, filteredItems_.count)];
@@ -72,7 +72,7 @@
   [self didChangeArrangedObjects:indices];
 }
 
-- (id)init { 
+- (id)init {
   self = [super init];
   if (self) {
     items_ = [[NSMutableArray array] retain];
@@ -84,7 +84,7 @@
   return self;
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   [filteredItems_ release];
   [items_ release];
   [ilock_ release];
@@ -93,7 +93,7 @@
   [super dealloc];
 }
 
-- (int)count { 
+- (int)count {
   @synchronized(ilock_) {
     return filteredItems_.count;
   }
@@ -103,13 +103,13 @@
   @synchronized(ilock_) {
     if (idx >= 0 && idx < filteredItems_.count) {
       return [filteredItems_ objectAtIndex:idx];
-    } else { 
+    } else {
       return nil;
     }
   }
 }
 
-- (NSArray *)array { 
+- (NSArray *)array {
   @synchronized(ilock_) {
     return [NSArray arrayWithArray:filteredItems_];
   }
@@ -120,12 +120,12 @@
   @synchronized(ilock_) {
     indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, filteredItems_.count)];
     if (comparator_) {
-      [items_ insert:something sortedWithComparator:comparator_];  
-      if (!predicate_ || [predicate_ evaluateWithObject:something]) 
-        [filteredItems_ insert:something sortedWithComparator:comparator_];  
-    } else { 
+      [items_ insert:something sortedWithComparator:comparator_];
+      if (!predicate_ || [predicate_ evaluateWithObject:something])
+        [filteredItems_ insert:something sortedWithComparator:comparator_];
+    } else {
       [items_ addObject:something];
-      if (!predicate_ || [predicate_ evaluateWithObject:something]) 
+      if (!predicate_ || [predicate_ evaluateWithObject:something])
         [filteredItems_ addObject:something];
     }
   }
@@ -133,7 +133,7 @@
   [self didChangeArrangedObjects:indices];
 }
 
-- (void)clear { 
+- (void)clear {
   NSIndexSet *indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, 0)];
   @synchronized(ilock_) {
     [items_ removeAllObjects];
@@ -144,19 +144,19 @@
 }
 
 - (void)willChangeArrangedObjects:(NSIndexSet *)indices {
-  ForkToMainWith(^{ 
+  ForkToMainWith(^{
     if (!indices)
       [self willChangeValueForKey:@"arrangedObjects"];
-    else 
+    else
       [self willChange:NSKeyValueChangeReplacement valuesAtIndexes:indices forKey:@"arrangedObjects"];
   });
 }
 
 - (void)didChangeArrangedObjects:(NSIndexSet *)indices {
-  ForkToMainWith(^{ 
+  ForkToMainWith(^{
     if (!indices)
       [self didChangeValueForKey:@"arrangedObjects"];
-    else 
+    else
       [self didChange:NSKeyValueChangeReplacement valuesAtIndexes:indices forKey:@"arrangedObjects"];
   });
 }
@@ -167,7 +167,7 @@
   }
 }
 
-- (void)remove:(id)something { 
+- (void)remove:(id)something {
   NSIndexSet *indices = nil;
   @synchronized(ilock_) {
     [filteredItems_ removeObject:something];
@@ -196,7 +196,7 @@
   return [self getMany:indices];
 }
 
-- (void)addObject:(id)something { 
+- (void)addObject:(id)something {
   [self add:something];
 }
 

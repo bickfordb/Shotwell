@@ -20,14 +20,14 @@ int kRefreshInterval = 10000;
 
 - (id)initWithNetService:(NSNetService *)netService {
   self = [super init];
-  if (self) { 
+  if (self) {
     self.netService = netService;
     self.loop = [Loop loop];
     self.tracks = nil;
     self.requestRefresh = false;
     __block RemoteLibrary *weakSelf = self;
     [self.loop onTimeout:10000 with:^(Event *event, short flags) {
-      if (weakSelf.requestRefresh) 
+      if (weakSelf.requestRefresh)
         [weakSelf refresh];
       weakSelf.requestRefresh = false;
       [event add:10000];
@@ -36,18 +36,18 @@ int kRefreshInterval = 10000;
   return self;
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   self.netService = nil;
   self.loop = nil;
   [super dealloc];
 }
 
 - (void)each:(void (^)(Track *t))block {
-  if (!tracks_) 
+  if (!tracks_)
     self.requestRefresh = true;
-  else { 
+  else {
     for (Track *t in tracks_) {
-      block(t);  
+      block(t);
     }
   }
 }
@@ -65,7 +65,7 @@ int kRefreshInterval = 10000;
       t.library = self;
       [tracks addObject:t];
     }
-    self.tracks = tracks; 
+    self.tracks = tracks;
     self.lastUpdatedAt = Now();
     for (Track *t in self.tracks) {
       [self notifyTrack:t change:kLibraryTrackAdded];
@@ -73,7 +73,7 @@ int kRefreshInterval = 10000;
   }];
 }
 
-- (int)count { 
+- (int)count {
   if (!self.tracks)
     self.requestRefresh = true;
   return self.tracks ? self.tracks.count : 0;

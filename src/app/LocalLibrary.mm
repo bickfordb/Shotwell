@@ -19,7 +19,7 @@
 #import "app/Track.h"
 #import "app/Util.h"
 
-#define GET_URL_KEY(url) (kURLTablePrefix + url) 
+#define GET_URL_KEY(url) (kURLTablePrefix + url)
 static NSString * const kPathsToScan = @"PathsToScan";
 static NSString * const kIsITunesImported = @"IsITunesImported";
 NSString * const kScanPathsChanged = @"ScanPathsChanged";
@@ -28,7 +28,7 @@ static NSString * const kITunesAffiliateURL = @"http://itunes.apple.com/search";
 static int kMaxConcurrentCoverArtQueries = 1;
 static int kCheckCoverArtDelay = 10 * 1000000;
 
-@interface LocalLibrary (P)  
+@interface LocalLibrary (P)
 - (void)scanQueuedPaths;
 - (void)pruneQueued;
 - (void)monitorPaths;
@@ -37,7 +37,7 @@ static int kCheckCoverArtDelay = 10 * 1000000;
 - (void)popPendingCoverArt;
 @end
 
-@implementation TrackTable 
+@implementation TrackTable
 - (const char *)keyPrefix {
   return "t:";
 }
@@ -49,8 +49,8 @@ static int kCheckCoverArtDelay = 10 * 1000000;
 @end
 
 @implementation URLTable
-- (const char *)keyPrefix { 
-  return "u:"; 
+- (const char *)keyPrefix {
+  return "u:";
 }
 
 @end
@@ -65,7 +65,7 @@ static void OnFileEvent(
   NSArray *paths = (NSArray *)eventPaths;
   LocalLibrary *library = (LocalLibrary *)clientCallBackInfo;
   NSMutableArray *paths0 = [NSMutableArray array];
-  for (NSString *p in paths) { 
+  for (NSString *p in paths) {
     struct stat status;
     if (stat(p.UTF8String, &status) != 0) {
       continue;
@@ -95,15 +95,15 @@ static void OnFileEvent(
   __block LocalLibrary *weakSelf = self;
   block = [block copy];
   [self search:term entity:@"album" withResult:^(int status, NSArray *results) {
-    if (results && results.count) { 
+    if (results && results.count) {
       NSString *artworkURL = [[results objectAtIndex:0] objectForKey:@"artworkUrl100"];
       artworkURL = [artworkURL
         stringByReplacingOccurrencesOfString:@".100x100" withString:@".600x600"];
       if (artworkURL && artworkURL.length) {
-        [weakSelf.coverArtLoop fetchURL:[NSURL URLWithString:artworkURL] with:^(HTTPResponse *response) { 
+        [weakSelf.coverArtLoop fetchURL:[NSURL URLWithString:artworkURL] with:^(HTTPResponse *response) {
           block(response.status, response.status == 200 ? response.body : nil);
         }];
-      } else { 
+      } else {
         block(status, nil);
       }
     } else {
@@ -112,12 +112,12 @@ static void OnFileEvent(
   }];
 }
 
-- (void)search:(NSString *)term entity:(NSString *)entity withResult:(void(^)(int status, NSArray *results))onResults { 
-  onResults = [onResults copy]; 
+- (void)search:(NSString *)term entity:(NSString *)entity withResult:(void(^)(int status, NSArray *results))onResults {
+  onResults = [onResults copy];
   NSURL *url = [NSURL URLWithString:kITunesAffiliateURL];
   url = [url pushKey:@"term" value:term];
   url = [url pushKey:@"entity" value:entity];
-  [coverArtLoop_ fetchURL:url with:^(HTTPResponse *r) { 
+  [coverArtLoop_ fetchURL:url with:^(HTTPResponse *r) {
     NSArray *results = [NSArray array];
     if (r.status == 200) {
       NSDictionary *data = (NSDictionary *)r.body.decodeJSON;
@@ -133,7 +133,7 @@ static void OnFileEvent(
   if (self) {
     self.coverArtLoop = [Loop loop];
     //self.coverArtPath = coverArtPath;
-    Level *level = [[[Level alloc] initWithPath:dbPath] autorelease]; 
+    Level *level = [[[Level alloc] initWithPath:dbPath] autorelease];
     urlTable_ = [[URLTable alloc] initWithLevel:level];
     trackTable_ = [[TrackTable alloc] initWithLevel:level];
     self.coverArtDB = [[[Level alloc] initWithPath:coverArtPath] autorelease];
@@ -147,7 +147,7 @@ static void OnFileEvent(
       LocalLibrary *self0 = (LocalLibrary *)weakSelf;
       if (self0.pruneRequested) {
         self0.pruneRequested = false;
-        [self0 pruneQueued]; 
+        [self0 pruneQueued];
       }
       [e add:1000000];
     }];
@@ -155,14 +155,14 @@ static void OnFileEvent(
       [weakSelf scanQueuedPaths];
       [e add:1000000];
     }];
-   
-    numCoverArtQueries_ = 0; 
+
+    numCoverArtQueries_ = 0;
     [coverArtLoop_ every:10000 with:^{
       [weakSelf popPendingCoverArt];
     }];
 
     fsEventStreamRef_ = nil;
-    [self monitorPaths]; 
+    [self monitorPaths];
   }
   return self;
 }
@@ -171,10 +171,10 @@ static void OnFileEvent(
   __block LocalLibrary *weakSelf = self;
   [coverArtLoop_ onTimeout:kCheckCoverArtDelay with:^(Event *e, short flags) {
     [weakSelf each:^(Track *t) {
-      if (!t.coverArtURL) 
+      if (!t.coverArtURL)
         return;
-      if (t.isCoverArtChecked.boolValue) 
-        return;  
+      if (t.isCoverArtChecked.boolValue)
+        return;
       @synchronized(weakSelf.pendingCoverArtTracks) {
         [weakSelf.pendingCoverArtTracks addObject:t.id];
       }
@@ -185,7 +185,7 @@ static void OnFileEvent(
 - (void)popPendingCoverArt {
   if (numCoverArtQueries_ >= kMaxConcurrentCoverArtQueries)
     return;
-  @synchronized(pendingCoverArtTracks_) { 
+  @synchronized(pendingCoverArtTracks_) {
     NSNumber *trackID = pendingCoverArtTracks_.anyObject;
     Track *track = [self get:trackID];
     if (trackID) {
@@ -197,7 +197,7 @@ static void OnFileEvent(
   }
 }
 
-- (void)checkCoverArtForTrack:(Track *)track { 
+- (void)checkCoverArtForTrack:(Track *)track {
   __block LocalLibrary *weakSelf = self;
   NSString *artist = track.artist;
   NSString *album = track.album;
@@ -214,7 +214,7 @@ static void OnFileEvent(
     return;
   }
   numCoverArtQueries_++;
-  [self search:term withArtworkData:^(int status, NSData *data) { 
+  [self search:term withArtworkData:^(int status, NSData *data) {
     numCoverArtQueries_--;
     if (data) {
       [self saveCoverArt:coverArtID data:data];
@@ -254,15 +254,15 @@ static void OnFileEvent(
   NSArray *paths = self.pathsToAutomaticallyScan;
   FSEventStreamContext context = {0, self, NULL, NULL, NULL};
 
-  if (paths.count) { 
-    fsEventStreamRef_ = FSEventStreamCreate( 
+  if (paths.count) {
+    fsEventStreamRef_ = FSEventStreamCreate(
         kCFAllocatorDefault,
         OnFileEvent,
-        &context, 
+        &context,
         (CFArrayRef)paths,
-        kFSEventStreamEventIdSinceNow, 
-        kMonitorLatency, 
-        kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagFileEvents);  
+        kFSEventStreamEventIdSinceNow,
+        kMonitorLatency,
+        kFSEventStreamCreateFlagUseCFTypes | kFSEventStreamCreateFlagFileEvents);
 
     FSEventStreamScheduleWithRunLoop(fsEventStreamRef_,
         CFRunLoopGetCurrent(),
@@ -271,7 +271,7 @@ static void OnFileEvent(
   }
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   [coverArtLoop_ release];
   [pruneLoop_ release];
   [scanLoop_ release];
@@ -290,7 +290,7 @@ static void OnFileEvent(
   [super dealloc];
 }
 
-- (void)scanQueuedPaths { 
+- (void)scanQueuedPaths {
   NSArray *paths0;
   @synchronized(pathsToScan_)  {
     paths0 = pathsToScan_.allObjects;
@@ -306,7 +306,7 @@ static void OnFileEvent(
   char * paths[n + 1];
   int i = 0;
   for (NSString *p in paths0) {
-    paths[i] = (char *)p.UTF8String;  
+    paths[i] = (char *)p.UTF8String;
     i++;
   }
   paths[n] = NULL;
@@ -346,9 +346,9 @@ static void OnFileEvent(
           @synchronized(pendingCoverArtTracks_) {
             [pendingCoverArtTracks_ addObject:t.id];
           }
-        } else { 
+        } else {
         }
-      } else { 
+      } else {
       }
     }
   }
@@ -370,18 +370,18 @@ static void OnFileEvent(
 
 - (void)pruneQueued {
   [trackTable_ each:^(id key, id val) {
-    Track *track = (Track *)val;    
+    Track *track = (Track *)val;
     track.library = self;
     struct stat fsStatus;
     if (stat(track.url.path.UTF8String, &fsStatus) < 0 && errno == ENOENT) {
       [self delete:track];
     }
   }];
-}     
+}
 
-- (void)save:(Track *)track { 
+- (void)save:(Track *)track {
   NSURL *url = track.url;
-  if (!url) { 
+  if (!url) {
     return;
   }
   bool isNew = false;
@@ -393,7 +393,7 @@ static void OnFileEvent(
   [trackTable_ put:track forKey:track.id];
   if (isNew) {
     [self notifyTrack:track change:kLibraryTrackAdded];
-  } else { 
+  } else {
     [self notifyTrack:track change:kLibraryTrackSaved];
   }
   self.lastUpdatedAt = Now();
@@ -401,7 +401,7 @@ static void OnFileEvent(
 
 
 - (Track *)get:(NSNumber *)trackID {
-  Track *t = [trackTable_ get:trackID]; 
+  Track *t = [trackTable_ get:trackID];
   t.library = self;
   return t;
 }
@@ -411,16 +411,16 @@ static void OnFileEvent(
   [trackTable_ clear];
 }
 
-- (void)delete:(Track *)track { 
+- (void)delete:(Track *)track {
   [trackTable_ delete:track.id];
-  if (track.url) 
+  if (track.url)
     [urlTable_ delete:track.url.absoluteString];
   self.lastUpdatedAt = Now();
   [self notifyTrack:track change:kLibraryTrackDeleted];
 
 }
 
-- (int)count { 
+- (int)count {
   return trackTable_.count;
 }
 
@@ -432,14 +432,14 @@ static void OnFileEvent(
   }];
 }
 
-- (void)scan:(NSArray *)paths { 
-  @synchronized(pathsToScan_) { 
+- (void)scan:(NSArray *)paths {
+  @synchronized(pathsToScan_) {
     if (paths)
       [pathsToScan_ addObjectsFromArray:paths];
   }
 }
 
-- (void)prune { 
+- (void)prune {
   pruneRequested_ = true;
 }
 
@@ -450,7 +450,7 @@ static void OnFileEvent(
     NSMutableArray *a = [NSMutableArray array];
     if (curr)
       [a addObjectsFromArray:curr];
-    if (![a containsObject:aPath]) 
+    if (![a containsObject:aPath])
       [a addObject:aPath];
     self.pathsToAutomaticallyScan = a;
   }
@@ -465,7 +465,7 @@ static void OnFileEvent(
   paths = [paths sortedArrayUsingSelector:@selector(compare:)];
   [d setObject:paths forKey:kPathsToScan];
   [d synchronize];
-  [[NSNotificationCenter defaultCenter] 
+  [[NSNotificationCenter defaultCenter]
     postNotificationName:kScanPathsChanged
     object:self];
   [self monitorPaths];
@@ -491,11 +491,11 @@ static void OnFileEvent(
   });
 }
 
-- (bool)isITunesImported { 
+- (bool)isITunesImported {
   return [[NSUserDefaults standardUserDefaults] boolForKey:kIsITunesImported];
 }
 
-- (void)setIsITunesImported:(bool)st { 
+- (void)setIsITunesImported:(bool)st {
   [[NSUserDefaults standardUserDefaults] setBool:(BOOL)st forKey:kIsITunesImported];
   [[NSUserDefaults standardUserDefaults] synchronize];
 }

@@ -11,7 +11,7 @@ static OSStatus GetAudioCallback(void *context,
     const AudioTimeStamp *timestamp,
     uint32_t busNumber,
     uint32_t numFrames,
-    AudioBufferList *ioData) { 
+    AudioBufferList *ioData) {
   CoreAudioSink *sink = (CoreAudioSink *)context;
   for (uint32_t i = 0; i < ioData->mNumberBuffers; i++) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -37,7 +37,7 @@ static OSStatus GetAudioCallback(void *context,
 
 - (id)init {
   self = [super init];
-  if (self) { 
+  if (self) {
     volume_ = 0.5;
     isPaused_ = true;
   }
@@ -98,7 +98,7 @@ static OSStatus GetAudioCallback(void *context,
   AudioUnitSetProperty(outputAudioUnit_, kAudioUnitProperty_SetRenderCallback,
       kAudioUnitScope_Input, 0, &callback, sizeof(callback));
   AudioOutputUnitStart(outputAudioUnit_);
-  AudioUnitSetParameter(outputAudioUnit_, 
+  AudioUnitSetParameter(outputAudioUnit_,
       kHALOutputParam_Volume, kAudioUnitScope_Output, 0, (AudioUnitParameterValue)volume_, 0);
 }
 
@@ -116,14 +116,14 @@ static OSStatus GetAudioCallback(void *context,
 }
 
 - (void)setIsPaused:(bool)isPaused {
-  @synchronized(self) { 
+  @synchronized(self) {
     if (isPaused == isPaused_) {
       INFO(@"already %d", (int)isPaused);
       return;
     }
-    if (!isPaused) { 
+    if (!isPaused) {
       [self startOutputUnit];
-    } else { 
+    } else {
       [self stopOutputUnit];
     }
     isPaused_ = isPaused;
@@ -134,21 +134,21 @@ static OSStatus GetAudioCallback(void *context,
   return volume_;
 }
 
-- (void)setVolume:(double)pct { 
+- (void)setVolume:(double)pct {
   volume_ = pct;
   if (isPaused_)
     return;
-  OSStatus status = AudioUnitSetParameter(outputAudioUnit_, 
+  OSStatus status = AudioUnitSetParameter(outputAudioUnit_,
       kHALOutputParam_Volume, kAudioUnitScope_Output, 0, (AudioUnitParameterValue)pct, 0);
-  if (status != 0) 
+  if (status != 0)
     ERROR(@"failed to set volume (%d)", status);
 }
 
-- (int64_t)elapsed { 
+- (int64_t)elapsed {
   return self.audioSource.elapsed;
 }
 
-- (int64_t)duration { 
+- (int64_t)duration {
   return self.audioSource.duration;
 }
 

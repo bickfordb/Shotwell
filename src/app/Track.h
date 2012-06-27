@@ -71,5 +71,5 @@ extern NSArray *allTrackKeys;
 + (Track *)fromJSON:(NSDictionary *)json;
 
 @end
- 
+
 // vim: filetype=objcpp

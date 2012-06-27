@@ -12,7 +12,7 @@
 const int kDaemonDefaultPort = 6226;
 NSString * const kDaemonServiceType = @"_shotwell._tcp.";
 
-@interface Request : NSObject { 
+@interface Request : NSObject {
   struct evhttp_request *req_;
 }
 - (id)initWithRequest:(evhttp_request *)req;
@@ -23,7 +23,7 @@ NSString * const kDaemonServiceType = @"_shotwell._tcp.";
 - (NSDictionary *)headers;
 @end
 
-@implementation Request 
+@implementation Request
 - (id)initWithRequest:(evhttp_request *)req {
   self = [super init];
   if (self) {
@@ -31,12 +31,12 @@ NSString * const kDaemonServiceType = @"_shotwell._tcp.";
   }
   return self;
 }
-- (void)dealloc { 
+- (void)dealloc {
   req_ = NULL;
   [super dealloc];
 }
 
-- (NSString *)path { 
+- (NSString *)path {
     const struct evhttp_uri *uri = evhttp_request_get_evhttp_uri(req_);
     const char *p0 = evhttp_uri_get_path(uri);
     size_t sz = 0;
@@ -51,12 +51,12 @@ NSString * const kDaemonServiceType = @"_shotwell._tcp.";
 
 - (void)respondWithStatus:(int)status message:(NSString *)message body:(NSString *)body {
   struct evbuffer *buffer = evbuffer_new();
-  evbuffer_add_printf(buffer, "%s", body.UTF8String);  
+  evbuffer_add_printf(buffer, "%s", body.UTF8String);
   evhttp_send_reply(req_, status, message.UTF8String, buffer);
   evbuffer_free(buffer);
 }
 
-- (void)respondWithStatus:(int)status message:(NSString *)message buffer:(struct evbuffer *)buffer { 
+- (void)respondWithStatus:(int)status message:(NSString *)message buffer:(struct evbuffer *)buffer {
   evhttp_send_reply(req_, status, message.UTF8String, buffer);
 }
 
@@ -64,7 +64,7 @@ NSString * const kDaemonServiceType = @"_shotwell._tcp.";
   [self respondWithStatus:404 message:@"Not Found" body:@""];
 }
 - (void)addResponseHeader:(NSString *)key value:(NSString *)value {
-  struct evkeyvalq *headers = evhttp_request_get_output_headers(req_);  
+  struct evkeyvalq *headers = evhttp_request_get_output_headers(req_);
   evhttp_add_header(headers, key.UTF8String, value.UTF8String);
 }
 
@@ -80,7 +80,7 @@ static void ParseRangeHeader(NSString *s, int *startByte, int *endByte) {
   if ([sc scanInt:startByte]) {
     [sc scanString:@"-" intoString:NULL];
     [sc scanInt:endByte];
-  } 
+  }
 }
 
 static void OnRequest(evhttp_request *r, void *ctx) {
@@ -93,7 +93,7 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 @implementation Daemon
 @synthesize netService = netService_;
 
-- (bool)handleHomeRequest:(Request *)r { 
+- (bool)handleHomeRequest:(Request *)r {
   if (![r.path isEqualToString:@"/"])
     return false;
   [r addResponseHeader:@"Content-Type" value:@"application/json"];
@@ -114,9 +114,9 @@ static void OnRequest(evhttp_request *r, void *ctx) {
   NSMutableArray *tracks = [NSMutableArray array];
   NSArray *keys = [NSArray arrayWithObjects:kArtist, kID, kAlbum, kCreatedAt, kUpdatedAt, kCoverArtID, kGenre, kLastPlayedAt, kPath, kPublisher, kCreatedAt, kTitle, kDuration, kTrackNumber, kYear, nil];
 
-  [library_ each:^(Track *t) { 
-    NSMutableDictionary *d = [NSMutableDictionary dictionary]; 
-    for (NSString *k in keys) { 
+  [library_ each:^(Track *t) {
+    NSMutableDictionary *d = [NSMutableDictionary dictionary];
+    for (NSString *k in keys) {
       id val = [t valueForKey:k];
       if (!val) {
         continue;
@@ -129,15 +129,15 @@ static void OnRequest(evhttp_request *r, void *ctx) {
   return true;
 }
 
-- (bool)handleArtworkRequest:(Request *)request { 
+- (bool)handleArtworkRequest:(Request *)request {
   NSScanner *scanner = [NSScanner scannerWithString:request.path];
   NSString *s = nil;
   if (![scanner scanString:@"/art/" intoString:&s]) {
-    return false;  
+    return false;
   }
   NSString *coverArtID = nil;
   [scanner scanUpToCharactersFromSet:[NSCharacterSet characterSetWithCharactersInString:@"/"] intoString:&coverArtID];
-  if (!coverArtID || !coverArtID.length) 
+  if (!coverArtID || !coverArtID.length)
     return false;
   NSData *data = [library_ getCoverArt:coverArtID];
   struct evbuffer *buf = NULL;
@@ -146,19 +146,19 @@ static void OnRequest(evhttp_request *r, void *ctx) {
     buf = evbuffer_new();
     evbuffer_add(buf, data.bytes, data.length);
   }
-  [request 
-    respondWithStatus:data ? 200 : 404 
-    message:data ? @"OK" : @"Not Found" 
+  [request
+    respondWithStatus:data ? 200 : 404
+    message:data ? @"OK" : @"Not Found"
     buffer:buf];
   return true;
 }
 
 
-- (bool)handleTrackRequest:(Request *)request { 
+- (bool)handleTrackRequest:(Request *)request {
   NSScanner *scanner = [NSScanner scannerWithString:request.path];
   NSString *s = nil;
   if (![scanner scanString:@"/tracks/" intoString:&s]) {
-    return false;  
+    return false;
   }
   int trackID = -1;
   if (![scanner scanInt:&trackID]) {
@@ -172,7 +172,7 @@ static void OnRequest(evhttp_request *r, void *ctx) {
     [request respondNotFound];
     return true;
   }
-  
+
   int fd = open(track.url.path.UTF8String, O_RDONLY);
   if (fd < 0) {
     DEBUG(@"missing fd");
@@ -187,7 +187,7 @@ static void OnRequest(evhttp_request *r, void *ctx) {
     return true;
   }
   NSString *guessContentType = @"application/octet-stream";
-  if (strcasestr(guessContentType.UTF8String, ".mp3")) 
+  if (strcasestr(guessContentType.UTF8String, ".mp3"))
     guessContentType = @"audio/mpeg";
   // fill me in
   [request addResponseHeader:@"Content-Type" value:guessContentType];
@@ -214,8 +214,8 @@ static void OnRequest(evhttp_request *r, void *ctx) {
     status = 206;
     msg = @"Partial Content";
   }
-  [request 
-    addResponseHeader:@"Content-Range" 
+  [request
+    addResponseHeader:@"Content-Range"
     value:[NSString stringWithFormat:@"bytes %d-%d/%d",
             offset,
             (offset + len - 1),
@@ -230,7 +230,7 @@ static void OnRequest(evhttp_request *r, void *ctx) {
   [request addResponseHeader:@"Server" value:@"app/0.0"];
   if ([self handleHomeRequest:request])
     return;
-  else if ([self handleLibraryRequest:request]) 
+  else if ([self handleLibraryRequest:request])
     return;
   else if ([self handleArtworkRequest:request])
     return;
@@ -242,7 +242,7 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 
 - (id)initWithHost:(NSString *)host port:(int)port library:(LocalLibrary *)library {
   self = [super init];
-  if (self) { 
+  if (self) {
     library_ = [library retain];
     loop_ = [[Loop alloc] init];
     eventHTTP_ = evhttp_new(loop_.base);
@@ -251,10 +251,10 @@ static void OnRequest(evhttp_request *r, void *ctx) {
     struct utsname the_utsname;
     uname(&the_utsname);
     NSString *nodeName = [NSString stringWithUTF8String:the_utsname.nodename];
-    self.netService = [[[NSNetService alloc] 
+    self.netService = [[[NSNetService alloc]
       initWithDomain:@"local."
       type:kDaemonServiceType
-      name:nodeName 
+      name:nodeName
       port:kDaemonDefaultPort] autorelease];
     [self.netService publish];
     [self.netService scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
@@ -262,7 +262,7 @@ static void OnRequest(evhttp_request *r, void *ctx) {
   return self;
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   [loop_ release];
   [library_ release];
   [netService_ release];

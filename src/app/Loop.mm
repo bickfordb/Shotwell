@@ -12,20 +12,20 @@
 static const int kDispatchInterval = 10000; // .01 seconds
 static const int kCheckRunningInterval = 1000; // .001 seconds
 
-@interface Loop (P) 
+@interface Loop (P)
 - (void)run;
 @end
 
-@implementation Loop 
+@implementation Loop
 @synthesize pendingEvents = pendingEvents_;
 
 + (void)initialize {
   evthread_use_pthreads();
 }
 
-- (id)init { 
+- (id)init {
   self = [super init];
-  if (self) { 
+  if (self) {
     base_ = event_base_new();
     running_ = false;
     started_ = true;
@@ -36,7 +36,7 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
   return self;
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   started_ = false;
   event_base_loopbreak(base_);
   while (running_) { ; }
@@ -45,7 +45,7 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
   [super dealloc];
 }
 
-- (void)run { 
+- (void)run {
   running_ = true;
   IgnoreSigPIPE();
   struct timeval dispatchInterval;
@@ -61,7 +61,7 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
   running_ = false;
 }
 
-- (struct event_base *)base { 
+- (struct event_base *)base {
   return base_;
 }
 - (void)every:(int64_t)timeout with:(void (^)())block {
@@ -88,11 +88,11 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
   block = [block copy];
   [self monitorFd:fd flags:EV_WRITE timeout:-1 with:^(Event *event, short flags) {
     int write_st = evbuffer_write(buffer, fd);
-    if ((write_st < 0) && (errno == EAGAIN || errno == EINTR)) 
+    if ((write_st < 0) && (errno == EAGAIN || errno == EINTR))
       write_st = 0;
     if (evbuffer_get_length(buffer) > 0 && write_st >= 0) {
       [event add:-1];
-    } else { 
+    } else {
       evbuffer_free(buffer);
       block(write_st >= 0 ? 0 : write_st);
     }
@@ -105,23 +105,23 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
   [self readLine:fd buffer:buf with:block];
 }
 
-- (void)readLine:(int)fd buffer:(struct evbuffer *)buffer with:(void (^)(NSString *line))block { 
+- (void)readLine:(int)fd buffer:(struct evbuffer *)buffer with:(void (^)(NSString *line))block {
   block = [block copy];
   [self monitorFd:fd flags:EV_READ timeout:-1 with:^(Event *event, short flags) {
-    for (;;) { 
+    for (;;) {
       char c = 0;
       int read_len = read(fd, &c, 1);
       if (read_len < 0 && errno != EAGAIN && errno != EINTR)
         break;
       if (read_len <= 0) {
-        [event add:-1];   
+        [event add:-1];
         break;
       }
       evbuffer_add(buffer, &c, 1);
-      if (c != '\n') 
+      if (c != '\n')
         continue;
       int blen = evbuffer_get_length(buffer);
-      NSString *s = [[NSString alloc] 
+      NSString *s = [[NSString alloc]
         initWithBytes:evbuffer_pullup(buffer, blen)
         length:blen
         encoding:NSUTF8StringEncoding];
@@ -132,7 +132,7 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
     }
   }];
 }
-  
+
 - (void)readData:(int)fd length:(size_t)length with:(void (^)(NSData *bytes))block {
   struct evbuffer *buffer = evbuffer_new();
   [self readData:fd buffer:buffer length:length with:block];
@@ -140,7 +140,7 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
 
 - (void)readData:(int)fd buffer:(struct evbuffer *)buffer length:(size_t)length with:(void (^)(NSData *bytes))block {
   block = [block copy];
-  [self 
+  [self
     monitorFd:fd
     flags:EV_READ
     timeout:-1
@@ -153,7 +153,7 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
       }
       if (evbuffer_get_length(buffer) != length) {
         [event add:-1];
-      } else { 
+      } else {
         NSData *ret = [NSData dataWithBytes:evbuffer_pullup(buffer, length) length:length];
         evbuffer_free(buffer);
         block(ret);

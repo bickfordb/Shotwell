@@ -7,13 +7,13 @@ NSComparator NaturalComparison = ^(id left, id right) {
   NSString *r = right;
   NSComparisonResult ret = 0;
   // note: treat empty strings and nil values as the largest
-  if (!left && !right) 
+  if (!left && !right)
     ret = 0;
-  else if (!right) 
+  else if (!right)
     ret = -1;
   else if (!left)
     ret = 1;
-  else if (![l length] && [r length]) 
+  else if (![l length] && [r length])
     ret = 1;
   else if ([l length] && ![r length])
     ret = -1;
@@ -23,10 +23,10 @@ NSComparator NaturalComparison = ^(id left, id right) {
 };
 
 NSComparator DefaultComparison = ^(id left, id right) {
-  return [left compare:right]; 
+  return [left compare:right];
 };
 
 NSComparator URLComparison = ^(id left, id right) {
-  return [((NSURL *)left).absoluteString compare:((NSURL *)right).absoluteString]; 
+  return [((NSURL *)left).absoluteString compare:((NSURL *)right).absoluteString];
 };
 

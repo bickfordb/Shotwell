@@ -1,14 +1,14 @@
 #import "app/HTTPRequest.h"
 
-@implementation HTTPRequest 
+@implementation HTTPRequest
 @synthesize method = method_;
 @synthesize uri = uri_;
 @synthesize body = body_;
 @synthesize headers = headers_;
 
-- (id)init { 
+- (id)init {
   self = [super init];
-  if (self) { 
+  if (self) {
     self.method = @"GET";
     self.uri = @"/";
     self.body = [NSData data];
@@ -17,13 +17,13 @@
   return self;
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   [method_ release];
   [body_ release];
   [headers_ release];
   [uri_ release];
   [super dealloc];
 }
-@end   
+@end
 
 

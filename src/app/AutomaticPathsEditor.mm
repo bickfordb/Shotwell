@@ -7,7 +7,7 @@ static NSString * const kAutomaticPath = @"path";
 @synthesize table = table_;
 @synthesize localLibrary = localLibrary_;
 
-- (void)dealloc { 
+- (void)dealloc {
   [[NSNotificationCenter defaultCenter] removeObserver:self];
   [table_ release];
   [localLibrary_ release];
@@ -18,7 +18,7 @@ static NSString * const kAutomaticPath = @"path";
   [self.table reload];
 }
 
-- (id)initWithLocalLibrary:(LocalLibrary *)localLibrary {  
+- (id)initWithLocalLibrary:(LocalLibrary *)localLibrary {
   self = [super init];
   if (self) {
     self.localLibrary = localLibrary;
@@ -46,7 +46,7 @@ static NSString * const kAutomaticPath = @"path";
     [self.table.tableView addTableColumn:pathColumn];
     [self.table.tableView registerForDraggedTypes:[NSArray arrayWithObjects:NSURLPboardType, NSFilenamesPboardType, nil]];
 
-    [self.view addSubview:self.table.view]; 
+    [self.view addSubview:self.table.view];
     self.table.view.nextResponder = self.table;
     self.table.nextResponder = self.view;
 
@@ -60,8 +60,8 @@ static NSString * const kAutomaticPath = @"path";
     label.backgroundColor = [NSColor clearColor];
     label.autoresizingMask = NSViewMaxXMargin | NSViewMinYMargin;
     [[label cell] setBackgroundStyle:NSBackgroundStyleRaised];
-    [self.view addSubview:label]; 
-   
+    [self.view addSubview:label];
+
     CGRect buttonFrame = CGRectMake(10, tableRect.origin.y - 32, 23, 25);
     NSButton *addButton = [[[NSButton alloc] initWithFrame:addRect] autorelease];
     addButton.image = [NSImage imageNamed:@"NSAddTemplate"];
@@ -71,7 +71,7 @@ static NSString * const kAutomaticPath = @"path";
     addButton.action = @selector(addScanPath:);
     addButton.bezelStyle = NSSmallSquareBezelStyle;
     [self.view addSubview:addButton];
-    
+
     buttonFrame.origin.x += buttonFrame.size.width;
     NSButton *removeButton = [[[NSButton alloc] initWithFrame:removeRect] autorelease];
     removeButton.buttonType = NSMomentaryPushInButton;
@@ -90,7 +90,7 @@ static NSString * const kAutomaticPath = @"path";
       NSArray *items = self.localLibrary.pathsToAutomaticallyScan;
       return (int)items.count;
     };
-    [[NSNotificationCenter defaultCenter] 
+    [[NSNotificationCenter defaultCenter]
       addObserver:self
       selector:@selector(onScanPathsChange:)
       name:kScanPathsChanged
@@ -100,7 +100,7 @@ static NSString * const kAutomaticPath = @"path";
   return self;
 }
 
-- (void)removeScanPath:(id)sender { 
+- (void)removeScanPath:(id)sender {
   NSIndexSet *iset = self.table.tableView.selectedRowIndexes;
   if (!iset)
     return;
@@ -112,7 +112,7 @@ static NSString * const kAutomaticPath = @"path";
   self.localLibrary.pathsToAutomaticallyScan = newPaths;
 }
 
-- (void)addScanPath:(id)sender { 
+- (void)addScanPath:(id)sender {
   NSIndexSet *iset = self.table.tableView.selectedRowIndexes;
   if (!iset)
     return;
@@ -123,7 +123,7 @@ static NSString * const kAutomaticPath = @"path";
   [openPanel setAllowsMultipleSelection:YES];
   NSMutableArray *paths = [NSMutableArray array];
   if ([openPanel runModal] == NSOKButton) {
-    for (NSURL *p in [openPanel URLs]) { 
+    for (NSURL *p in [openPanel URLs]) {
       [paths addObject:p.path];
     }
   }

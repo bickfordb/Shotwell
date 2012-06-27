@@ -1,6 +1,6 @@
 #import "app/RTSPRequest.h"
 
-@implementation RTSPRequest 
+@implementation RTSPRequest
 @synthesize method = method_;
 @synthesize uri = uri_;
 @synthesize body = body_;
@@ -13,7 +13,7 @@
   return s;
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   [method_ release];
   [uri_ release];
   [body_ release];

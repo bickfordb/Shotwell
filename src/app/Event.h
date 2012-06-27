@@ -7,7 +7,7 @@
 @class EventBuffer;
 typedef void (^OnFireEvent)(Event *event, short flags);
 
-@interface Event : NSObject { 
+@interface Event : NSObject {
   struct event *event_;
   Loop *loop_;
   OnFireEvent fire_;
@@ -20,7 +20,7 @@ typedef void (^OnFireEvent)(Event *event, short flags);
 - (void)add:(int64_t)timeout;
 @end
 
-@interface EventBuffer : NSObject { 
+@interface EventBuffer : NSObject {
   struct evbuffer *buffer_;
 }
 

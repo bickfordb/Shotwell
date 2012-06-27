@@ -1,10 +1,10 @@
 #include <Cocoa/Cocoa.h>
 #include <stdint.h>
 
-typedef enum { 
+typedef enum {
   // initial or stopped state
   kPausedAudioSourceState = 0,
-  // everything else 
+  // everything else
   kPlayingAudioSourceState,
   // error or end of file have the same status since they have the same use case
   kEOFAudioSourceState} AudioSourceState;

@@ -2,7 +2,7 @@
 
 // A sorted thread safe sequence similar to NSArrayController, but without all the bindings oddness
 // more of a sorted set, really
-@interface SortedSeq : NSObject <NSFastEnumeration> { 
+@interface SortedSeq : NSObject <NSFastEnumeration> {
   NSComparator comparator_;
   NSPredicate *predicate_;
   NSMutableArray *filteredItems_;
@@ -11,7 +11,7 @@
 }
 
 @property (copy) NSComparator comparator;
-@property (retain) NSPredicate *predicate; 
+@property (retain) NSPredicate *predicate;
 
 - (void)clear;
 - (void)remove:(id)something;

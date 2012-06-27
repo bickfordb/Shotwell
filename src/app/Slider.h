@@ -6,7 +6,7 @@
 extern NSString *kSliderIsUpNotification;
 
 @interface Slider : NSSlider {
-  BOOL isMouseDown_;  
+  BOOL isMouseDown_;
 }
 
 - (BOOL)isMouseDown;

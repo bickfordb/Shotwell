@@ -4,11 +4,11 @@
 
 using namespace std;
 
-@implementation Level 
+@implementation Level
 @synthesize db = db_;
 - (id)initWithPath:(NSString *)path {
   self = [super init];
-  if (self) { 
+  if (self) {
     db_ = NULL;
     leveldb::Options opts;
     opts.create_if_missing = true;
@@ -42,7 +42,7 @@ using namespace std;
 }
 @end
 
-@implementation LevelTable 
+@implementation LevelTable
 - (const char *)keyPrefix {
   return "";
 }
@@ -55,7 +55,7 @@ using namespace std;
   return self;
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   [level_ release];
   [super dealloc];
 }
@@ -110,7 +110,7 @@ using namespace std;
   free(valBytes);
 }
 
-- (void)delete:(id)key { 
+- (void)delete:(id)key {
   string key0([self keyPrefix]);
   size_t keyLength = 0;
   char *keyBytes = [self encodeKey:key length:&keyLength];
@@ -128,8 +128,8 @@ using namespace std;
     if (keySlice.starts_with(prefixSlice)) {
       leveldb::Slice valueSlice = i->value();
       NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-      id key = [self 
-        decodeKey:prefixSlice.size() + keySlice.data() 
+      id key = [self
+        decodeKey:prefixSlice.size() + keySlice.data()
         length:keySlice.size() - prefixSlice.size()];
       id value = [self
         decodeValue:valueSlice.data()
@@ -141,10 +141,10 @@ using namespace std;
     }
     i->Next();
   }
-  delete i;      
+  delete i;
 }
 
-- (NSNumber *)nextID { 
+- (NSNumber *)nextID {
   std::string key("autoinc:");
   key.append([self keyPrefix]);
   std::string val;
@@ -159,7 +159,7 @@ using namespace std;
   return [NSNumber numberWithUnsignedInt:ret];
 }
 
-- (int)count { 
+- (int)count {
   leveldb::Slice prefix([self keyPrefix]);
   leveldb::Iterator *i = level_.db->NewIterator(leveldb::ReadOptions());
   i->Seek(prefix);
@@ -169,10 +169,10 @@ using namespace std;
     i->Next();
   }
   delete i;
-  return ret;   
+  return ret;
 }
 
-- (void)clear { 
+- (void)clear {
   leveldb::Slice prefix([self keyPrefix]);
   leveldb::Iterator *i = level_.db->NewIterator(leveldb::ReadOptions());
   i->Seek(prefix);
@@ -194,10 +194,10 @@ using namespace std;
 - (char *)encodeJSON:(id)value length:(size_t *)length {
   json_t *js = [((NSObject *)value) getJSON];
   char *ret = js ? json_dumps(js, JSON_ENCODE_ANY) : NULL;
-  *length = (js && ret) ? strlen(ret) + 1 : 0;      
-  if (js) 
-    json_decref(js); 
-  return ret; 
+  *length = (js && ret) ? strlen(ret) + 1 : 0;
+  if (js)
+    json_decref(js);
+  return ret;
 }
 
 - (id)decodeJSON:(const char *)bytes length:(size_t)length {
@@ -212,11 +212,11 @@ using namespace std;
   return [self encodeJSON:value length:length];
 }
 
-- (id)decodeValue:(const char *)bytes length:(size_t)length { 
+- (id)decodeValue:(const char *)bytes length:(size_t)length {
   return [self decodeJSON:bytes length:length];
 }
 
-- (id)decodeKey:(const char *)bytes length:(size_t)length { 
+- (id)decodeKey:(const char *)bytes length:(size_t)length {
   return [self decodeJSON:bytes length:length];
 }
 

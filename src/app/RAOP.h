@@ -18,8 +18,8 @@
 #include "app/Loop.h"
 #include "app/Util.h"
 
-typedef enum { 
-  kRAOPV1, 
+typedef enum {
+  kRAOPV1,
   kRAOPV2
 } RAOPVersion;
 
@@ -50,7 +50,7 @@ typedef struct {
   /* marker = bool(b & RTP_HEADER_B_MARKER) */
 } RTPHeader;
 
-typedef struct { 
+typedef struct {
   RTPHeader header;
   uint32_t zero;
   NTPTime referenceTime;
@@ -58,13 +58,13 @@ typedef struct {
   NTPTime sendTime;
 } RAOPTimingPacket;
 
-typedef struct { 
+typedef struct {
   RTPHeader header;
   uint16_t missedSeqNum;
   uint16_t count;
 } RAOPResendPacket;
 
-typedef struct { 
+typedef struct {
   RTPHeader header;
   RTPTimestamp nowMinusLatency;
   NTPTime timeLastSync;
@@ -109,7 +109,7 @@ typedef enum {
   double volume_;
   id <AudioSource> audioSource_;
   int controlFd_;
-  int cseq_; 
+  int cseq_;
   int dataFd_;
   int packetNum_;
   int rtspFd_;

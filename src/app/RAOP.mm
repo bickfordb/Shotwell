@@ -1,4 +1,4 @@
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations" 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <Security/SecKey.h>
 #include <arpa/inet.h>
 #include <assert.h>
@@ -47,7 +47,7 @@ static const int kOK = 200;
 static const int kRTPHeaderSize = 4;
 static const int kRTSPPort = 5000;
 static const int kSampleRate = 44100;
-static const int kSamplesPerFrameV1 = 4096; 
+static const int kSamplesPerFrameV1 = 4096;
 static const int kSamplesPerFrameV2 = 352;
 static const int kTimingPacketSize = 4 + 28;
 static const int kTimingPort = 6002;
@@ -56,10 +56,10 @@ static const int kV2FrameHeaderSize = 12;   // Used by gen. 2
 static const int64_t kLoopTimeoutInterval = 10000;
 
 static bool ReadTimingPacket(struct evbuffer *buffer, RAOPTimingPacket *packet) {
-  if (evbuffer_get_length(buffer) == kTimingPacketSize) 
+  if (evbuffer_get_length(buffer) == kTimingPacketSize)
     return false;
   memset(packet, 0, sizeof(RAOPTimingPacket));
-  ReadRTPHeader(buffer, &packet->header);    
+  ReadRTPHeader(buffer, &packet->header);
   Pull32(buffer, &packet->zero);
   Pull32(buffer, &packet->referenceTime.sec);
   Pull32(buffer, &packet->referenceTime.frac);
@@ -175,15 +175,15 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   return (kUSPerS * self.framesPerPacket) / kSampleRate;
 }
 
-- (bool)isUDP { 
-  return version_ == kRAOPV2;  
+- (bool)isUDP {
+  return version_ == kRAOPV2;
 }
 
 - (int)framesPerPacket {
   return version_ == kRAOPV1 ? kSamplesPerFrameV1 : kSamplesPerFrameV2;
 
 }
-- (id <AudioSource>)audioSource { 
+- (id <AudioSource>)audioSource {
   return audioSource_;
 }
 
@@ -192,7 +192,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   @synchronized(self) {
     id <AudioSource> x = audioSource_;
     audioSource_ = [t retain];
-    [x release]; 
+    [x release];
     seekTo_ = 0;
   }
   [self didChangeValueForKey:@"audioSource"];
@@ -206,7 +206,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   int bsize = pcmLen / 4;
   int count = 0;
   // Encode the PCM data into ALAC.
-  // See the libav sources for documentation/further examples about encoding ALAC 
+  // See the libav sources for documentation/further examples about encoding ALAC
   BitBuffer *b = [[[BitBuffer alloc] initWithBuffer:out] autorelease];
   [b write:1 length:3]; // 1: stereo 0: mono
   [b write:0 length:4];
@@ -234,19 +234,19 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   }
   if ((bsize - count) > 0) {
     ERROR(@"added %d bytes of silence", (bsize - count) * 4);
-  } 
+  }
   evbuffer_drain(pcmData, pcmLen);
   [b flush];
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
   if (context == &kObserveState)  {
-  } else { 
-    [super observeValueForKeyPath:keyPath ofObject:object change:change context:context]; 
+  } else {
+    [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
   }
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   close(dataFd_);
   close(rtspFd_);
   close(controlFd_);
@@ -263,9 +263,9 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   [super dealloc];
 }
 
-- (id)initWithAddress:(NSString *)address port:(uint16_t)port { 
+- (id)initWithAddress:(NSString *)address port:(uint16_t)port {
   self = [super init];
-  if (self) { 
+  if (self) {
     controlFd_ = -1;
     dataFd_ = -1;
     rtspFd_ = - 1;
@@ -282,7 +282,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   return self;
 }
 
-- (void)closeData { 
+- (void)closeData {
   if (dataFd_ >= 0) {
     INFO(@"closing data fd: %d", dataFd_);
     close(dataFd_);
@@ -310,7 +310,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
 }
 
 - (void)iterateRAOP {
-  if (!isPaused_) { 
+  if (!isPaused_) {
     if (controlFd_ < 0) {
       [self openControl];
     }
@@ -324,33 +324,33 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
         raopState_ = kConnectedRAOPState;
       } else {
         if (seekTo_ >= 0) {
-          if (!isWriting_) { 
+          if (!isWriting_) {
             [self.audioSource seek:seekTo_];
             self.rtpTimestamp = 0;
             [self flush];
             seekTo_ = -1;
           }
-        } else { 
+        } else {
           [self readDataSocket];
           [self readTimingSocket];
           [self writeAudio];
         }
       }
-    } 
-  } else { 
+    }
+  } else {
     [self closeData];
     [self closeControl];
     [self closeTiming];
-    raopState_ = kInitialRAOPState; 
+    raopState_ = kInitialRAOPState;
   }
 }
 
-- (void)iterate { 
+- (void)iterate {
   [self iterateRTSP];
   [self iterateRAOP];
 }
 
-- (bool)openData { 
+- (bool)openData {
   DEBUG(@"connecting RTP");
   [self closeData];
   // Data address
@@ -368,17 +368,17 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   }
   fcntl(dataFd_, F_SETFL, fcntl(dataFd_, F_GETFL, 0) | O_NONBLOCK);
   DEBUG(@"connected");
-  return true; 
+  return true;
 }
 
 - (bool)openTiming {
   INFO(@"binding timing");
-  if (self.version == kRAOPV1) { 
+  if (self.version == kRAOPV1) {
     return true;
   }
-  // Timing socket 
+  // Timing socket
   timingFd_ = socket(AF_INET, SOCK_DGRAM, 0);
-  fcntl(timingFd_, F_SETFL, fcntl(timingFd_, F_GETFL, 0) | O_NONBLOCK); 
+  fcntl(timingFd_, F_SETFL, fcntl(timingFd_, F_GETFL, 0) | O_NONBLOCK);
   struct sockaddr_in addr;
   addr.sin_family = AF_INET;
   addr.sin_port = htons(kTimingPort);
@@ -398,16 +398,16 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
 
 - (bool)openControl {
   INFO(@"binding control");
-  if (self.version == kRAOPV1) { 
+  if (self.version == kRAOPV1) {
     return true;
   }
-  // Control socket 
+  // Control socket
   controlFd_ = socket(AF_INET, SOCK_DGRAM, 0);
   struct sockaddr_in addr;
   addr.sin_family = AF_INET;
   addr.sin_port = htons(kControlPort);
   addr.sin_addr.s_addr = htonl(INADDR_ANY);
-  fcntl(controlFd_, F_SETFL, fcntl(controlFd_, F_GETFL, 0) | O_NONBLOCK); 
+  fcntl(controlFd_, F_SETFL, fcntl(controlFd_, F_GETFL, 0) | O_NONBLOCK);
   int opt = 1;
   if (setsockopt(timingFd_, SOL_SOCKET, SO_REUSEADDR, (const void *)&opt, sizeof(opt))) {
     INFO(@"failed to set sockopt");
@@ -429,9 +429,9 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   }
   if (!audioSource_)
     return;
-  if (dataFd_ < 0) 
+  if (dataFd_ < 0)
     return;
-  if (self.version == kRAOPV2 && 
+  if (self.version == kRAOPV2 &&
      (self.lastWriteAt + self.writeAudioDataInterval) > Now()) {
     return;
   }
@@ -461,7 +461,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   self.lastWriteAt = Now();
   rtpSequence_ += 1;
   rtpTimestamp_ += self.framesPerPacket;
-  [loop_ writeBuffer:rtp fd:dataFd_ with:^(int succ) { 
+  [loop_ writeBuffer:rtp fd:dataFd_ with:^(int succ) {
     weakSelf->isWriting_ = false;
     if (succ != 0) {
       DEBUG(@"failed to write: %d", succ);
@@ -474,7 +474,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
 - (void)encodePacketV2:(struct evbuffer *)in out:(struct evbuffer *)out {
   uint16_t seq = htons(self.rtpSequence);
   uint16_t ts = htonl(self.rtpTimestamp);
-  
+
   uint32_t ssrc = self.ssrc;
   // 12 byte header
   uint8_t header[] = {
@@ -515,7 +515,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
     0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00,
   };
-  const int header_size = 16;      
+  const int header_size = 16;
   int alac_len = evbuffer_get_length(in);
   uint8_t alac[alac_len];
   evbuffer_remove(in, alac, alac_len);
@@ -547,11 +547,11 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   }];
 }
 
-- (void)readTimingSocket { 
+- (void)readTimingSocket {
   if (self.version != kRAOPV2) {
     return;
   }
-  
+
   if (isReadingTimeSocket_) {
     return;
   }
@@ -563,11 +563,11 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
       return;
     }
     int n = kTimingPacketSize - evbuffer_get_length(b.buffer);
-    if (n > 0) { 
+    if (n > 0) {
       int amt = evbuffer_read(b.buffer, weakSelf->timingFd_, n);
       (void)amt;
     }
-    if (evbuffer_get_length(b.buffer) == kTimingPacketSize) { 
+    if (evbuffer_get_length(b.buffer) == kTimingPacketSize) {
       ReadTimingPacket(b.buffer, &weakSelf->lastTimingPacket_);
       INFO(@"got timing packet: %@", FormatRAOPTimingPacket(&weakSelf->lastTimingPacket_));
     }
@@ -575,7 +575,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   }];
 }
 
-- (int64_t)elapsed { 
+- (int64_t)elapsed {
   return self.audioSource.elapsed;
 }
 
@@ -583,21 +583,21 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   return self.audioSource.duration;
 }
 
-- (bool)isSeeking { 
+- (bool)isSeeking {
   return self.audioSource.isSeeking || rtspState_ == kSendingFlushRTSPState || seekTo_ >= 0;
 }
 
-- (void)seek:(int64_t)usec { 
+- (void)seek:(int64_t)usec {
   seekTo_ = usec;
 }
 
-- (void)flush { 
+- (void)flush {
   isRequestFlush_ = true;
 }
 
 
-- (void)reset { 
-  
+- (void)reset {
+
   [self closeData];
   [self closeControl];
   [self closeTiming];
@@ -611,7 +611,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   raopState_ = kInitialRAOPState;
   self.key = [NSData randomDataWithLength:AES_BLOCK_SIZE];
   self.iv = [NSData randomDataWithLength:AES_BLOCK_SIZE];
-  aes_set_key(&aesContext_, (uint8_t *)[key_ bytes], 128); 
+  aes_set_key(&aesContext_, (uint8_t *)[key_ bytes], 128);
   RAND_bytes((uint8_t *)&rtpSequence_, sizeof(rtpSequence_));
   RAND_bytes((uint8_t *)&rtpTimestamp_, sizeof(rtpTimestamp_));
   rtpSequence_ = 0;
@@ -621,7 +621,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   self.sessionID = nil;
   RAND_bytes((unsigned char *)&ssrc_, sizeof(ssrc_));
   uint32_t path;
-  RAND_bytes((unsigned char *)&path, sizeof(path)); 
+  RAND_bytes((unsigned char *)&path, sizeof(path));
   self.pathID = [NSString stringWithFormat:@"%lu", path];
   int64_t cidNum;
   RAND_bytes((unsigned char *)&cidNum, sizeof(cidNum));
@@ -656,8 +656,8 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
       } else if (isRequestFlush_) {
         [self sendFlush];
       }
-    }    
-  } else { 
+    }
+  } else {
     if (rtspState_ == kConnectedRTSPState) {
       [self sendTeardown];
     }
@@ -671,18 +671,18 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   evbuffer_add_printf(buf, "%s %s RTSP/1.0\r\n", request.method.UTF8String,
       request.uri.UTF8String);
   int len = request.body ? request.body.length : 0;
-  [request.headers 
-    setValue:[NSString stringWithFormat:@"%d", len] 
+  [request.headers
+    setValue:[NSString stringWithFormat:@"%d", len]
     forKey:@"Content-Length"];
-  [request.headers enumerateKeysAndObjectsUsingBlock:^(id key, id val, BOOL *stop) { 
-    evbuffer_add_printf(buf, 
+  [request.headers enumerateKeysAndObjectsUsingBlock:^(id key, id val, BOOL *stop) {
+    evbuffer_add_printf(buf,
         "%s: %s\r\n",
-        ((NSString *)key).UTF8String, 
+        ((NSString *)key).UTF8String,
         ((NSString *)val).UTF8String);
   }];
   evbuffer_add_printf(buf, "\r\n");
   evbuffer_add(buf, request.body.bytes, request.body.length);
-   
+
   [loop_ writeBuffer:buf fd:rtspFd_ with:^(int succ) {
       if (succ == 0) {
         [self readResponseWithBlock:block];
@@ -726,29 +726,29 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
       NSString *key = nil;
       NSString *value = nil;
       [scanner scanHeader:&key value:&value];
-      if (key) 
+      if (key)
         [response.headers setValue:value forKey:key];
       [weakSelf readHeader:response with:block];
     } else {
       NSString *c = [response.headers objectForKey:@"Content-Length"];
       int contentLength = c ? c.intValue : 0;
-      if (contentLength) { 
+      if (contentLength) {
         [weakSelf.loop readData:fd length:contentLength with:^(NSData *data) {
           response.body = data;
           x(response);
         }];
-      } else { 
+      } else {
         x(response);
       }
     }
   }];
 }
 
-- (RTSPRequest *)createRequest { 
+- (RTSPRequest *)createRequest {
   RTSPRequest *request = [[[RTSPRequest alloc] init] autorelease];
   request.uri = [NSString stringWithFormat:@"rtsp://%@/%@", address_, pathID_];
   [request.headers setValue:[NSString stringWithFormat:@"%d", ++cseq_] forKey:@"CSeq"];
-  if (sessionID_) 
+  if (sessionID_)
     [request.headers setValue:sessionID_ forKey:@"Session"];
   if (cid_)
     [request.headers setValue:cid_ forKey:@"Client-Instance"];
@@ -765,14 +765,14 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
     if (response && response.status == kOK) {
       [weakSelf closeRTSP];
       weakSelf->rtspState_ = kInitialRTSPState;
-    } else { 
+    } else {
       ERROR(@"failed to teardown: %@", response);
       weakSelf->rtspState_ = kErrorRTSPState;
     }
   }];
 }
 
-- (void)sendFlush { 
+- (void)sendFlush {
   rtspState_ = kSendingFlushRTSPState;
   isRequestFlush_ = false;
   RTSPRequest *request = [self createRequest];
@@ -787,7 +787,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   }];
 }
 
-- (bool)openRTSP { 
+- (bool)openRTSP {
   INFO(@"open rtsp");
   if (rtspFd_ >= 0) {
     WARN(@"rtsp already open");
@@ -853,13 +853,13 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   }];
 }
 
-- (void)sendSetup { 
+- (void)sendSetup {
   rtspState_ = kSendingSetupRTSPState;
   RTSPRequest *req = [self createRequest];
   req.method = @"SETUP";
   if (!self.isUDP) {
     [req.headers setValue:@"RTP/AVP/TCP;unicast;interleaved=0-1;mode=record" forKey:@"Transport"];
-  } else { 
+  } else {
     [req.headers setValue:@"RTP/AVP/UDP;unicast;interleaved=0-1;mode=record;control_port=6001;timing_port=6002" forKey:@"Transport"];
   }
   __block RAOPSink *weakSelf = self;
@@ -879,7 +879,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   isRequestVolume_ = true;
 }
 
-- (double)volume { 
+- (double)volume {
   return volume_;
 }
 
@@ -892,24 +892,24 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
     [NSString stringWithFormat:@"seq=%hu;rtptime=%lu", rtpSequence_, rtpTimestamp_]
     forKey:@"RTP-Info"];
   __block RAOPSink *weakSelf = self;
-  [self sendRequest:request with:^(RTSPResponse *response) { 
+  [self sendRequest:request with:^(RTSPResponse *response) {
     weakSelf->rtspState_ = response.status == kOK ? kRecordRTSPState : kErrorRTSPState;
   }];
 }
 
 - (bool)isRTSPConnected {
   return rtspState_ == kSendingVolumeRTSPState
-    || rtspState_ == kSendingFlushRTSPState 
+    || rtspState_ == kSendingFlushRTSPState
     || rtspState_ == kConnectedRTSPState;
 }
 
 - (void)sendVolume {
   rtspState_ = kSendingVolumeRTSPState;
   isRequestVolume_ = false;
-  // value appears to be in some sort of decibel value 
-  // 0 is max, -144 is min  
-  double volume = 0;  
-  if (volume_ < 0.01) 
+  // value appears to be in some sort of decibel value
+  // 0 is max, -144 is min
+  double volume = 0;
+  if (volume_ < 0.01)
     volume = -144;
   else {
     double max = 0;
@@ -923,7 +923,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   [req.headers setValue:@"text/parameters" forKey:@"Content-Type"];
   req.body = [[NSString stringWithFormat:@"volume: %.6f\r\n", volume] dataUsingEncoding:NSUTF8StringEncoding];
   __block RAOPSink *weakSelf = self;
-  [self sendRequest:req with:^(RTSPResponse *r) { 
+  [self sendRequest:req with:^(RTSPResponse *r) {
     weakSelf->rtspState_ = r.status == kOK ? kConnectedRTSPState : kErrorRTSPState;
   }];
 }

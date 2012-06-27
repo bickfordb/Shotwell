@@ -2,7 +2,7 @@
 #define _SPLIT_VIEW_H_
 #import <Cocoa/Cocoa.h>
 
-@interface SplitView : NSSplitView { 
+@interface SplitView : NSSplitView {
   CGFloat dividerThickness_;
   NSColor *dividerColor_;
 }

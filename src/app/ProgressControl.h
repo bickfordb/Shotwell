@@ -3,10 +3,10 @@
 
 typedef void(^OnElapsed)(int64_t seconds);
 
-@interface ProgressControl : NSObject { 
+@interface ProgressControl : NSObject {
   NSView *view_;
   Slider *slider_;
-  OnElapsed onElapsed_; 
+  OnElapsed onElapsed_;
   int64_t duration_;
   int64_t elapsed_;
   NSTextField *elapsedTextField_;

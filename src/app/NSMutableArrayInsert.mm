@@ -10,8 +10,8 @@ static NSUInteger Insert(NSMutableArray *a, id obj, NSComparator comparator, NSU
     return Insert(a, obj, comparator, start, mid);
   } else if (cmp == NSOrderedSame) {
     return mid;
-  } else { 
-    return Insert(a, obj, comparator, mid + 1, end);  
+  } else {
+    return Insert(a, obj, comparator, mid + 1, end);
   }
 }
 

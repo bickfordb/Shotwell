@@ -3,18 +3,18 @@
 static const int kSecondsPerHour = 3600;
 static const int kSecondsPerMinute = 60;
 
-@implementation NSNumber (TimeFormat) 
+@implementation NSNumber (TimeFormat)
 
-- (NSString *)formatSeconds { 
+- (NSString *)formatSeconds {
   int64_t usecs = [self longLongValue];
   int64_t seconds = usecs / 1000000;
   int64_t hours = seconds / kSecondsPerHour;
   if (hours < 0) {
     seconds *= -1;
     seconds -= kSecondsPerHour * hours * -1;
-  } else { 
+  } else {
     seconds -= kSecondsPerHour * hours;
-  } 
+  }
   int64_t minutes = seconds / kSecondsPerMinute;
   seconds -= minutes * kSecondsPerMinute;
   if (hours != 0)

@@ -17,7 +17,7 @@ extern NSString * const kLibraryTrackDeleted;
 
 - (int)count;
 - (void)delete:(Track *)track;
-- (void)each:(void (^)(Track *))block; 
+- (void)each:(void (^)(Track *))block;
 - (void)notifyTrack:(Track *)t change:(NSString *)change;
 - (NSURL *)urlForTrack:(Track *)t;
 - (NSURL *)coverArtURLForTrack:(Track *)t;

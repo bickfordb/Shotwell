@@ -2,7 +2,7 @@
 
 #import "app/Track.h"
 
-@interface Plugin : NSObject { 
+@interface Plugin : NSObject {
 }
 
 - (void)trackStarted:(Track *)t;

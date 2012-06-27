@@ -13,7 +13,7 @@ NSArray *GetSubDirectories(NSArray *dirs);
 
 typedef struct {
   uint32_t sec;
-  uint32_t frac; 
+  uint32_t frac;
 } NTPTime;
 
 NTPTime NowNTPTime();

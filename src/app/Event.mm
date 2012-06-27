@@ -3,12 +3,12 @@
 
 static void EventCallback(int fd, short flags, void *ctx) {
   Event *e = (Event *)ctx;
-  if (e) { 
+  if (e) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     [e retain];
     NSMutableSet *pendingEvents = e.loop.pendingEvents;
     @synchronized(pendingEvents) {
-      [pendingEvents removeObject:e];  
+      [pendingEvents removeObject:e];
     }
     if (e.fire) {
       e.fire(e, flags);
@@ -16,9 +16,9 @@ static void EventCallback(int fd, short flags, void *ctx) {
     [e release];
     [pool release];
   }
-} 
+}
 
-@implementation Event 
+@implementation Event
 @synthesize loop = loop_;
 @synthesize event = event_;
 @synthesize fire = fire_;
@@ -36,7 +36,7 @@ static void EventCallback(int fd, short flags, void *ctx) {
 
 - (void)add:(int64_t)timeout {
   NSMutableSet *pendingEvents = self.loop.pendingEvents;
-  @synchronized(pendingEvents) { 
+  @synchronized(pendingEvents) {
     [pendingEvents addObject:self];
   }
   struct timeval t;
@@ -44,7 +44,7 @@ static void EventCallback(int fd, short flags, void *ctx) {
     t.tv_sec = timeout / 1000000;
     t.tv_usec = timeout - (t.tv_sec * 1000000);
     event_add(event_, &t);
-  } else { 
+  } else {
     event_add(event_, NULL);
   }
 }
@@ -57,9 +57,9 @@ static void EventCallback(int fd, short flags, void *ctx) {
 }
 @end
 
-@implementation EventBuffer 
+@implementation EventBuffer
 
-- (id)init { 
+- (id)init {
   self = [super init];
   if (self) {
     buffer_ = evbuffer_new();
@@ -67,16 +67,16 @@ static void EventCallback(int fd, short flags, void *ctx) {
   return self;
 }
 
-+ (EventBuffer *)eventBuffer { 
++ (EventBuffer *)eventBuffer {
   return [[[EventBuffer alloc] init] autorelease];
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   evbuffer_free(buffer_);
   [super dealloc];
 }
 
-- (struct evbuffer *)buffer { 
+- (struct evbuffer *)buffer {
   return buffer_;
 }
 
@@ -91,7 +91,7 @@ bool Pull16(struct evbuffer *buf, uint16_t *dst) {
   int amt = evbuffer_remove(buf, &x, 2);
   if (amt == 2)
     *dst = ntohs(x);
-  return amt == 2; 
+  return amt == 2;
 }
 
 bool Pull32(struct evbuffer *buf, uint32_t *dst) {
@@ -99,6 +99,6 @@ bool Pull32(struct evbuffer *buf, uint32_t *dst) {
   int amt = evbuffer_remove(buf, &x, 4);
   if (amt == 4)
     *dst = ntohl(x);
-  return amt == 4; 
+  return amt == 4;
 }
 

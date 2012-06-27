@@ -4,7 +4,7 @@
 static NSString * const kLoudImage = @"loud";
 static NSString * const kQuietImage = @"quiet";
 
-@implementation VolumeControl 
+@implementation VolumeControl
 @synthesize onVolume = onVolume_;
 @synthesize view = view_;
 @synthesize slider = slider_;
@@ -25,7 +25,7 @@ static NSString * const kQuietImage = @"quiet";
   return self.slider.doubleValue;
 }
 
-- (id)init { 
+- (id)init {
   self = [super init];
   if (self) {
     self.view = [[[NSView alloc] initWithFrame:CGRectMake(0, 0, 22 + 22 + 3 + 3 + 100, 22)] autorelease];
@@ -53,13 +53,13 @@ static NSString * const kQuietImage = @"quiet";
   return self;
 }
 
-- (void)onSliderAction:(id)slider { 
-  double amt = self.slider.doubleValue; 
+- (void)onSliderAction:(id)slider {
+  double amt = self.slider.doubleValue;
   if (amt < 0.0)
     amt = 0;
   if (amt > 1.0)
     amt = 1.0;
-  if (self.onVolume) 
+  if (self.onVolume)
     self.onVolume(amt);
 }
 

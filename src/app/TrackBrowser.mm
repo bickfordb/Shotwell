@@ -11,7 +11,7 @@ static NSString * const kStatus = @"status";
 static NSString * const kOnSortDescriptorsChanged = @"OnSortDescriptorsChanged";
 static double const kTrackFontSize = 11.0;
 
-@implementation TrackBrowser 
+@implementation TrackBrowser
 @synthesize emptyImage = emptyImage_;
 @synthesize font = font_;
 @synthesize playImage = playImage_;
@@ -30,15 +30,15 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
       NSString *key = sd.key;
       id valLeft = [left valueForKey:key];
       id valRight = [right valueForKey:key];
-      if (valLeft && !valRight) 
+      if (valLeft && !valRight)
         ret = NSOrderedAscending;
-      else if (!valRight && !valLeft) 
+      else if (!valRight && !valLeft)
         ret = NSOrderedSame;
-      else if (!valLeft && valRight) 
+      else if (!valLeft && valRight)
         ret = NSOrderedDescending;
       else
         ret = sd.comparator(valLeft, valRight);
-      if (!sd.ascending) 
+      if (!sd.ascending)
         ret *= -1;
       if (ret != NSOrderedSame) {
         break;
@@ -49,12 +49,12 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
 }
 
 
-- (void)delete:(id)sender { 
+- (void)delete:(id)sender {
   [self cutSelectedTracks];
   [self.tableView deselectAll:self];
 }
 
-- (NSArray *)selectedTracks { 
+- (NSArray *)selectedTracks {
   NSIndexSet *indices = self.tableView.selectedRowIndexes;
   return [self.tracks getMany:indices];
 }
@@ -62,7 +62,7 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
 - (NSArray *)cutSelectedTracks {
   NSIndexSet *indices = self.tableView.selectedRowIndexes;
   NSArray *tracks = [self.tracks getMany:indices];
-  ForkWith(^{ 
+  ForkWith(^{
     for (Track *t in tracks) {
       [self.library delete:t];
     }
@@ -70,9 +70,9 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   return tracks;
 }
 
-- (void)copy:(id)sender { 
+- (void)copy:(id)sender {
   NSArray *tracks = self.selectedTracks;
-  ForkWith(^{ 
+  ForkWith(^{
     NSPasteboard *pb = [NSPasteboard generalPasteboard];
     [pb clearContents];
     [pb declareTypes:[NSArray arrayWithObject:NSURLPboardType] owner:nil];
@@ -80,7 +80,7 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   });
 }
 
-- (void)cut:(id)sender { 
+- (void)cut:(id)sender {
   NSArray *tracks = self.cutSelectedTracks;
   [self.tableView deselectAll:self];
   NSPasteboard *pb = [NSPasteboard generalPasteboard];
@@ -107,7 +107,7 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   if (self) {
     self.library = library;
     self.tracks = [[[SortedSeq alloc] init] autorelease];
-     
+
     __block TrackBrowser *weakSelf = self;
     self.font = [NSFont systemFontOfSize:kTrackFontSize];
     self.playingFont = [NSFont boldSystemFontOfSize:kTrackFontSize];
@@ -118,8 +118,8 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
       }
       return true;
     };
-    [self.tableView 
-      addObserver:self 
+    [self.tableView
+      addObserver:self
       forKeyPath:@"sortDescriptors"
       options:(NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld)
       context:kOnSortDescriptorsChanged];
@@ -129,7 +129,7 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
     [tableMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"c"];
     [tableMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:@""];
     self.tableView.menu = tableMenu;
-  
+
     NSTableColumn *statusColumn = [[[NSTableColumn alloc] initWithIdentifier:kStatus] autorelease];
     NSTableColumn *artistColumn = [[[NSTableColumn alloc] initWithIdentifier:kArtist] autorelease];
     [artistColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.artist" options:nil];
@@ -234,11 +234,11 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
       bool isPlaying = [SharedAppDelegate().track isEqual:t];
       [[tableColumn dataCell] setFont:isPlaying ? playingFont_ : font_];
       if (ident == kStatus) {
-        return isPlaying ? playImage_ : emptyImage_;  
+        return isPlaying ? playImage_ : emptyImage_;
       }
       return nil;
     };
-    self.onRowCount = ^{ 
+    self.onRowCount = ^{
       return (int)[weakSelf.tracks count];
     };
     ForkWith(^{
@@ -246,12 +246,12 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
         [tracks_ addObject:t];
       }];
     });
-    [[NSNotificationCenter defaultCenter] 
+    [[NSNotificationCenter defaultCenter]
       addObserver:self
       selector:@selector(onTrackChange:)
       name:kLibraryTrackChanged
       object:library_];
-    [self.tableView 
+    [self.tableView
       bind:@"content"
       toObject:tracks_
       withKeyPath:@"arrangedObjects"
@@ -262,8 +262,8 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
   if (context == kOnSortDescriptorsChanged) {
-    self.tracks.comparator = GetComparatorFromSortDescriptors(self.tableView.sortDescriptors); 
-  } else { 
+    self.tracks.comparator = GetComparatorFromSortDescriptors(self.tableView.sortDescriptors);
+  } else {
     [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
   }
 }
@@ -283,7 +283,7 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   });
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   [self.tableView unbind:@"content"];
   [self.tableView removeObserver:self forKeyPath:@"sortDescriptors" context:kOnSortDescriptorsChanged];
   [[NSNotificationCenter defaultCenter] removeObserver:self];

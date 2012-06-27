@@ -24,7 +24,7 @@ CXXFLAGS += -iquote src
 CXXFLAGS += -Werror -Wall
 CXXFLAGS += -ferror-limit=2
 CXXFLAGS += -I$(VENDOR_BUILD)/vendor/include
-CXXFLAGS += -ggdb 
+CXXFLAGS += -ggdb
 CXXFLAGS += -O0
 LDFLAGS += -L$(VENDOR_BUILD)/vendor/lib
 LDFLAGS += -lleveldb
@@ -41,24 +41,24 @@ LDFLAGS += -lavfilter
 LDFLAGS += -lavformat
 LDFLAGS += -lavutil
 LDFLAGS += -lbz2
-LDFLAGS += -lssl 
-LDFLAGS += -lcrypto 
-LDFLAGS += -lswscale 
-LDFLAGS += -lz 
-LDFLAGS += -framework AppKit 
-LDFLAGS += -framework AudioUnit 
-LDFLAGS += -framework Carbon 
-LDFLAGS += -framework Cocoa 
-LDFLAGS += -framework CoreAudio 
-LDFLAGS += -framework CoreFoundation 
-LDFLAGS += -framework CoreServices 
-LDFLAGS += -framework Foundation 
-LDFLAGS += -framework IOKit 
-LDFLAGS += -framework JavaScriptCore 
-LDFLAGS += -framework Quartz 
+LDFLAGS += -lssl
+LDFLAGS += -lcrypto
+LDFLAGS += -lswscale
+LDFLAGS += -lz
+LDFLAGS += -framework AppKit
+LDFLAGS += -framework AudioUnit
+LDFLAGS += -framework Carbon
+LDFLAGS += -framework Cocoa
+LDFLAGS += -framework CoreAudio
+LDFLAGS += -framework CoreFoundation
+LDFLAGS += -framework CoreServices
+LDFLAGS += -framework Foundation
+LDFLAGS += -framework IOKit
+LDFLAGS += -framework JavaScriptCore
+LDFLAGS += -framework Quartz
 LDFLAGS += -framework QuartzCore
-LDFLAGS += -framework VideoDecodeAcceleration 
-LDFLAGS += -framework WebKit 
+LDFLAGS += -framework VideoDecodeAcceleration
+LDFLAGS += -framework WebKit
 
 RESOURCES_DIR := $(APP_DIR)/Contents/Resources
 SRC_RES := src/Resources
@@ -66,7 +66,7 @@ SRC_RESOURCES = $(wildcard $(SRC_RES)/*.png $(SRC_RES)/*.pdf $(SRC_RES)/*.js)
 DST_RESOURCES := $(patsubst src/Resources/%, $(APP_DIR)/Contents/Resources/%, $(wildcard src/Resources/*.* src/Resources/**/*.* src/Resources/**/**/*.* src/Resources/**/**/**/*.* src/Resources/**/**/**/**/*.*))
 OBJS := $(patsubst src/app/%, $(BUILD)/objs/app/%, $(patsubst %.mm, %.o, $(wildcard src/app/*.mm)))
 TESTOBJS := $(patsubst src/test/%, $(BUILD)/objs/test/%, $(patsubst %.mm, %.o, $(wildcard src/test/*.mm)))
-DEPS := $(patsubst src/app/%, $(BUILD)/deps/app/%, $(patsubst %.mm, %.d, $(wildcard src/app/*.mm))) 
+DEPS := $(patsubst src/app/%, $(BUILD)/deps/app/%, $(patsubst %.mm, %.d, $(wildcard src/app/*.mm)))
 TESTDEPS := $(patsubst src/test/%, $(BUILD)/deps/test/%, $(patsubst %.mm, %.d, $(wildcard src/test/*.mm)))
 
 check_dirs = $(foreach i, $1, $(shell [ -d "$1" ] || mkdir -p $1 ))
@@ -80,7 +80,7 @@ $(RESOURCES_DIR)/%: $(SRC_RES)/%
 	then \
 		[ -d "$(dir $@)" ] || mkdir -p $(dir $@); \
 		install $< $@; \
-	fi 
+	fi
 
 # Convert the XIB into a nib.
 program: $(RESOURCES_DIR)/en.lproj/MainMenu.nib
@@ -93,9 +93,9 @@ $(BUILD)/deps/%.d: src/%.mm $(VENDOR)
 -include $(DEPS)
 -include $(TESTDEPS)
 
-$(BUILD)/objs/%.o: src/%.mm 
+$(BUILD)/objs/%.o: src/%.mm
 	$(call create_parent_dir)
-	$(CXX) $(CXXFLAGS) -c -o $@ $<	
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(PROG): $(OBJS) $(VENDOR) $(APPDIRS)
 	$(call create_parent_dir)
@@ -125,7 +125,7 @@ GDB_MEMORY_ENV += NSDebugEnabled=YES
 GDB_MEMORY_ENV += MallocStackLoggingNoCompact=YES
 
 gdb-memory: program $(BUILD)/gdb-commands
-	$(GDB_MEMORY_ENV) $(GDB) -f -x $(BUILD)/gdb-memory-commands $(PROG) 
+	$(GDB_MEMORY_ENV) $(GDB) -f -x $(BUILD)/gdb-memory-commands $(PROG)
 
 %.nib: %.xib
 	$(IBTOOL) --compile $@ $+
@@ -192,13 +192,9 @@ test: test-program
 TEST_SRCS += vendor-build/vendor/share/gtest-1.6.0/src/gtest-all.cc
 ALL_TEST_OBJS = $(TESTOBJS) $(filter-out $(BUILD)/objs/app/main.o, $(OBJS))
 
-build/test: $(VENDOR) $(TEST_SRCS) $(ALL_TEST_OBJS) 
-	$(CXX) $(CXXFLAGS) -o $@ $(TEST_SRCS) $(LDFLAGS) $(ALL_TEST_OBJS) 
+build/test: $(VENDOR) $(TEST_SRCS) $(ALL_TEST_OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $(TEST_SRCS) $(LDFLAGS) $(ALL_TEST_OBJS)
 
 dist: dist/$(DMG)
-
-fizz/buzz:
-	$(call create_parent_dir)
-	touch fizz/buzz
 
 .PHONY: dist

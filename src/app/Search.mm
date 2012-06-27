@@ -16,12 +16,12 @@ static NSPredicate *AndPredicate(NSPredicate *left, NSPredicate *right) {
   else if (!right)
     return left;
   else {
-    return [NSCompoundPredicate andPredicateWithSubpredicates:[NSArray arrayWithObjects:left, right, nil]]; 
+    return [NSCompoundPredicate andPredicateWithSubpredicates:[NSArray arrayWithObjects:left, right, nil]];
   }
 }
 
 static NSArray *ScanQuery(NSString *query) {
-  NSScanner *scanner = [NSScanner scannerWithString:query]; 
+  NSScanner *scanner = [NSScanner scannerWithString:query];
   NSCharacterSet *specialChars = [NSCharacterSet characterSetWithCharactersInString:@": \""];
   NSCharacterSet *quote = [NSCharacterSet characterSetWithCharactersInString:kQuote];
   NSCharacterSet *notQuote = quote.invertedSet;
@@ -57,18 +57,18 @@ NSPredicate *ParseSearchQuery(NSString *query) {
     if ([token1 isEqualToString:kColon]) {
       i++;
       NSString *token2 = nil;
-      while (i < tokens.count) { 
+      while (i < tokens.count) {
         token2 = [tokens objectAtIndex:i];
-        i++; 
+        i++;
         if ([token2 isEqualToString:kColon]) {
           token2 = nil;
           continue;
-        } else { 
+        } else {
           break;
         }
       }
       ret = AndPredicate(ret, token2 ? FieldPredicate(token0, token2) : WildcardPredicate(token0));
-    } else { 
+    } else {
       ret = AndPredicate(ret, WildcardPredicate(token0));
     }
   }
@@ -88,7 +88,7 @@ static NSPredicate *WildcardPredicate(NSString *term) {
 
 static NSPredicate *FieldPredicate(NSString *field, NSString *term) {
   if (![[NSSet setWithObjects:kArtist, kAlbum, kTitle, kPath, kPublisher, kYear, kGenre, nil] containsObject:field])
-    return nil; 
+    return nil;
   return [NSPredicate predicateWithFormat:[NSString stringWithFormat:@"%@ CONTAINS[cd] %%@", field], term, nil];
 }
 

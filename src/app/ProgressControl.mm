@@ -3,7 +3,7 @@
 #import "app/ProgressControl.h"
 #import "app/NSNumberTimeFormat.h"
 
-@implementation ProgressControl 
+@implementation ProgressControl
 @synthesize onElapsed = onElapsed_;
 @synthesize view = view_;
 @synthesize slider = slider_;
@@ -24,15 +24,15 @@
   }
 }
 
-- (bool)isEnabled { 
+- (bool)isEnabled {
   return isEnabled_;
 }
 
 - (void)setIsEnabled:(bool)enabled {
-  if (enabled == isEnabled_) 
+  if (enabled == isEnabled_)
     return;
   isEnabled_ = enabled;
-  slider_.enabled = enabled ? YES : NO; 
+  slider_.enabled = enabled ? YES : NO;
   self.duration = 0;
   self.elapsed = 0;
 }
@@ -41,16 +41,16 @@
   return duration_;
 }
 
-- (void)setElapsed:(int64_t)elapsed { 
+- (void)setElapsed:(int64_t)elapsed {
   if (elapsed < 0)
     elapsed = 0;
-  if (slider_.isMouseDown) 
+  if (slider_.isMouseDown)
     return;
   self.elapsedTextField.stringValue = [[NSNumber numberWithLongLong:elapsed] formatSeconds];
   slider_.doubleValue = elapsed / ((double)duration_);
 }
 
-- (int64_t)elapsed { 
+- (int64_t)elapsed {
   return (int64_t)(slider_.doubleValue * duration_);
 }
 
@@ -63,7 +63,7 @@
   [super dealloc];
 }
 
-- (id)initWithFrame:(CGRect)frame; { 
+- (id)initWithFrame:(CGRect)frame; {
   self = [super init];
   if (self) {
     duration_ = 0;
@@ -112,8 +112,8 @@
   return self;
 }
 
-- (void)onSliderAction:(id)slider { 
-  double amt = self.slider.doubleValue; 
+- (void)onSliderAction:(id)slider {
+  double amt = self.slider.doubleValue;
   if (slider_.isMouseDown) {
     self.elapsedTextField.stringValue = [[NSNumber numberWithLongLong:amt * duration_] formatSeconds];
   } else if (self.onElapsed) {

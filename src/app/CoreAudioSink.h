@@ -5,7 +5,7 @@
 
 #import "app/AudioSink.h"
 
-@interface CoreAudioSink : NSObject <AudioSink> {  
+@interface CoreAudioSink : NSObject <AudioSink> {
   id <AudioSource, NSObject> audioSource_;
   AudioUnit outputAudioUnit_;
 	void *buffer_;

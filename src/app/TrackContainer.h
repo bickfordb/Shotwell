@@ -1,6 +1,6 @@
 #import "app/SortedSeq.h"
 
-@protocol TrackContainer 
+@protocol TrackContainer
 @property (retain) SortedSeq *tracks;
-@end 
+@end
 

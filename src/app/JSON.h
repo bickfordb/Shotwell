@@ -1,16 +1,16 @@
 #import <Cocoa/Cocoa.h>
 #include <jansson.h>
 
-@interface NSObject (JSON) 
+@interface NSObject (JSON)
 - (NSString *)getJSONEncodedString;
 - (json_t *)getJSON;
 @end
 
-@interface NSString (JSON) 
+@interface NSString (JSON)
 - (id)decodeJSON;
 @end
 
-@interface NSData (JSON) 
+@interface NSData (JSON)
 - (id)decodeJSON;
 @end
 

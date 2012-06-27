@@ -6,7 +6,7 @@
 #import "app/Library.h"
 #import "app/Loop.h"
 
-@interface RemoteLibrary : Library { 
+@interface RemoteLibrary : Library {
   NSNetService *netService_;
   Loop *loop_;
   NSArray *tracks_;

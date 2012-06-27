@@ -5,12 +5,12 @@
 #import "app/Log.h"
 #import <Cocoa/Cocoa.h>
 
-void LogMessage(const char *name, int line, enum LogLevel log_level, NSString *msg, ...) { 
+void LogMessage(const char *name, int line, enum LogLevel log_level, NSString *msg, ...) {
   va_list args;
   va_start(args, msg);
   const char *level = "";
   switch (log_level) {
-    case InfoLogLevel: 
+    case InfoLogLevel:
       level = "INFO";
       break;
     case WarnLogLevel:

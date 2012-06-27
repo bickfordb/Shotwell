@@ -17,7 +17,7 @@
 extern NSString * const kScanPathsChanged;
 
 
-@interface LocalLibrary : Library { 
+@interface LocalLibrary : Library {
   TrackTable *trackTable_;
   URLTable *urlTable_;
   Loop *pruneLoop_;

@@ -1,6 +1,6 @@
 #import <Cocoa/Cocoa.h>
 
-@interface RTSPResponse : NSObject { 
+@interface RTSPResponse : NSObject {
   int status_;
   NSMutableDictionary *headers_;
   NSData *body_;

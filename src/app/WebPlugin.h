@@ -7,7 +7,7 @@
   NSURL *url_;
   WebView *webView_;
   NSView *content_;
-} 
+}
 
 - (id)initWithURL:(NSURL *)url;
 @property (atomic, retain) NSURL *url;

@@ -3,12 +3,12 @@
 @implementation WindowController
 @synthesize window = window_;
 
-- (id)init { 
+- (id)init {
   self = [super init];
   if (self) {
-    self.window = [[[NSWindow alloc] 
+    self.window = [[[NSWindow alloc]
       initWithContentRect:CGRectMake(50, 50, 300, 300)
-      styleMask:NSClosableWindowMask | NSTitledWindowMask | NSResizableWindowMask | NSMiniaturizableWindowMask 
+      styleMask:NSClosableWindowMask | NSTitledWindowMask | NSResizableWindowMask | NSMiniaturizableWindowMask
       backing:NSBackingStoreBuffered
       defer:YES] autorelease];
     self.window.autorecalculatesKeyViewLoop = YES;
@@ -19,7 +19,7 @@
   return self;
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   [window_ release];
   [super dealloc];
 }

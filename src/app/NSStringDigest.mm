@@ -11,7 +11,7 @@ static inline char hexchar(int i) {
 
 @implementation NSString (Digest)
 
-- (NSString *)sha1 { 
+- (NSString *)sha1 {
   const char *bytes = self.UTF8String;
   unsigned char m[21];
   CC_SHA1(bytes, strlen(bytes), m);

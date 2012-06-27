@@ -4,7 +4,7 @@
 #include <event2/http.h>
 #include <event2/keyvalq_struct.h>
 
-typedef void (^OnResponseBlock)(struct evhttp_request *req); 
+typedef void (^OnResponseBlock)(struct evhttp_request *req);
 
 static void OnRequestComplete(struct evhttp_request *req, void *context) {
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -17,7 +17,7 @@ static void OnRequestComplete(struct evhttp_request *req, void *context) {
   [pool release];
 }
 
-NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv) { 
+NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv) {
   NSMutableDictionary *d = [NSMutableDictionary dictionary];
   if (kv) {
     struct evkeyval *e = kv->tqh_first;
@@ -39,8 +39,8 @@ NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv) {
   [request.headers setObject:url.host forKey:@"Host"];
   // Everyone loves iTunes!
   [request.headers setObject:@"iTunes/9.0.3 (Macintosh; U; Intel Mac OS X 10_6_2; en-ca)" forKey:@"User-Agent"];
-  request.uri = (!url.query || !url.query.length) ? 
-    url.path 
+  request.uri = (!url.query || !url.query.length) ?
+    url.path
     : [NSString stringWithFormat:@"%@?%@", url.path, url.query, nil];
   return [self fetchRequest:request
     address:url.host
@@ -48,7 +48,7 @@ NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv) {
     with:onResponse];
 }
 
-- (bool)fetchRequest:(HTTPRequest *)request 
+- (bool)fetchRequest:(HTTPRequest *)request
     address:(NSString *)address
     port:(uint16_t)port
     with:(void (^)(HTTPResponse *response))onResponse {
@@ -62,7 +62,7 @@ NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv) {
       const char *buf = (const char *)evbuffer_pullup(evhttp_request_get_input_buffer(req), -1);
       evbuffer_get_length(evhttp_request_get_input_buffer(req));
       resp.body = [NSData dataWithBytes:buf length:evbuffer_get_length(evhttp_request_get_input_buffer(req))];
-    } else { 
+    } else {
       resp.status = 0;
     }
     onResponse(resp);
@@ -79,14 +79,14 @@ NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv) {
         ((NSString *)key).UTF8String,
         ((NSString *)obj).UTF8String);
   }];
-  evhttp_cmd_type cmdType = EVHTTP_REQ_GET; 
+  evhttp_cmd_type cmdType = EVHTTP_REQ_GET;
   int st = evhttp_make_request(conn, req, cmdType, request.uri.UTF8String);
   if (st != 0) {
     ERROR(@"failed to create request");
     evhttp_connection_free(conn);
     evhttp_request_free(req);
     return false;
-  } else { 
+  } else {
     [self.pendingEvents addObject:onReqContext];
     return true;
   }

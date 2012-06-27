@@ -5,17 +5,17 @@
 @synthesize headers = headers_;
 @synthesize body = body_;
 
-- (id)init { 
+- (id)init {
   self = [super init];
   if (self) {
     self.status = 200;
     self.body = [NSData data];
     self.headers = [NSMutableDictionary dictionary];
   }
-  return self;  
+  return self;
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   [body_ release];
   [headers_ release];
   [super dealloc];

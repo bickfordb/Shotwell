@@ -13,15 +13,15 @@ extern "C" {
   AVFrame *currAudioFrame_;
   bool opened_;
   int currAudioFrameOffset_;
-  int currAudioFrameRemaining_; 
+  int currAudioFrameRemaining_;
   AVFormatContext *formatContext_;
   int audioStreamIndex_;
   int64_t elapsed_;
   int64_t duration_;
   bool stop_;
   int64_t seekTo_;
-  AudioSourceState state_; 
-  pthread_mutex_t lock_; 
+  AudioSourceState state_;
+  pthread_mutex_t lock_;
   AVRational timeBase_;
   NSURL *url_;
 }

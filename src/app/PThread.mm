@@ -2,7 +2,7 @@
 #import "app/Signals.h"
 #import "app/Types.h"
 
-@interface PThreadClosed : NSObject { 
+@interface PThreadClosed : NSObject {
   On0 code_;
 }
 
@@ -10,17 +10,17 @@
 - (void)fire;
 @end
 
-@implementation PThreadClosed 
+@implementation PThreadClosed
 @synthesize code = code_;
 
-- (void)dealloc { 
+- (void)dealloc {
   [code_ release];
   [super dealloc];
 }
 
-- (void)fire { 
+- (void)fire {
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-  if (code_) 
+  if (code_)
     code_();
   [pool release];
   [self release];
@@ -48,7 +48,7 @@ void ForkToMainWith(ClosedBlock block) {
   NSThread *mainThread = [NSThread mainThread];
   if (mainThread == [NSThread currentThread]) {
     block();
-  } else { 
+  } else {
     // NB intentionally not autoreleased
     PThreadClosed *c = [[PThreadClosed alloc] init];
     c.code = block;

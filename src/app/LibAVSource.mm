@@ -3,13 +3,13 @@
 
 static AVPacket flushPacket;
 
-@interface LibAVSource (Prrrivate) 
+@interface LibAVSource (Prrrivate)
 - (AVCodecContext *)audioCodecContext;
 @end
 
 @implementation LibAVSource
 
-- (NSURL *)url { 
+- (NSURL *)url {
   return url_;
 }
 
@@ -23,13 +23,13 @@ static AVPacket flushPacket;
         break;
       }
     }
-    if (audioStreamIndex_ < 0) 
+    if (audioStreamIndex_ < 0)
       return NULL;
   }
   return formatContext_->streams[audioStreamIndex_]->codec;
 }
 
-- (void)dealloc { 
+- (void)dealloc {
   [url_ release];
   if (formatContext_) {
     avformat_close_input(&formatContext_);
@@ -41,7 +41,7 @@ static AVPacket flushPacket;
   [super dealloc];
 }
 
-+ (void)initialize { 
++ (void)initialize {
   av_init_packet(&flushPacket);
   flushPacket.data = (uint8_t *)"FLUSH";
   av_log_set_level(AV_LOG_QUIET);
@@ -51,7 +51,7 @@ static AVPacket flushPacket;
   avformat_network_init();
 }
 
-- (id)initWithURL:(NSURL *)url { 
+- (id)initWithURL:(NSURL *)url {
   self = [super init];
   if (!url) {
     [self release];
@@ -71,7 +71,7 @@ static AVPacket flushPacket;
     formatContext_ = NULL;
     stop_ = false;
     currAudioFrame_ = avcodec_alloc_frame();
-    avcodec_get_frame_defaults(currAudioFrame_);   
+    avcodec_get_frame_defaults(currAudioFrame_);
     currAudioFrameOffset_ = 0;
     currAudioFrameRemaining_ = 0;
     state_ = kPausedAudioSourceState;
@@ -97,12 +97,12 @@ static AVPacket flushPacket;
   if (err != 0) {
     ERROR(@"could not open: %d", err);
     return false;
-  } 
+  }
   err = avformat_find_stream_info(formatContext_, NULL);
   if (err < 0) {
     ERROR(@"could not find stream info");
     return false;
-  } 
+  }
   for (int i = 0; i < formatContext_->nb_streams; i++) {
     if (formatContext_->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
       audioStreamIndex_ = i;
@@ -111,12 +111,12 @@ static AVPacket flushPacket;
   if (audioStreamIndex_ < 0) {
     ERROR(@"couldnt locate audio stream index");
     return false;
-  }  
+  }
   timeBase_ = formatContext_->streams[audioStreamIndex_]->time_base;
   duration_ = formatContext_->streams[audioStreamIndex_]->duration;
   elapsed_ = 0;
   AVCodecContext *audioCodecContext = self.audioCodecContext;
-  AVCodec *codec = avcodec_find_decoder(audioCodecContext->codec_id); 
+  AVCodec *codec = avcodec_find_decoder(audioCodecContext->codec_id);
   avcodec_open2(audioCodecContext, codec, NULL);
 
   // N.B. avformat_seek_.. would fail sporadically, so av_seek_frame is used here instead.
@@ -130,12 +130,12 @@ static AVPacket flushPacket;
 }
 
 
-- (bool)readPacket:(AVPacket *)packet {  
+- (bool)readPacket:(AVPacket *)packet {
   if (!opened_) {
     opened_ = [self open];
     if (!opened_)
       return false;
-  } 
+  }
   if (state_ == kPausedAudioSourceState) {
     return false;
   }
@@ -151,15 +151,15 @@ static AVPacket flushPacket;
     seekTo_ = -1;
   }
 
-  while (1) { 
+  while (1) {
     int read = av_read_frame(formatContext_, packet);
-    if (read < 0) { 
+    if (read < 0) {
       if (read != -5) {// eof
         ERROR(@"read packet fail (%d)", read);
-      } 
+      }
       state_ = kEOFAudioSourceState;
       return false;
-    } 
+    }
     if (packet->size <= 0)  {
       continue;
     }
@@ -174,11 +174,11 @@ static AVPacket flushPacket;
   }
 }
 
-- (void)seek:(int64_t)usecs {  
+- (void)seek:(int64_t)usecs {
   seekTo_ = (usecs / ((long double)1000000.0)) * AV_TIME_BASE;
 }
 
-- (bool)isSeeking { 
+- (bool)isSeeking {
   return seekTo_ >= 0;
 }
 
@@ -187,8 +187,8 @@ static AVPacket flushPacket;
     if (currAudioFrameRemaining_ > 0) {
       int amt = MIN(len, currAudioFrameRemaining_);
       memcpy(
-          stream, 
-          currAudioFrame_->data[0] + currAudioFrameOffset_, 
+          stream,
+          currAudioFrame_->data[0] + currAudioFrameOffset_,
           amt);
       len -= amt;
       stream += amt;
@@ -203,7 +203,7 @@ static AVPacket flushPacket;
   }
 }
 
-- (bool)readFrame { 
+- (bool)readFrame {
   for (;;) {
     if (currAudioPacketAdj_.size <= 0) {
       av_free_packet(&currAudioPacket_);
@@ -217,14 +217,14 @@ static AVPacket flushPacket;
       avcodec_flush_buffers(self.audioCodecContext);
 
     // Reset the frame
-    avcodec_get_frame_defaults(currAudioFrame_);   
+    avcodec_get_frame_defaults(currAudioFrame_);
     currAudioFrameRemaining_ = 0;
     currAudioFrameOffset_ = 0;
     // Each audio packet may contain multiple frames.
     int gotFrame = 0;
     int amtDecoded = avcodec_decode_audio4(
         self.audioCodecContext,
-        currAudioFrame_, 
+        currAudioFrame_,
         &gotFrame,
         &currAudioPacketAdj_);
     if (amtDecoded < 0) {
@@ -234,7 +234,7 @@ static AVPacket flushPacket;
       // skip this packet.
       currAudioPacketAdj_.size = 0;
       continue;
-    } 
+    }
     if (!gotFrame)
       continue;
 
@@ -245,11 +245,11 @@ static AVPacket flushPacket;
         NULL,
         self.audioCodecContext->channels,
         currAudioFrame_->nb_samples,
-        self.audioCodecContext->sample_fmt, 
+        self.audioCodecContext->sample_fmt,
         1);
     currAudioFrameRemaining_ = data_size;
     return true;
-  } 
+  }
 }
 
 - (int64_t)duration {
@@ -258,10 +258,10 @@ static AVPacket flushPacket;
   return ret;
 }
 
-- (int64_t)elapsed { 
+- (int64_t)elapsed {
   int64_t ret = 0;
   ret = ((((long double) elapsed_) / timeBase_.den) * timeBase_.num) * 1000000.0;
-  return ret; 
+  return ret;
 }
 
 - (bool)isPaused {
@@ -270,7 +270,7 @@ static AVPacket flushPacket;
 
 - (void)setIsPaused:(bool)isPaused {
   @synchronized(self) {
-    if (isPaused) { 
+    if (isPaused) {
       if (state_ == kPlayingAudioSourceState)  {
         state_ = kPausedAudioSourceState;
       }
@@ -283,6 +283,6 @@ static AVPacket flushPacket;
 }
 
 - (AudioSourceState)state {
-  return state_;  
+  return state_;
 }
 @end

@@ -3,7 +3,7 @@
 
 id FromJSON(json_t *obj) {
   id ret = nil;
-  if (!obj) { 
+  if (!obj) {
     return nil;
   } else if (json_is_array(obj)) {
     NSMutableArray *a = ret = [NSMutableArray array];
@@ -16,11 +16,11 @@ id FromJSON(json_t *obj) {
     return [NSNumber numberWithLongLong:json_integer_value(obj)];
   } else if (json_is_real(obj)) {
     return [NSNumber numberWithDouble:json_real_value(obj)];
-  } else if (json_is_true(obj)) { 
+  } else if (json_is_true(obj)) {
     return [NSNumber numberWithBool:YES];
-  } else if (json_is_false(obj)) { 
-    return [NSNumber numberWithBool:NO]; 
-  } else if (json_is_string(obj)) { 
+  } else if (json_is_false(obj)) {
+    return [NSNumber numberWithBool:NO];
+  } else if (json_is_string(obj)) {
     ret = [NSString stringWithUTF8String:json_string_value(obj)];
   } else if (json_is_object(obj)) {
     NSMutableDictionary *d = [NSMutableDictionary dictionary];
@@ -41,7 +41,7 @@ id FromJSONBytes(const char *s) {
   return obj;
 }
 
-@implementation NSObject (JSON) 
+@implementation NSObject (JSON)
 - (NSString *)getJSONEncodedString {
   json_t *o = [self getJSON];
   if (!o)
@@ -57,7 +57,7 @@ id FromJSONBytes(const char *s) {
 }
 @end
 
-@implementation NSString (JSON) 
+@implementation NSString (JSON)
 
 - (json_t *)getJSON {
   return json_string(self.UTF8String);
@@ -72,7 +72,7 @@ id FromJSONBytes(const char *s) {
 }
 @end
 
-@implementation NSArray (JSON) 
+@implementation NSArray (JSON)
 - (json_t *)getJSON {
   json_t *ret = json_array();
   for (NSObject *o in self) {
@@ -86,11 +86,11 @@ id FromJSONBytes(const char *s) {
 }
 @end
 
-@implementation NSNumber (JSON) 
-- (json_t *)getJSON { 
+@implementation NSNumber (JSON)
+- (json_t *)getJSON {
   const char *ty = [self objCType];
   json_t *ret = NULL;
-  if (strcmp(ty, @encode(BOOL)) == 0)  
+  if (strcmp(ty, @encode(BOOL)) == 0)
     ret = [self boolValue] ? json_true() : json_false();
   else if (strcmp(ty, @encode(char)) == 0) {
     char s[2] = {[self charValue], 0};
@@ -103,8 +103,8 @@ id FromJSONBytes(const char *s) {
 }
 @end
 
-@implementation NSDictionary (JSON) 
-- (json_t *)getJSON { 
+@implementation NSDictionary (JSON)
+- (json_t *)getJSON {
   json_t *ret = json_object();
   [self enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
     if (![key isKindOfClass:[NSString class]]) {
@@ -112,7 +112,7 @@ id FromJSONBytes(const char *s) {
     }
     json_t *v = [((NSObject *)obj) getJSON];
     NSString *key0 = (NSString *)key;
-    json_object_set(ret, key0.UTF8String, v); 
+    json_object_set(ret, key0.UTF8String, v);
     if (v) {
       json_decref(v);
     }
@@ -121,13 +121,13 @@ id FromJSONBytes(const char *s) {
 }
 @end
 
-@implementation NSURL (JSON) 
+@implementation NSURL (JSON)
 - (json_t *)getJSON {
   return [self.absoluteString getJSON];
 }
 @end
 
-@implementation NSNull (JSON) 
+@implementation NSNull (JSON)
 - (json_t *)getJSON {
   return json_null();
 }
@@ -135,7 +135,7 @@ id FromJSONBytes(const char *s) {
 
 
 
-@implementation NSData (JSON) 
+@implementation NSData (JSON)
 - (id)decodeJSON {
   json_t *o = json_loadb((const char *)self.bytes, self.length, JSON_DECODE_ANY, NULL);
   id ret = o ? FromJSON(o) : nil;

@@ -3,10 +3,10 @@
 
 typedef void(^OnVolume)(double pct);
 
-@interface VolumeControl : NSObject { 
+@interface VolumeControl : NSObject {
   NSView *view_;
   Slider *slider_;
-  OnVolume onVolume_; 
+  OnVolume onVolume_;
 }
 @property (copy) OnVolume onVolume;
 @property (retain) Slider *slider;

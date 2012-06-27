@@ -1,6 +1,6 @@
 #import <Cocoa/Cocoa.h>
 
-@interface RTSPRequest : NSObject { 
+@interface RTSPRequest : NSObject {
   NSString *method_;
   NSString *uri_;
   NSMutableDictionary *headers_;

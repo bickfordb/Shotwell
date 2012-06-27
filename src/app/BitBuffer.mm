@@ -3,7 +3,7 @@
 @implementation BitBuffer
 - (id)initWithBuffer:(struct evbuffer *)buffer {
   self = [super init];
-  if (self) { 
+  if (self) {
     buffer_ = buffer;
     val_ = 0;
     size_ = 0;
@@ -28,7 +28,7 @@
   if (size_ > 0) {
     val_ = val_ << (8 - size_);
     evbuffer_add(buffer_, &val_, 1);
-    val_ = 0; 
+    val_ = 0;
     size_ = 0;
   }
 }

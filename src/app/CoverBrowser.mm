@@ -87,7 +87,7 @@ CoverBrowserTracksToString CoverBrowserFolderSubtitle = ^(NSSet *tracks)  {
 CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
   NSMutableSet *albums = [NSMutableSet set];
   int n = 0;
-  for (Track *t in tracks){ 
+  for (Track *t in tracks){
     n++;
     if (t.album && t.album.length) {
       [albums addObject:t.album];

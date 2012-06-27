@@ -12,7 +12,7 @@
 - (NSData *)getDataForKey:(NSData *)key;
 @end
 
-@interface LevelTable : NSObject { 
+@interface LevelTable : NSObject {
   Level *level_;
 }
 

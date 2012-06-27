@@ -31,7 +31,7 @@
   return self;
 }
 
-- (void)onClick:(id)sender { 
+- (void)onClick:(id)sender {
   int i = (int)self.indexOfSelectedItem;
   if (i >= 0 && i < services_.count && onService_) {
     onService_([[services_ objectAtIndex:i] valueForKey:@"value"]);

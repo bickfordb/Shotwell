@@ -6,7 +6,7 @@
 - (void)trackStarted:(Track *)track {
 }
 
-- (void)trackEnded:(Track *)track { 
+- (void)trackEnded:(Track *)track {
 }
 
 - (void)trackSaved:(Track *)track {

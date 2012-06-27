@@ -4,7 +4,7 @@
 
 static int64_t kReloadInterval = 500000;
 
-@implementation TableViewController 
+@implementation TableViewController
 
 @synthesize loop = loop_;
 @synthesize onCellValue = onCellValue_;
@@ -24,13 +24,13 @@ static int64_t kReloadInterval = 500000;
   return [paths count] ? YES : NO;
 }
 
-- (NSDragOperation)tableView:(NSTableView *)aTableView validateDrop:(id < NSDraggingInfo >)info proposedRow:(NSInteger)row proposedDropOperation:(NSTableViewDropOperation)operation {  
+- (NSDragOperation)tableView:(NSTableView *)aTableView validateDrop:(id < NSDraggingInfo >)info proposedRow:(NSInteger)row proposedDropOperation:(NSTableViewDropOperation)operation {
 
   return operation;
 }
-- (id)init { 
+- (id)init {
   self = [super init];
-  if (self) { 
+  if (self) {
     requestReload_ = false;
     self.loop = [Loop loop];
     self.tableView = [[[TableView alloc] init] autorelease];
@@ -62,7 +62,7 @@ static int64_t kReloadInterval = 500000;
     [self.tableView registerForDraggedTypes:[NSArray arrayWithObjects:NSURLPboardType, NSFilenamesPboardType, nil]];
     self.tableView.dataSource = self;
     __block TableViewController *weakSelf = self;
-    [loop_ every:kReloadInterval with:^{ 
+    [loop_ every:kReloadInterval with:^{
       if (requestReload_) {
         weakSelf->requestReload_ = false;
         ForkToMainWith(^{
@@ -74,7 +74,7 @@ static int64_t kReloadInterval = 500000;
   return self;
 }
 
-- (void)doubleAction:(id)sender { 
+- (void)doubleAction:(id)sender {
   if (onDoubleAction_ && tableView_.clickedRow >= 0) {
     onDoubleAction_(tableView_.clickedRow);
   }
@@ -94,7 +94,7 @@ static int64_t kReloadInterval = 500000;
   [super dealloc];
 }
 
-- (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView { 
+- (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView {
   return self.onRowCount ? self.onRowCount() : 0;
 }
 
@@ -102,11 +102,11 @@ static int64_t kReloadInterval = 500000;
   return onCellValue_ ? onCellValue_(rowIndex, aTableColumn) : nil;
 }
 
-- (void)reload { 
+- (void)reload {
   requestReload_ = true;
 }
 
-- (void)seekTo:(int)row { 
+- (void)seekTo:(int)row {
   ForkToMainWith(^{
     [self.tableView scrollRowToVisible:row];
   });

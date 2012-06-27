@@ -2,9 +2,9 @@
 
 @implementation SplitView
 
-- (id)initWithFrame:(CGRect)frame { 
+- (id)initWithFrame:(CGRect)frame {
   self = [super initWithFrame:frame];
-  if (self) { 
+  if (self) {
     dividerThickness_ = 1.0;
     [self setDividerColor:[NSColor clearColor]];
   }
@@ -23,13 +23,13 @@
   return !dividerColor_ ? [super dividerColor] : dividerColor_;
 }
 
-- (void)setDividerColor:(NSColor *)dividerColor { 
+- (void)setDividerColor:(NSColor *)dividerColor {
   [dividerColor_ autorelease];
   dividerColor_ = [dividerColor retain];
 }
 
-- (void)dealloc { 
-  [dividerColor_ autorelease];  
+- (void)dealloc {
+  [dividerColor_ autorelease];
   [super dealloc];
 }
 
