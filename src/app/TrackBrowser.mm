@@ -107,7 +107,7 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   if (self) {
     self.library = library;
     self.tracks = [[[SortedSeq alloc] init] autorelease];
-
+    self.scrollView.borderType = NSNoBorder;
     __block TrackBrowser *weakSelf = self;
     self.font = [NSFont systemFontOfSize:kTrackFontSize];
     self.playingFont = [NSFont boldSystemFontOfSize:kTrackFontSize];

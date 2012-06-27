@@ -49,6 +49,7 @@ static int64_t kReloadInterval = 500000;
     self.scrollView.focusRingType = NSFocusRingTypeNone;
     self.scrollView.autoresizesSubviews = YES;
     self.scrollView.borderType = NSBezelBorder;
+    self.scrollView.borderType = NSNoBorder;
     self.scrollView.hasVerticalScroller = YES;
     self.scrollView.hasHorizontalScroller = YES;
     self.scrollView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
