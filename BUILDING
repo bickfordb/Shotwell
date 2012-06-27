@@ -1,0 +1,21 @@
+This project currently only supports Mac OS X --- a popular desktop operating system.
+
+Mac OS X does not include a compiler toolchain (clang/gcc/make) by default.
+This project uses these (and a Makefile) to build the project.  Please
+download and install Xcode from the Mac App store to build this project.
+
+Debugging
+
+  Run "make gdb"
+
+Running
+
+  Run "make"
+
+Cleaning
+
+  Run either "make clean-fast" or "make clean"
+
+Tests
+
+  Run "make test"
