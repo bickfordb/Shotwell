@@ -239,7 +239,7 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
         NSViewHeightSizable | NSViewMaxYMargin);
     self.browserView.cellsStyleMask = IKCellsStyleTitled | IKCellsStyleSubtitled;
     self.browserView.cellSize = CGSizeMake(225, 225);
-    self.browserView.animates = YES;
+    self.browserView.animates = NO;
     self.browserView.delegate = self;
     self.browserView.intercellSpacing = CGSizeMake(7, 7);
     self.scrollView.focusRingType = NSFocusRingTypeNone;

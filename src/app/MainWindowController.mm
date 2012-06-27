@@ -10,7 +10,7 @@
 
 static NSString * const kArtistIconName = @"album-icon";
 static NSString * const kAlbumIconName = @"album-icon";
-static NSString * const kTrackIconName = @"NSListViewTemplate";
+static NSString * const kTrackIconName = @"album-icon";
 static NSString * const kNextButton = @"NextButton";
 static NSString * const kRAOPServiceType = @"_raop._tcp.";
 static NSString * const kPlayButton = @"PlayButton";
@@ -352,6 +352,8 @@ static NSString *GetWindowTitle(Track *t) {
   self.navSplit.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
   self.navSplit.vertical = YES;
   self.navSplit.focusRingType = NSFocusRingTypeNone;
+  self.navSplit.dividerColor = [NSColor grayColor];
+  self.navSplit.dividerThickness = 0.5;
   [self.window.contentView addSubview:self.navSplit];
 
   [self setupNav];
@@ -376,8 +378,8 @@ static NSString *GetWindowTitle(Track *t) {
   self.verticalSplit.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
   self.verticalSplit.focusRingType = NSFocusRingTypeNone;
   self.verticalSplit.vertical = YES;
-  self.verticalSplit.dividerColor = [NSColor blackColor];
-  self.verticalSplit.dividerThickness = 1;
+  self.verticalSplit.dividerColor = [NSColor grayColor];
+  self.verticalSplit.dividerThickness = 0;
   [self.verticalSplit addSubview:self.contentView];
   [self.horizontalSplit addSubview:self.verticalSplit];
   [self.horizontalSplit adjustSubviews];
