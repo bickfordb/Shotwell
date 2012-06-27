@@ -1,19 +1,22 @@
 Shotwell
 ========
 
-Shotwell is a music player for Mac OS X.  This project is focused on handling large libraries, discovery, sharing and extensibility.
+Shotwell is a music player for Mac OS X.  It is focused on handling large libraries efficiently, discovery, sharing and extensibility.
 
 Features
 --------
 
- * Efficiently handles large collections with ease.
- * Automatically stays up to date with your media library.
- * Loads cover art and artist metadata from the web.
+ * Efficiently handles large collections
+ * Automatically stays up to date with your media library
+ * Scans your media fast
+ * Loads cover art and artist metadata from the web
  * Load artist and track metadata from the MusicBrainz database
  * Airport Express (RAOP v1) support
  * Extensible with Javascript plugins
- * Share your library via a simple JSON/HTTP API / Bonjour
- * Does not prompt you upgrade with an onerous license agreement on every minor point release.
+ * Your library is automatically shared over the local network through HTTP and multicast DNS (Bonjour)
+ * Does not prompt you upgrade with an onerous license agreement on every minor point release
+ * Uses `libav` to provide efficient playback, tag scanning and playback support for virtually every media format
+ * Uses `leveldb` to provide extremely fast database access
 
 Building
 --------
