@@ -169,6 +169,16 @@ static NSString *GetWindowTitle(Track *t) {
         [weakSelf selectBrowser:MainWindowControllerAlbumBrowser];
         } copy]);
     NodeAppend(library, albums);
+
+    NavNode *artists = NodeCreate();
+    NodeSet(artists, kNodeTitleCell, NodeImageTextCell([NSImage imageNamed:kAlbumIconName]));
+
+    NodeSet(artists, kNodeTitle, @"Artists");
+    NodeSet(artists, kNodeOnSelect, [^{
+        SharedAppDelegate().library = [[[RemoteLibrary alloc] initWithNetService:svc] autorelease];
+        [weakSelf selectBrowser:MainWindowControllerArtistBrowser];
+        } copy]);
+    NodeAppend(library, artists);
     ForkToMainWith(^{
         [weakSelf.navTable.outlineView reloadData];
         [weakSelf.navTable.outlineView expandItem:network];
@@ -241,9 +251,10 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)selectBrowser:(MainWindowControllerBrowser)idx {
+  Library *library = SharedAppDelegate().library;
   if (idx == MainWindowControllerAlbumBrowser) {
-    if (!self.albumBrowser) {
-      self.albumBrowser = [[[CoverBrowser alloc] initWithLibrary:SharedAppDelegate().library
+    if (!self.albumBrowser || self.albumBrowser.library != library) {
+      self.albumBrowser = [[[CoverBrowser alloc] initWithLibrary:library
         toKey:CoverBrowserGroupByFolder
         toTitle:CoverBrowserFolderTitle
         toSubtitle:CoverBrowserFolderSubtitle
@@ -251,8 +262,8 @@ static NSString *GetWindowTitle(Track *t) {
     }
     self.content = self.albumBrowser;
   } else if (idx == MainWindowControllerArtistBrowser) {
-    if (!self.artistBrowser) {
-      self.artistBrowser = [[[CoverBrowser alloc] initWithLibrary:SharedAppDelegate().library
+    if (!self.artistBrowser || self.artistBrowser.library != library) {
+      self.artistBrowser = [[[CoverBrowser alloc] initWithLibrary:library
         toKey:CoverBrowserGroupByArtist
         toTitle:CoverBrowserArtistTitle
         toSubtitle:CoverBrowserArtistSubtitle
@@ -261,7 +272,7 @@ static NSString *GetWindowTitle(Track *t) {
     self.content = self.artistBrowser;
   } else {
     if (!self.trackBrowser) {
-      self.trackBrowser = [[[TrackBrowser alloc] initWithLibrary:SharedAppDelegate().library] autorelease];
+      self.trackBrowser = [[[TrackBrowser alloc] initWithLibrary:library] autorelease];
     }
     self.content = self.trackBrowser;
   }
