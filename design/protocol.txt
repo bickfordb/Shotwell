@@ -1,4 +1,4 @@
-The Mariposa Culture Osmosis Protocol  
+The Shotwell Culture Osmosis Protocol  
 
 1. Definitions
 
@@ -60,7 +60,7 @@ The Mariposa Culture Osmosis Protocol
 
 3. Bonjour/Multicast DNS
 
-  Services are advertised with "_mariposa._tcp." as the MDNS/Bonjour service type name.
+  Services are advertised with "_shotwell._tcp." as the MDNS/Bonjour service type name.
    
 4. Default Port
 

@@ -8,7 +8,7 @@ all:
 	@echo "\tclean-fast -- Clean everything except for vendor dependencies"
 	@echo "\ttest -- run tests"
 
-APPNAME ?= Mariposa
+APPNAME ?= Shotwell
 BUILD ?= build
 VENDOR_BUILD ?= vendor-build
 APP_DIR = $(BUILD)/$(APPNAME).app
@@ -169,9 +169,9 @@ TAGS: src/app/*.mm src/app/*.h
 cscope:
 	cscope -b $$(find -E src -type f -regex '.+[.](cc|mm|m|h|c)') $$(find $(BUILD)/vendor/include -type f)
 
-build/Mariposa.app.zip: build
-	rm -f build/Mariposa.app.zip
-	cd build && zip -r Mariposa.app.zip Mariposa.app/*
+build/Shotwell.app.zip: build
+	rm -f build/Shotwell.app.zip
+	cd build && zip -r Shotwell.app.zip Shotwell.app/*
 
 DIST_SUFFIX ?= $(shell /bin/date +%Y%m%d-%H%M%S)
 DIST_NAME = $(APPNAME)-$(DIST_SUFFIX)
@@ -181,7 +181,7 @@ dist/$(DMG): program
 	$(call create_parent_dir)
 	cd dist && \
 		mkdir -p $(DIST_NAME) && \
-		cp -r ../build/Mariposa.app $(DIST_NAME) && \
+		cp -r ../build/Shotwell.app $(DIST_NAME) && \
 		hdiutil create $(DMG) -srcfolder $(DIST_NAME) -ov
 
 test-program: build/test

@@ -33,7 +33,7 @@ static NSString *LibraryDir() {
       NSUserDomainMask,
       YES);
   NSString *path = [paths objectAtIndex:0];
-  path = [path stringByAppendingPathComponent:@"Mariposa"];
+  path = [path stringByAppendingPathComponent:@"Shotwell"];
   mkdir(path.UTF8String, 0755);
   return path;
 }

@@ -1,4 +1,4 @@
-Mariposa (name TBD)
+Shotwell
 ===================
 
 This is a media player for Mac OS X designed to meet my needs.  These needs mostly consist
