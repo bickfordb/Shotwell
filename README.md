@@ -15,8 +15,8 @@ Features
  * Extensible with Javascript plugins
  * Your library is automatically shared over the local network through HTTP and multicast DNS (Bonjour)
  * Does not prompt you upgrade with an onerous license agreement on every minor point release
- * Uses `libav` to provide efficient playback, tag scanning and playback support for virtually every media format
- * Uses `leveldb` to provide extremely fast database access
+ * Uses [libav](http://www.libav.org) to provide efficient playback, tag scanning and playback support for virtually every media format
+ * Uses [leveldb](http://code.google.com/p/leveldb/) to provide extremely fast database access
 
 Building
 --------
