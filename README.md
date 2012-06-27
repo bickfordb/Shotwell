@@ -1,16 +1,30 @@
 Shotwell
-===================
+========
 
-This is a media player for Mac OS X designed to meet my needs.  These needs mostly consist
-of the following: efficiently handling large collections (ie. more than 5000 albums), sharing, discovering, playing to an Airport Express.
+Shotwell is a music player for Mac OS X.  This project is focused on handling large libraries, discovery, sharing and extensibility.
 
-Features:
+Features
+--------
 
- * Automatically scanning changed paths quickly
- * Cover art
- * RAOP (Airport Express) support
- * Javascript web plugin API
- * Sharing via HTTP API/Bonjour
- * Does not prompt you upgrade with an onerous license agreement on every minor point release 
- * FREE SOFTWARE
+ * Efficiently handles large collections with ease.
+ * Automatically stays up to date with your media library.
+ * Loads cover art and artist metadata from the web.
+ * Load artist and track metadata from the MusicBrainz database
+ * Airport Express (RAOP v1) support
+ * Extensible with Javascript plugins
+ * Share your library via a simple JSON/HTTP API / Bonjour
+ * Does not prompt you upgrade with an onerous license agreement on every minor point release.
+
+Building
+--------
+
+ * Install Xcode
+ * Run `make run` or `make dist` or `make gdb`
+
+Refer to BUILDING
+
+License
+-------
+
+Licensed under Apache 2.0.  Refer to LICENSE.
 
