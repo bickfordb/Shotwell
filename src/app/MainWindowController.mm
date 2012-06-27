@@ -353,7 +353,7 @@ static NSString *GetWindowTitle(Track *t) {
   self.navSplit.vertical = YES;
   self.navSplit.focusRingType = NSFocusRingTypeNone;
   self.navSplit.dividerColor = [NSColor grayColor];
-  self.navSplit.dividerThickness = 0.5;
+  self.navSplit.dividerThickness = 1.0;
   [self.window.contentView addSubview:self.navSplit];
 
   [self setupNav];
@@ -364,7 +364,8 @@ static NSString *GetWindowTitle(Track *t) {
   self.horizontalSplit.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
   self.horizontalSplit.vertical = NO;
   self.horizontalSplit.focusRingType = NSFocusRingTypeNone;
-  //[self.window.contentView addSubview:self.horizontalSplit];
+  self.horizontalSplit.dividerColor = [NSColor grayColor];
+  self.horizontalSplit.dividerThickness = 1.0;
   [self.navSplit addSubview:self.horizontalSplit];
 
   self.contentView = [[[NSView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)] autorelease];
@@ -379,7 +380,7 @@ static NSString *GetWindowTitle(Track *t) {
   self.verticalSplit.focusRingType = NSFocusRingTypeNone;
   self.verticalSplit.vertical = YES;
   self.verticalSplit.dividerColor = [NSColor grayColor];
-  self.verticalSplit.dividerThickness = 0;
+  self.verticalSplit.dividerThickness = 1.0;
   [self.verticalSplit addSubview:self.contentView];
   [self.horizontalSplit addSubview:self.verticalSplit];
   [self.horizontalSplit adjustSubviews];
