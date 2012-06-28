@@ -252,6 +252,7 @@ static NSString *GetWindowTitle(Track *t) {
 
 - (void)selectBrowser:(MainWindowControllerBrowser)idx {
   Library *library = SharedAppDelegate().library;
+  INFO(@"library: %@", library);
   if (idx == MainWindowControllerAlbumBrowser) {
     if (!self.albumBrowser || self.albumBrowser.library != library) {
       self.albumBrowser = [[[CoverBrowser alloc] initWithLibrary:library
@@ -271,7 +272,7 @@ static NSString *GetWindowTitle(Track *t) {
     }
     self.content = self.artistBrowser;
   } else {
-    if (!self.trackBrowser) {
+    if (!self.trackBrowser || self.trackBrowser.library != library) {
       self.trackBrowser = [[[TrackBrowser alloc] initWithLibrary:library] autorelease];
     }
     self.content = self.trackBrowser;
