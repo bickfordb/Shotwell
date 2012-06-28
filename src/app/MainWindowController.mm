@@ -8,9 +8,12 @@
 #import "app/RAOP.h"
 #import "app/CoreAudioSink.h"
 
-static NSString * const kArtistIconName = @"album-icon";
+static NSString * const kArtistIconName = @"NSEveryone";
 static NSString * const kAlbumIconName = @"album-icon";
-static NSString * const kTrackIconName = @"album-icon";
+static NSString * const kTrackIconName = @"NSActionTemplate";
+static NSString * const kRemoteLibraryIconName = @"NSNetwork";
+static NSString * const kNetworkIconName = @"NSNetwork";
+static NSString * const kLocalLibraryIconName = @"NSComputer";
 static NSString * const kNextButton = @"NextButton";
 static NSString * const kRAOPServiceType = @"_raop._tcp.";
 static NSString * const kPlayButton = @"PlayButton";
@@ -149,6 +152,7 @@ static NSString *GetWindowTitle(Track *t) {
     }
     NavNode *library = NodeCreate();
     NodeSet(library, @"service", svc);
+    NodeSet(library, kNodeTitleCell, NodeImageTextCell([NSImage imageNamed:kRemoteLibraryIconName]));
     NodeAppend(network, library);
     NodeSet(library, kNodeTitle, svc.name);
     NavNode *tracks = NodeCreate();
@@ -171,7 +175,7 @@ static NSString *GetWindowTitle(Track *t) {
     NodeAppend(library, albums);
 
     NavNode *artists = NodeCreate();
-    NodeSet(artists, kNodeTitleCell, NodeImageTextCell([NSImage imageNamed:kAlbumIconName]));
+    NodeSet(artists, kNodeTitleCell, NodeImageTextCell([NSImage imageNamed:kArtistIconName]));
 
     NodeSet(artists, kNodeTitle, @"Artists");
     NodeSet(artists, kNodeOnSelect, [^{
@@ -292,12 +296,14 @@ static NSString *GetWindowTitle(Track *t) {
   NavNode *root = self.navTable.rootNode;
   NavNode *library = NodeCreate();
   NodeSet(library, kNodeTitle, @"Library");
+  //NodeSet(library, kNodeTitleCell, NodeImageTextCell([NSImage imageNamed:kLocalLibraryIconName]));
   NodeSet(library, kNodeIsGroup, [NSNumber numberWithBool:YES]);
   NodeAppend(root, library);
 
   NavNode *network = NodeCreate();
   NodeSet(network, kNodeTitle, @"Network");
   NodeSet(network, @"key", @"network");
+  //NodeSet(network, kNodeTitleCell, NodeImageTextCell([NSImage imageNamed:kNetworkIconName]));
   NodeSet(network, kNodeIsGroup, [NSNumber numberWithBool:YES]);
   NodeAppend(root, network);
 
