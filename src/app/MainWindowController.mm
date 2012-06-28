@@ -54,10 +54,8 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize loop = loop_;
 @synthesize navSplit = navSplit_;
 @synthesize navTable = navTable_;
-@synthesize nextButton = nextButton_;
-@synthesize playButton = playButton_;
+@synthesize playbackControls = playbackControls_;
 @synthesize playImage = playImage_;
-@synthesize previousButton = previousButton_;
 @synthesize progressControl = progressControl_;
 @synthesize progressIndicator = progressIndicator_;
 @synthesize searchField = searchField_;
@@ -91,20 +89,22 @@ static NSString *GetWindowTitle(Track *t) {
     [loop_ every:kPollMovieInterval with:^{
       //id <AudioSource> movie = SharedAppDelegate().audioSource;
       id <AudioSink> sink = SharedAppDelegate().audioSink;
+      NSImage *playImage = nil;
       if (sink) {
         if (!sink.isSeeking) {
           weakSelf.progressControl.isEnabled = true;
           weakSelf.progressControl.duration = sink.duration;
           weakSelf.progressControl.elapsed = sink.elapsed;
         }
-        playButton_.image = (sink.audioSource.state == kPlayingAudioSourceState) ? stopImage_ : startImage_;
+        playImage = sink.audioSource.state == kPlayingAudioSourceState ? stopImage_ : startImage_;
         weakSelf.volumeControl.level = SharedAppDelegate().audioSink.volume;
       } else {
         weakSelf.progressControl.duration = 0;
         weakSelf.progressControl.elapsed = 0;
         weakSelf.progressControl.isEnabled = false;
-        playButton_.image = startImage_;
+        playImage = startImage_;
       }
+      [self.playbackControls setImage:playImage forSegment:1];
     }];
     isBusy_ = false;
     [loop_ every:kPollProgressInterval with:^{
@@ -223,10 +223,8 @@ static NSString *GetWindowTitle(Track *t) {
   [content_ release];
   [horizontalSplit_ release];
   [loop_ release];
-  [nextButton_ release];
-  [playButton_ release];
   [playImage_ release];
-  [previousButton_ release];
+  [playbackControls_ release];
   [progressControl_ release];
   [searchField_ release];
   [startImage_ release];
@@ -455,15 +453,20 @@ static NSString *GetWindowTitle(Track *t) {
   NSToolbarItem *item = [[[NSToolbarItem alloc] initWithItemIdentifier:itemIdentifier] autorelease];
   NSView *view = nil;
   if (itemIdentifier == kPlayButton) {
-      self.playButton = [[[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)] autorelease];
-      view = playButton_;
-      playButton_.title = @"";
-      playButton_.image = self.startImage;
-      playButton_.bezelStyle = NSTexturedRoundedBezelStyle;
-      playButton_.action = @selector(playClicked:);
-      playButton_.target = SharedAppDelegate();
-      //[[playButton_ cell] setImageScaling:0.8];
-      [[playButton_ cell] setImageScaling:NSImageScaleProportionallyUpOrDown];
+      self.playbackControls = [[[NSSegmentedControl alloc] initWithFrame:CGRectMake(0, 0, 130, 22)] autorelease];
+      self.playbackControls.segmentCount = 3;
+      [[self.playbackControls cell] setTrackingMode:NSSegmentSwitchTrackingMomentary];
+      self.playbackControls.segmentStyle = NSSegmentStyleTexturedRounded;
+      [self.playbackControls setImage:[NSImage imageNamed:@"left"] forSegment:0];
+      [self.playbackControls setImageScaling:NSImageScaleProportionallyUpOrDown forSegment:0];
+      [self.playbackControls setImage:self.startImage forSegment:1];
+      [self.playbackControls setImageScaling:NSImageScaleProportionallyUpOrDown forSegment:1];
+      [self.playbackControls setImage:[NSImage imageNamed:@"right"] forSegment:2];
+      [self.playbackControls setImageScaling:NSImageScaleProportionallyUpOrDown forSegment:2];
+      [self.playbackControls sizeToFit];
+      view = self.playbackControls;
+      self.playbackControls.action = @selector(playbackControlsClicked:);
+      self.playbackControls.target = SharedAppDelegate();
   } else if (itemIdentifier == kProgressControl) {
     if (!self.progressControl) {
       self.progressControl = [[[ProgressControl alloc]
@@ -486,27 +489,6 @@ static NSString *GetWindowTitle(Track *t) {
     view = self.volumeControl.view;
   } else if (itemIdentifier == kSearchControl) {
     view = self.searchField;
-  } else if (itemIdentifier == kPreviousButton) {
-    NSButton *previousButton =  [[[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)] autorelease];
-    view = previousButton;
-    previousButton.title = @"";
-    previousButton.bezelStyle = NSTexturedRoundedBezelStyle;
-    previousButton.image = [NSImage imageNamed:@"left"];
-    previousButton.action = @selector(previousClicked:);
-    previousButton.target = SharedAppDelegate();
-    //[[previousButton cell] setImageScaling:0.8];
-    [[previousButton cell] setImageScaling:NSImageScaleProportionallyUpOrDown];
-  } else if (itemIdentifier == kNextButton)  {
-    NSButton *nextButton = [[[NSButton alloc] initWithFrame:CGRectMake(0, 0, 40, 22)] autorelease];
-    nextButton.target = self;
-    nextButton.title = @"";
-    nextButton.image = [NSImage imageNamed:@"right"];
-    nextButton.bezelStyle = NSTexturedRoundedBezelStyle;
-    //[[nextButton cell] setImageScaling:0.8];
-    [[nextButton cell] setImageScaling:NSImageScaleProportionallyUpOrDown];
-    nextButton.action = @selector(nextClicked:);
-    nextButton.target = SharedAppDelegate();
-    view = nextButton;
   }
   if (view) {
     item.view = view;
@@ -522,8 +504,7 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (NSArray *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar {
-  return [NSArray arrayWithObjects:kPreviousButton, kPlayButton, kNextButton,
-         kVolumeControl, kProgressControl, kSearchControl, nil];
+  return [NSArray arrayWithObjects:kPlayButton, kVolumeControl, kProgressControl, kSearchControl, nil];
 }
 
 - (NSArray *)toolbarSelectableItemIdentifiers:(NSToolbar *)toolbar {

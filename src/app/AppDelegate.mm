@@ -361,6 +361,18 @@ static NSString *CoverArtPath() {
   });
 }
 
+- (void)playbackControlsClicked:(id)sender {
+  NSSegmentedControl *c = (NSSegmentedControl *)sender;
+  long idx = c.selectedSegment;
+  if (idx == 0) {
+    [self previousClicked:sender];
+  } else if (idx == 1) {
+    [self playClicked:sender];
+  } else if (idx == 2) {
+    [self nextClicked:sender];
+  }
+}
+
 - (void)nextClicked:(id)sender {
   ForkWith(^{
     [self playNextTrack];

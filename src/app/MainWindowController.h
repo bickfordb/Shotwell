@@ -22,9 +22,7 @@ typedef enum {
   CoverBrowser *albumBrowser_;
   CoverBrowser *artistBrowser_;
   Loop *loop_;
-  NSButton *nextButton_;
-  NSButton *playButton_;
-  NSButton *previousButton_;
+  NSSegmentedControl *playbackControls_;
   NSImage *playImage_;
   NSProgressIndicator *progressIndicator_;
   NSImage *startImage_;
@@ -61,12 +59,10 @@ typedef enum {
 - (void)setupBusyIndicator;
 
 @property (retain) Loop *loop;
-@property (retain) NSButton *nextButton;
-@property (retain) NSButton *playButton;
+@property (retain) NSSegmentedControl *playbackControls;
 @property (retain) CoverBrowser *albumBrowser;
 @property (retain) CoverBrowser *artistBrowser;
 @property (retain) NavTable *navTable;
-@property (retain) NSButton *previousButton;
 @property (retain) NSImage *playImage;
 @property (retain) NSProgressIndicator *progressIndicator;
 @property (retain) NSImage *startImage;
