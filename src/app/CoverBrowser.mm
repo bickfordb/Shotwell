@@ -101,29 +101,6 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
   }
 };
 
-@interface CoverBrowserItem : NSObject {
-  NSMutableSet *tracks_;
-  NSString *key_;
-  CoverBrowserTracksToString toTitle_;
-  CoverBrowserTracksToString toSubtitle_;
-}
-
-
-@property (retain) NSString *key;
-@property (retain) NSMutableSet *tracks;
-@property (copy) CoverBrowserTracksToString toTitle;
-@property (copy) CoverBrowserTracksToString toSubtitle;
-
-// IKImageBrowserItem protocol:
-- (NSString *)imageUID;
-- (NSUInteger)imageVersion;
-- (NSString *)imageTitle;
-- (NSString *)imageSubtitle;
-- (NSString *)imageRepresentationType;
-- (id)imageRepresentation;
-- (BOOL)isSelectable;
-@end
-
 @implementation CoverBrowserItem
 @synthesize tracks = tracks_;
 @synthesize key = key_;
@@ -200,6 +177,7 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
 @implementation CoverBrowser
 @synthesize items = items_;
 @synthesize keyToItem = keyToItem_;
+@synthesize trackToItem = trackToItem_;
 @synthesize library = library_;
 @synthesize scrollView = scrollView_;
 @synthesize browserView = browserView_;
@@ -248,7 +226,8 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
     self.scrollView.hasHorizontalScroller = YES;
     self.scrollView.hasVerticalScroller = YES;
     [self.view addSubview:self.scrollView];
-    self.keyToItem = [NSMutableDictionary dictionary];
+    self.keyToItem = [Dict dict];
+    self.trackToItem = [Dict dict];
     self.isBusy = true;
     ForkWith(^{
       NSMutableArray *seq = [NSMutableArray array];
@@ -266,27 +245,16 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
 }
 
 - (void)removeTrack:(Track *)t {
-  CoverBrowserItem *item = nil;
-  if (!toKey_)
+  if (!t)
     return;
-
-  NSString *key = toKey_(t);
-  if (!key) {
+  CoverBrowserItem *item = [trackToItem_ pop:t.id];
+  if (!item)
     return;
-  }
-  @synchronized(keyToItem_) {
-    item = [keyToItem_ objectForKey:key];
-  }
-  if (!item) {
-    return;
-  }
   @synchronized(item.tracks) {
     [item.tracks removeObject:t];
   }
   if (item.tracks.count == 0) {
-    @synchronized(keyToItem_) {
-      [keyToItem_ removeObjectForKey:key];
-    }
+    [keyToItem_ pop:item.key];
     ForkToMainWith(^{
       [items_ removeObject:item];
     });
@@ -319,13 +287,14 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
 
   for (Track *track in tracks) {
     CoverBrowserItem *item = nil;
+    if ([trackToItem_ get:track.id]) {
+      continue;
+    }
     NSString *key = toKey_(track);
     if (!key) {
       continue;
     }
-    @synchronized(keyToItem_) {
-      item = [keyToItem_ objectForKey:key];
-    }
+    item = [keyToItem_ get:key];
     bool isNew = false;
     NSString *oldTitle;
     if (!item) {
@@ -334,9 +303,7 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
       item.key = key;
       item.toTitle = toTitle_;
       item.toSubtitle = toSubtitle_;
-      @synchronized(keyToItem_) {
-        [keyToItem_ setObject:item forKey:key];
-      }
+      [keyToItem_ set:key value:item];
       isNew = true;
     } else {
       oldTitle = item.imageTitle;
@@ -344,6 +311,7 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
     @synchronized(item.tracks) {
       [item.tracks addObject:track];
     }
+    [trackToItem_ set:track.id value:item];
     if (isNew) {
       [self.items add:item];
     } else if (![item.imageTitle isEqualToString:oldTitle]) {
@@ -361,6 +329,7 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
   [scrollView_ release];
   [items_ release];
   [keyToItem_ release];
+  [trackToItem_ release];
   [super dealloc];
 }
 

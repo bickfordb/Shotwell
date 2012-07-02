@@ -313,37 +313,21 @@ static NSString *CoverArtPath() {
  */
 - (void)playNextTrack {
   IgnoreSigPIPE();
-  int idx = 0;
   int found = -1;
   if (track_) {
-    // FIXME: delegate
-    for (Track *t in self.mainWindowController.trackBrowser.tracks) {
-      if ([t isEqual:track_]) {
-        found = idx;
-        break;
-      }
-      idx++;
-    }
+    found = EnumIndexOf(self.mainWindowController.trackBrowser.tracks, track_);
   }
   [self playTrackAtIndex:found + 1];
 }
 
 - (void)playPreviousTrack {
-  int idx = 0;
-  int found = -1;
-  int req = 0;
+  int found = 0;
   if (track_) {
-    for (Track *t in self.mainWindowController.trackBrowser.tracks) {
-      if ([t isEqual:track_]) {
-        found = idx;
-        break;
-      }
-      idx++;
-    }
-    if (found > 0)
-      req = found - 1;
+    found = EnumIndexOf(self.mainWindowController.trackBrowser.tracks, track_);
   }
-  [self playTrackAtIndex:req];
+  if (found > 0) {
+    [self playTrackAtIndex:found - 1];
+  }
 }
 
 - (void)playClicked:(id)sender {

@@ -1,12 +1,14 @@
 #import <Cocoa/Cocoa.h>
+#import "app/SkipList.h"
+#import "app/Enum.h"
 
 // A sorted thread safe sequence similar to NSArrayController, but without all the bindings oddness
 // more of a sorted set, really
-@interface SortedSeq : NSObject <NSFastEnumeration> {
-  NSComparator comparator_;
+@interface SortedSeq : NSObject <EnumSeq> /*<NSFastEnumeration> */ {
   NSPredicate *predicate_;
-  NSMutableArray *filteredItems_;
-  NSMutableArray *items_;
+  NSComparator comparator_;
+  SkipList *filteredItems_;
+  SkipList *items_;
   NSObject *ilock_;
 }
 
@@ -18,7 +20,7 @@
 - (void)add:(id)something;
 - (id)get:(int)index;
 - (id)getMany:(NSIndexSet *)indices;
-- (int)index:(id)needle;
+//- (int)index:(id)needle;
 - (int)count;
 - (NSArray *)all;
 - (NSArray *)array;

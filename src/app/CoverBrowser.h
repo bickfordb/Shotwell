@@ -1,5 +1,6 @@
 #import <Cocoa/Cocoa.h>
 #import <Quartz/Quartz.h>
+#import "app/Dict.h"
 #import "app/SortedSeq.h"
 #import "app/TableViewController.h"
 #import "app/Library.h"
@@ -18,9 +19,32 @@ extern CoverBrowserTracksToPredicate CoverBrowserSearchByArtist;
 extern CoverBrowserTrackToKey CoverBrowserGroupByFolder;
 extern CoverBrowserTrackToKey CoverBrowserGroupByArtist;
 
+@interface CoverBrowserItem : NSObject {
+  NSMutableSet *tracks_;
+  NSString *key_;
+  CoverBrowserTracksToString toTitle_;
+  CoverBrowserTracksToString toSubtitle_;
+}
+
+@property (retain) NSString *key;
+@property (retain) NSMutableSet *tracks;
+@property (copy) CoverBrowserTracksToString toTitle;
+@property (copy) CoverBrowserTracksToString toSubtitle;
+
+// IKImageBrowserItem protocol:
+- (NSString *)imageUID;
+- (NSUInteger)imageVersion;
+- (NSString *)imageTitle;
+- (NSString *)imageSubtitle;
+- (NSString *)imageRepresentationType;
+- (id)imageRepresentation;
+- (BOOL)isSelectable;
+@end
+
 @interface CoverBrowser : ViewController {
   SortedSeq *items_;
-  NSMutableDictionary *keyToItem_;
+  Dict *keyToItem_;
+  Dict *trackToItem_;
   NSScrollView *scrollView_;
   IKImageBrowserView *browserView_;
   Library *library_;
@@ -33,7 +57,8 @@ extern CoverBrowserTrackToKey CoverBrowserGroupByArtist;
 @property (retain) NSScrollView *scrollView;
 @property (retain) IKImageBrowserView *browserView;
 @property (retain) Library *library;
-@property (retain) NSMutableDictionary *keyToItem;
+@property (retain) Dict *keyToItem;
+@property (retain) Dict *trackToItem;
 @property (copy) CoverBrowserTrackToKey toKey;
 @property (copy) CoverBrowserTracksToPredicate toPredicate;
 @property (copy) CoverBrowserTracksToString toTitle;

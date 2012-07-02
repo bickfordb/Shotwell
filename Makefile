@@ -159,8 +159,8 @@ clean: clean-build
 $(VENDOR):
 	./vendor.sh
 
-test-gdb: $(BUILD)/test-runner
-	gdb $(BUILD)/test-runner
+test-gdb: test-program
+	$(GDB) -f -x $(BUILD)/gdb-commands $(BUILD)/test
 
 TAGS: src/app/*.mm src/app/*.h
 	#ctags -r src/app/* $$(find $(BUILD)/vendor/include)

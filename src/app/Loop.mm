@@ -53,9 +53,10 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
   dispatchInterval.tv_usec = kDispatchInterval;
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   while (started_) {
-    usleep(10000);
-    event_base_loopexit(base_, &dispatchInterval);
-    event_base_dispatch(base_);
+    //usleep(1);
+    //event_base_loopexit(base_, &dispatchInterval);
+    event_base_loop(base_, EVLOOP_ONCE);
+    //event_base_dispatch(base_);
   }
   [pool release];
   running_ = false;
