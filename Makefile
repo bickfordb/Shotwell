@@ -25,7 +25,7 @@ CXXFLAGS += -Werror -Wall
 CXXFLAGS += -ferror-limit=2
 CXXFLAGS += -I$(VENDOR_BUILD)/vendor/include
 CXXFLAGS += -ggdb
-CXXFLAGS += -O0
+CXXFLAGS += -O2
 LDFLAGS += -L$(VENDOR_BUILD)/vendor/lib
 LDFLAGS += -lleveldb
 LDFLAGS += -ljansson

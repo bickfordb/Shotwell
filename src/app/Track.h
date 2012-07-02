@@ -47,26 +47,26 @@ extern NSArray *allTrackKeys;
 
 /* Read the ID3 tag stored at URL */
 - (int)readTag;
-@property (readonly) NSURL *coverArtURL;
-@property (readonly) NSURL *url;
-@property (retain) Library *library;
-@property (retain) NSNumber *createdAt;
-@property (retain) NSNumber *duration;
-@property (retain) NSNumber *id;
-@property (retain) NSNumber *isAudio;
-@property (retain) NSNumber *isCoverArtChecked;
-@property (retain) NSNumber *isVideo;
-@property (retain) NSNumber *lastPlayedAt;
-@property (retain) NSNumber *updatedAt;
-@property (retain) NSString *album;
-@property (retain) NSString *artist;
-@property (retain) NSString *coverArtID;
-@property (retain) NSString *genre;
-@property (retain) NSString *path;
-@property (retain) NSString *publisher;
-@property (retain) NSString *title;
-@property (retain) NSString *trackNumber;
-@property (retain) NSString *year;
+@property (readonly, nonatomic) NSURL *coverArtURL;
+@property (readonly, nonatomic) NSURL *url;
+@property (retain, nonatomic) Library *library;
+@property (retain, nonatomic) NSNumber *createdAt;
+@property (retain, nonatomic) NSNumber *duration;
+@property (retain, nonatomic) NSNumber *id;
+@property (retain, nonatomic) NSNumber *isAudio;
+@property (retain, nonatomic) NSNumber *isCoverArtChecked;
+@property (retain, nonatomic) NSNumber *isVideo;
+@property (retain, nonatomic) NSNumber *lastPlayedAt;
+@property (retain, nonatomic) NSNumber *updatedAt;
+@property (retain, nonatomic) NSString *album;
+@property (retain, nonatomic) NSString *artist;
+@property (retain, nonatomic) NSString *coverArtID;
+@property (retain, nonatomic) NSString *genre;
+@property (retain, nonatomic) NSString *path;
+@property (retain, nonatomic) NSString *publisher;
+@property (retain, nonatomic) NSString *title;
+@property (retain, nonatomic) NSString *trackNumber;
+@property (retain, nonatomic) NSString *year;
 
 + (Track *)fromJSON:(NSDictionary *)json;
 

@@ -56,7 +56,8 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
     //usleep(1);
     //event_base_loopexit(base_, &dispatchInterval);
     event_base_loop(base_, EVLOOP_ONCE);
-    //event_base_dispatch(base_);
+    event_base_dispatch(base_);
+    usleep(100);
   }
   [pool release];
   running_ = false;

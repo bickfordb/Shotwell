@@ -2,6 +2,10 @@
 #import "app/Sort.h"
 #import "app/NSStringNaturalComparison.h"
 
+NSComparator StandardComparison = ^(id left, id right) {
+  return [((NSString *)left) localizedStandardCompare:right];
+};
+
 NSComparator NaturalComparison = ^(id left, id right) {
   NSString *l = left;
   NSString *r = right;

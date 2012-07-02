@@ -11,6 +11,9 @@ static NSString * const kStatus = @"status";
 static NSString * const kOnSortDescriptorsChanged = @"OnSortDescriptorsChanged";
 static double const kTrackFontSize = 11.0;
 
+
+
+
 @implementation TrackBrowser
 @synthesize emptyImage = emptyImage_;
 @synthesize font = font_;
@@ -133,26 +136,26 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
     NSTableColumn *statusColumn = [[[NSTableColumn alloc] initWithIdentifier:kStatus] autorelease];
     NSTableColumn *artistColumn = [[[NSTableColumn alloc] initWithIdentifier:kArtist] autorelease];
     [artistColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.artist" options:nil];
-    artistColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kArtist ascending:YES comparator:NaturalComparison];
+    artistColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kArtist ascending:YES comparator:StandardComparison];
     NSTableColumn *albumColumn = [[[NSTableColumn alloc] initWithIdentifier:kAlbum] autorelease];
     [albumColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.album"
       options:nil];
-    albumColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kAlbum ascending:YES comparator:NaturalComparison];
+    albumColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kAlbum ascending:YES comparator:StandardComparison];
 
     NSTableColumn *titleColumn = [[[NSTableColumn alloc] initWithIdentifier:kTitle] autorelease];
     [titleColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.title"
       options:nil];
-    titleColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kTitle ascending:YES comparator:NaturalComparison];
+    titleColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kTitle ascending:YES comparator:StandardComparison];
 
     NSTableColumn *trackNumberColumn = [[[NSTableColumn alloc] initWithIdentifier:kTrackNumber] autorelease];
     [trackNumberColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.trackNumber"
       options:nil];
-    trackNumberColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kTrackNumber ascending:YES comparator:NaturalComparison];
+    trackNumberColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kTrackNumber ascending:YES comparator:StandardComparison];
 
     NSTableColumn *genreColumn = [[[NSTableColumn alloc] initWithIdentifier:kGenre] autorelease];
     [genreColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.genre"
       options:nil];
-    genreColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kGenre ascending:YES comparator:NaturalComparison];
+    genreColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kGenre ascending:YES comparator:StandardComparison];
 
 
     NSTableColumn *durationColumn = [[[NSTableColumn alloc] initWithIdentifier:kDuration] autorelease];
@@ -164,11 +167,11 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
     NSTableColumn *yearColumn = [[[NSTableColumn alloc] initWithIdentifier:kYear] autorelease];
     [yearColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.year"
       options:nil];
-    yearColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kYear ascending:YES comparator:NaturalComparison];
+    yearColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kYear ascending:YES comparator:StandardComparison];
 
     NSTableColumn *pathColumn = [[[NSTableColumn alloc] initWithIdentifier:kPath] autorelease];
     [pathColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.path" options:nil];
-    pathColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kPath ascending:YES comparator:NaturalComparison];
+    pathColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kPath ascending:YES comparator:StandardComparison];
 
     self.tableView.sortDescriptors = [NSArray arrayWithObjects:artistColumn.sortDescriptorPrototype, albumColumn.sortDescriptorPrototype, trackNumberColumn.sortDescriptorPrototype, titleColumn.sortDescriptorPrototype, pathColumn.sortDescriptorPrototype, nil];
 
