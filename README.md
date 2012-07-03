@@ -3,6 +3,9 @@ Shotwell
 
 Shotwell is a music player for Mac OS X.  It is focused on handling large libraries efficiently, discovery, sharing and extensibility.
 
+![Track List View](screenies/tracks.jpg "Tracks")
+![Artist List View](screenies/artists.jpg "Artists")
+
 Features
 --------
 
@@ -25,6 +28,7 @@ Building
  * Run `make run` or `make dist` or `make gdb`
 
 Refer to BUILDING
+
 
 License
 -------
