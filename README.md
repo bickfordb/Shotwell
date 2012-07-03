@@ -1,4 +1,4 @@
-Shotwell
+<img src="https://github.com/bickfordb/Shotwell/raw/master/src/Resources/dock.png" width="24" height="24" valign="baseline" /> Shotwell
 ========
 
 Shotwell is a music player for Mac OS X.  It is focused on handling large libraries efficiently, discovery, sharing and extensibility.
