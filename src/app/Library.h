@@ -21,6 +21,7 @@ extern NSString * const kLibraryTrackDeleted;
 - (void)notifyTrack:(Track *)t change:(NSString *)change;
 - (NSURL *)urlForTrack:(Track *)t;
 - (NSURL *)coverArtURLForTrack:(Track *)t;
+- (void)scan:(NSArray *)paths;
 @property int64_t lastUpdatedAt;
 @end
 // vim: filetype=objcpp

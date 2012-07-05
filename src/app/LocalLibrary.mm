@@ -17,6 +17,7 @@
 #import "app/NSURLAdditions.h"
 #import "app/PThread.h"
 #import "app/Track.h"
+#import "app/Tuple.h"
 #import "app/Util.h"
 
 #define GET_URL_KEY(url) (kURLTablePrefix + url)
@@ -39,20 +40,46 @@ static int kCheckCoverArtDelay = 10 * 1000000;
 
 @implementation TrackTable
 - (const char *)keyPrefix {
-  return "t:";
+  return "s:";
 }
 
-- (id)decodeValue:(const char *)bytes length:(size_t)length {
-  NSDictionary *v = [super decodeValue:bytes length:length];
-  return [Track fromJSON:v];
+- (id)decodeValue:(NSData *)bytes {
+  return [Track trackFromDictionary:[super decodeValue:bytes]];
 }
+
+- (NSData *)encodeValue:(id)val {
+  return [super encodeValue:((Track *)val).dictionary];
+}
+
+- (NSData *)encodeKey:(id)key {
+  return [super encodeKey:Tuple1(key)];
+}
+
+- (id)decodeKey:(NSData *)key {
+  return First([super decodeKey:key]);
+}
+
 @end
 
 @implementation URLTable
 - (const char *)keyPrefix {
-  return "u:";
+  return "v:";
+}
+- (id)decodeValue:(NSData *)bytes {
+  return First([super decodeValue:bytes]);
 }
 
+- (NSData *)encodeValue:(id)val {
+  return [super encodeValue:Tuple1(val)];
+}
+
+- (NSData *)encodeKey:(id)key {
+  return [super encodeKey:Tuple1(key)];
+}
+
+- (id)decodeKey:(NSData *)key {
+  return First([super decodeKey:key]);
+}
 @end
 
 static void OnFileEvent(
@@ -120,7 +147,7 @@ static void OnFileEvent(
   [coverArtLoop_ fetchURL:url with:^(HTTPResponse *r) {
     NSArray *results = [NSArray array];
     if (r.status == 200) {
-      NSDictionary *data = (NSDictionary *)r.body.decodeJSON;
+      NSDictionary *data = (NSDictionary *)FromJSONData(r.body);
       results = [data objectForKey:@"results"];
     }
     onResults(r.status, results);
@@ -136,7 +163,7 @@ static void OnFileEvent(
     Level *level = [[[Level alloc] initWithPath:dbPath] autorelease];
     urlTable_ = [[URLTable alloc] initWithLevel:level];
     trackTable_ = [[TrackTable alloc] initWithLevel:level];
-    self.coverArtDB = [[[Level alloc] initWithPath:coverArtPath] autorelease];
+    self.coverArtDB = coverArtPath ? [[[Level alloc] initWithPath:coverArtPath] autorelease] : nil;
     self.pendingCoverArtTracks = [NSMutableSet set];
     self.pathsToScan = [NSMutableSet set];
     self.pruneRequested = false;
@@ -144,10 +171,9 @@ static void OnFileEvent(
     self.scanLoop = [Loop loop];
     __block LocalLibrary *weakSelf = self;
     [pruneLoop_ onTimeout:1000000 with:^(Event *e, short flags) {
-      LocalLibrary *self0 = (LocalLibrary *)weakSelf;
-      if (self0.pruneRequested) {
-        self0.pruneRequested = false;
-        [self0 pruneQueued];
+      if (weakSelf.pruneRequested) {
+        weakSelf.pruneRequested = false;
+        [weakSelf pruneQueued];
       }
       [e add:1000000];
     }];
@@ -167,6 +193,7 @@ static void OnFileEvent(
   return self;
 }
 
+
 - (void)checkCoverArt {
   __block LocalLibrary *weakSelf = self;
   [coverArtLoop_ onTimeout:kCheckCoverArtDelay with:^(Event *e, short flags) {
@@ -185,15 +212,16 @@ static void OnFileEvent(
 - (void)popPendingCoverArt {
   if (numCoverArtQueries_ >= kMaxConcurrentCoverArtQueries)
     return;
+  Track *track = nil;
   @synchronized(pendingCoverArtTracks_) {
     NSNumber *trackID = pendingCoverArtTracks_.anyObject;
-    Track *track = [self get:trackID];
+    track = [self get:trackID];
     if (trackID) {
       [pendingCoverArtTracks_ removeObject:trackID];
     }
-    if (track) {
-      [self checkCoverArtForTrack:track];
-    }
+  }
+  if (track) {
+    [self checkCoverArtForTrack:track];
   }
 }
 
@@ -215,16 +243,16 @@ static void OnFileEvent(
   }
   numCoverArtQueries_++;
   [self search:term withArtworkData:^(int status, NSData *data) {
-    numCoverArtQueries_--;
+    weakSelf->numCoverArtQueries_--;
     if (data) {
-      [self saveCoverArt:coverArtID data:data];
+      [weakSelf saveCoverArt:coverArtID data:data];
     }
     Track *t = [weakSelf get:track.id];
     if (data) {
       t.coverArtID = coverArtID;
     }
     t.isCoverArtChecked = [NSNumber numberWithBool:YES];
-    [self save:t];
+    [weakSelf save:t];
   }];
 }
 
@@ -272,8 +300,11 @@ static void OnFileEvent(
 }
 
 - (void)dealloc {
+  [coverArtLoop_ invalidate];
   [coverArtLoop_ release];
+  [pruneLoop_ invalidate];
   [pruneLoop_ release];
+  [scanLoop_ invalidate];
   [scanLoop_ release];
   if (fsEventStreamRef_) {
     FSEventStreamStop(fsEventStreamRef_);
@@ -327,33 +358,45 @@ static void OnFileEvent(
     pool = [[NSAutoreleasePool alloc] init];
     if (node->fts_info & FTS_F) {
       NSString *filename = [NSString stringWithUTF8String:node->fts_path];
-      if (!filename)
-        continue;
-      NSURL *url = [NSURL fileURLWithPath:filename] ;
-      NSNumber *trackID = [urlTable_ get:url.absoluteString];
-      if (!trackID) {
-        Track *t = [[[Track alloc] init] autorelease];
-        t.path = filename;
-        t.library = self;
-        [t readTag];
-        if (!t.title || !t.title.length) {
-          t.title = filename.lastPathComponent.stringByDeletingPathExtension;
-        }
-        // Only index things with audio:
-        // This will skip JPEG/photo files but allow almost other media files that LibAV can read through.
-        if (t.isAudio.boolValue) {
-          [self save:t];
-          @synchronized(pendingCoverArtTracks_) {
-            [pendingCoverArtTracks_ addObject:t.id];
-          }
-        } else {
-        }
-      } else {
-      }
+      [self index:filename];
     }
   }
   fts_close(tree);
   [pool release];
+
+}
+
+- (Track *)index:(NSString *)filename {
+  if (!filename)
+    return nil;
+  int64_t lastModified = ModifiedAt(filename);
+  if (lastModified < 0)
+    return nil;
+  NSNumber *trackID = [urlTable_ get:filename];
+  Track *t = trackID ? [trackTable_ get:trackID] : nil;
+  if (!t) {
+    t = [[[Track alloc] init] autorelease];
+    t.path = filename;
+    t.library = self;
+    [t readTag];
+    if (!t.title || !t.title.length) {
+      t.title = filename.lastPathComponent.stringByDeletingPathExtension;
+    }
+    // Only index things with audio:
+    // This will skip JPEG/photo files but allow almost other media files that LibAV can read through.
+    if (t.isAudio.boolValue) {
+      [self save:t];
+      @synchronized(pendingCoverArtTracks_) {
+        [pendingCoverArtTracks_ addObject:t.id];
+      }
+    }
+  } else {
+    if (t.updatedAt.longValue < lastModified) {
+      [t readTag];
+      [self save:t];
+    }
+  }
+  return t;
 }
 
 - (id)init {
@@ -369,27 +412,28 @@ static void OnFileEvent(
 }
 
 - (void)pruneQueued {
+  __block LocalLibrary *weakSelf = self;
   [trackTable_ each:^(id key, id val) {
     Track *track = (Track *)val;
-    track.library = self;
+    track.library = weakSelf;
     struct stat fsStatus;
-    if (stat(track.url.path.UTF8String, &fsStatus) < 0 && errno == ENOENT) {
-      [self delete:track];
+    if (stat(track.path.UTF8String, &fsStatus) < 0 && errno == ENOENT) {
+      [weakSelf delete:track];
     }
   }];
 }
 
 - (void)save:(Track *)track {
-  NSURL *url = track.url;
-  if (!url) {
+  if (!track.path) {
     return;
   }
-  bool isNew = false;
-  if (!track.id) {
+  track.library = self;
+  bool isNew = track.id == nil;
+  if (isNew) {
     track.id = [trackTable_ nextID];
-    isNew = true;
   }
-  [urlTable_ put:track.id forKey:track.url.absoluteString];
+
+  [urlTable_ put:track.id forKey:track.path];
   [trackTable_ put:track forKey:track.id];
   if (isNew) {
     [self notifyTrack:track change:kLibraryTrackAdded];
@@ -401,7 +445,7 @@ static void OnFileEvent(
 
 
 - (Track *)get:(NSNumber *)trackID {
-  Track *t = [trackTable_ get:trackID];
+  Track *t = trackID ? [trackTable_ get:trackID] : nil;
   t.library = self;
   return t;
 }
@@ -414,7 +458,7 @@ static void OnFileEvent(
 - (void)delete:(Track *)track {
   [trackTable_ delete:track.id];
   if (track.url)
-    [urlTable_ delete:track.url.absoluteString];
+    [urlTable_ delete:track.path];
   self.lastUpdatedAt = Now();
   [self notifyTrack:track change:kLibraryTrackDeleted];
 
@@ -433,6 +477,7 @@ static void OnFileEvent(
 }
 
 - (void)scan:(NSArray *)paths {
+  DEBUG(@"scan: %@", paths);
   @synchronized(pathsToScan_) {
     if (paths)
       [pathsToScan_ addObjectsFromArray:paths];

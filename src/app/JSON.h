@@ -1,20 +1,14 @@
 #import <Cocoa/Cocoa.h>
 #include <jansson.h>
 
+NSData *ToJSONData(id obj);
+NSString *ToJSON(id obj);
+
 @interface NSObject (JSON)
 - (NSString *)getJSONEncodedString;
-- (json_t *)getJSON;
-@end
-
-@interface NSString (JSON)
-- (id)decodeJSON;
-@end
-
-@interface NSData (JSON)
-- (id)decodeJSON;
 @end
 
 id FromJSONBytes(const char *js);
-id FromJSON(json_t *);
+id FromJSONData(NSData *data);
 
 // vim: filetype=objcpp

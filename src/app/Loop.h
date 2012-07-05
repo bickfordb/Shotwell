@@ -27,5 +27,6 @@ typedef void (^LoopOnData)(NSData *data);
 - (void)readData:(int)fd length:(size_t)length with:(void (^)(NSData *bytes))aBlock;
 - (void)readLine:(int)fd buffer:(struct evbuffer *)buffer with:(LoopOnLine)block;
 - (void)readData:(int)fd buffer:(struct evbuffer *)buffer length:(size_t)length with:(void (^)(NSData *bytes))block;
+- (void)invalidate;
 + (Loop *)loop;
 @end

@@ -45,7 +45,6 @@ extern NSString * const kScanPathsChanged;
 - (void)save:(Track *)t;
 - (Track *)get:(NSNumber *)trackID;
 - (void)clear;
-- (void)scan:(NSArray *)scanPaths;
 - (void)prune;
 - (void)delete:(Track *)track;
 - (void)each:(void (^)(Track *track))block;
@@ -55,6 +54,7 @@ extern NSString * const kScanPathsChanged;
 - (void)checkCoverArtForTrack:(Track *)t;
 - (void)checkCoverArt;
 - (bool)hasCoverArt:(NSString *)coverArtID;
+- (Track *)index:(NSString *)path;
 - (void)saveCoverArt:(NSString *)coverArtID data:(NSData *)data;
 - (NSData *)getCoverArt:(NSString *)coverArtID;
 

@@ -16,6 +16,7 @@
 #import "app/Library.h"
 #import "app/Track.h"
 #import "app/Log.h"
+#import "app/Util.h"
 
 extern "C" {
 #include <libavformat/avformat.h>
@@ -119,7 +120,6 @@ static NSArray *ignoreExtensions = nil;
   [year_ release];
   [super dealloc];
 }
-
 
 + (void)initialize {
   trackClass = [Track class];
@@ -291,7 +291,7 @@ done:
   return false;
 }
 
-- (json_t *)getJSON {
+- (NSDictionary *)dictionary {
   NSMutableDictionary *data = [NSMutableDictionary dictionary];
   for (NSString *key in allTrackKeys) {
     if (key == kURL)
@@ -301,26 +301,29 @@ done:
       continue;
     [data setValue:val forKey:key];
   }
-  return [data getJSON];
+  return data;
 }
-+ (Track *)fromJSON:(NSDictionary *)json {
+
++ (Track *)trackFromDictionary:(NSDictionary *)dict {
+  if (!dict)
+    return nil;
   Track *t = [[[Track alloc] init] autorelease];
-  t.album = [json valueForKey:kAlbum];
-  t.artist = [json valueForKey:kArtist];
-  t.coverArtID = [json valueForKey:kCoverArtID];
-  t.duration = [json valueForKey:kDuration];
-  t.genre = [json valueForKey:kGenre];
-  t.id = [json valueForKey:kID];
-  t.isAudio = [json valueForKey:kIsAudio];
-  t.isCoverArtChecked = [json valueForKey:kIsCoverArtChecked];
-  t.isVideo = [json valueForKey:kIsVideo];
-  t.lastPlayedAt = [json valueForKey:kLastPlayedAt];
-  t.path = [json valueForKey:kPath];
-  t.publisher = [json valueForKey:kPublisher];
-  t.title = [json valueForKey:kTitle];
-  t.trackNumber = [json valueForKey:kTrackNumber];
-  t.updatedAt = [json valueForKey:kUpdatedAt];
-  t.year = [json valueForKey:kYear];
+  t.album = [dict objectForKey:kAlbum];
+  t.artist = [dict objectForKey:kArtist];
+  t.coverArtID = [dict objectForKey:kCoverArtID];
+  t.duration = [dict objectForKey:kDuration];
+  t.genre = [dict objectForKey:kGenre];
+  t.id = [dict objectForKey:kID];
+  t.isAudio = [dict objectForKey:kIsAudio];
+  t.isCoverArtChecked = [dict objectForKey:kIsCoverArtChecked];
+  t.isVideo = [dict objectForKey:kIsVideo];
+  t.lastPlayedAt = [dict objectForKey:kLastPlayedAt];
+  t.path = [dict objectForKey:kPath];
+  t.publisher = [dict objectForKey:kPublisher];
+  t.title = [dict objectForKey:kTitle];
+  t.trackNumber = [dict objectForKey:kTrackNumber];
+  t.updatedAt = [dict objectForKey:kUpdatedAt];
+  t.year = [dict objectForKey:kYear];
   return t;
 }
 
@@ -342,6 +345,15 @@ done:
 }
 
 - (void)finalizeForWebScript {
+}
+
+- (id)init {
+  self = [super init];
+  if (self) {
+    self.updatedAt = [NSNumber numberWithLong:Now()];
+    self.createdAt = [NSNumber numberWithLong:Now()];
+  }
+  return self;
 }
 
 @end

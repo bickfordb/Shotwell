@@ -36,16 +36,29 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
   return self;
 }
 
-- (void)dealloc {
+- (void)invalidate {
   started_ = false;
   event_base_loopbreak(base_);
   while (running_) { ; }
+  @synchronized(pendingEvents_) {
+    [pendingEvents_ removeAllObjects];
+  }
+}
+
+- (void)dealloc {
+  if (running_) {
+    started_ = false;
+    event_base_loopbreak(base_);
+    while (running_) { ; }
+  }
   [pendingEvents_ release];
   event_base_free(base_);
   [super dealloc];
 }
 
 - (void)run {
+  if (!started_ || running_)
+    return;
   running_ = true;
   IgnoreSigPIPE();
   struct timeval dispatchInterval;
@@ -56,7 +69,8 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
     //usleep(1);
     //event_base_loopexit(base_, &dispatchInterval);
     event_base_loop(base_, EVLOOP_ONCE);
-    event_base_dispatch(base_);
+    if (started_)
+      event_base_dispatch(base_);
     usleep(100);
   }
   [pool release];
@@ -67,10 +81,15 @@ static const int kCheckRunningInterval = 1000; // .001 seconds
   return base_;
 }
 - (void)every:(int64_t)timeout with:(void (^)())block {
+  if (!block)
+    return;
   block = [block copy];
+  __block Loop *weakSelf = self;
   [self onTimeout:timeout with:^(Event *e, short flags) {
-    block();
-    [e add:timeout];
+    if (weakSelf->started_ && block) {
+      block();
+      [e add:timeout];
+    }
   }];
 }
 

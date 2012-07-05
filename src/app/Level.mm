@@ -1,5 +1,6 @@
 #import "app/Level.h"
 #import "app/JSON.h"
+#import "app/Log.h"
 #include <string>
 
 using namespace std;
@@ -60,62 +61,56 @@ using namespace std;
   [super dealloc];
 }
 
-- (char *)encodeKey:(id)key length:(size_t *)length {
+- (NSData *)encodeKey:(id)key {
   assert(0);
-  *length = 0;
-  return NULL;
+  return [NSData data];
 }
 
-- (char *)encodeValue:(id)value length:(size_t *)length {
+- (NSData *)encodeValue:(id)value {
   assert(0);
-  *length = 0;
-  return NULL;
+  return [NSData data];
 }
-- (id)decodeValue:(const char *)bytes length:(size_t)length {
+
+- (id)decodeValue:(NSData *)data {
   assert(0);
   return nil;
 }
 
-- (id)decodeKey:(const char *)bytes length:(size_t)length {
+- (id)decodeKey:(NSData *)bytes  {
   assert(0);
   return nil;
 }
 
 - (id)get:(id)key {
-  size_t keyLength = 0;
-  char *keyBytes = [self encodeKey:key length:&keyLength];
+  if (!key)
+    return nil;
+  NSData *keyBytes = [self encodeKey:key];
   string s([self keyPrefix]);
-  s.append(keyBytes, keyLength);
-  free(keyBytes);
+  s.append((const char *)keyBytes.bytes, keyBytes.length);
   std::string val;
 
   id ret = nil;
   leveldb::Status st = level_.db->Get(leveldb::ReadOptions(), s, &val);
   if (st.ok() && !st.IsNotFound())  {
-    ret = [self decodeValue:val.c_str() length:val.length()];
+    NSData *data = [NSData dataWithBytesNoCopy:(void *)val.c_str() length:val.length() freeWhenDone:NO];
+    ret = [self decodeValue:data];
   }
   return ret;
 }
 
 - (void)put:(id)value forKey:(id)key {
   string key0([self keyPrefix]);
-  size_t keyLength = 0;
-  char *keyBytes = [self encodeKey:key length:&keyLength];
-  key0.append(keyBytes, keyLength);
-  free(keyBytes);
-  size_t valLength = 0;
-  char *valBytes = [self encodeValue:value length:&valLength];
-  leveldb::Slice valSlice(valBytes, valLength);
+  NSData *keyBytes = [self encodeKey:key];
+  key0.append((const char *)keyBytes.bytes, keyBytes.length);
+  NSData *valBytes = [self encodeValue:value];
+  leveldb::Slice valSlice((const char *)valBytes.bytes, valBytes.length);
   level_.db->Put(leveldb::WriteOptions(), key0, valSlice);
-  free(valBytes);
 }
 
 - (void)delete:(id)key {
   string key0([self keyPrefix]);
-  size_t keyLength = 0;
-  char *keyBytes = [self encodeKey:key length:&keyLength];
-  key0.append(keyBytes, keyLength);
-  free(keyBytes);
+  NSData *keyBytes = [self encodeKey:key];
+  key0.append((const char *)keyBytes.bytes, keyBytes.length);
   level_.db->Delete(leveldb::WriteOptions(), key0);
 }
 
@@ -128,12 +123,11 @@ using namespace std;
     if (keySlice.starts_with(prefixSlice)) {
       leveldb::Slice valueSlice = i->value();
       NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-      id key = [self
-        decodeKey:prefixSlice.size() + keySlice.data()
-        length:keySlice.size() - prefixSlice.size()];
-      id value = [self
-        decodeValue:valueSlice.data()
-        length:valueSlice.size()];
+      NSData *valueBytes = [NSData dataWithBytesNoCopy:(void *)valueSlice.data() length:valueSlice.size() freeWhenDone:NO];
+      keySlice.remove_prefix(prefixSlice.size());
+      NSData *keyBytes = [NSData dataWithBytesNoCopy:(void *)keySlice.data() length:keySlice.size() freeWhenDone:NO];
+      id key = [self decodeKey:keyBytes];
+      id value = [self decodeValue:valueBytes];
       block(key, value);
       [pool release];
     } else {
@@ -186,38 +180,26 @@ using namespace std;
 @end
 
 @interface JSONTable (P)
-- (char *)encodeJSON:(id)value length:(size_t *)length;
+- (NSData *)encodeJSON:(id)value;
 - (id)decodeJSON:(const char *)value length:(size_t)length;
 @end
 
 @implementation JSONTable
-- (char *)encodeJSON:(id)value length:(size_t *)length {
-  json_t *js = [((NSObject *)value) getJSON];
-  char *ret = js ? json_dumps(js, JSON_ENCODE_ANY) : NULL;
-  *length = (js && ret) ? strlen(ret) + 1 : 0;
-  if (js)
-    json_decref(js);
-  return ret;
+
+- (NSData *)encodeValue:(id)value {
+  return ToJSONData(value);
 }
 
-- (id)decodeJSON:(const char *)bytes length:(size_t)length {
-  return length > 0 ? FromJSONBytes(bytes) : nil;
+- (NSData *)encodeKey:(id)value {
+  return ToJSONData(value);
 }
 
-- (char *)encodeValue:(id)value length:(size_t *)length {
-  return [self encodeJSON:value length:length];
+- (id)decodeValue:(NSData *)data {
+  return FromJSONData(data);
 }
 
-- (char *)encodeKey:(id)value length:(size_t *)length {
-  return [self encodeJSON:value length:length];
-}
-
-- (id)decodeValue:(const char *)bytes length:(size_t)length {
-  return [self decodeJSON:bytes length:length];
-}
-
-- (id)decodeKey:(const char *)bytes length:(size_t)length {
-  return [self decodeJSON:bytes length:length];
+- (id)decodeKey:(NSData *)data {
+  return FromJSONData(data);
 }
 
 @end

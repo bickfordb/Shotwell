@@ -1,3 +1,7 @@
+#ifndef DEBUGSKIPLIST
+#define DEBUGSKIPLIST 0
+#endif
+
 #import <Cocoa/Cocoa.h>
 #import "app/Enum.h"
 // vim: filetype=objcpp
@@ -16,6 +20,9 @@ struct SkipListNode;
 - (NSArray *)values;
 - (NSArray *)items;
 - (id)get:(id)key;
+#if DEBUGSKIPLIST
+- (void)validate;
+#endif
 @property (copy) NSComparator comparator;
 @end
 

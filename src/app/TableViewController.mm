@@ -1,4 +1,5 @@
 #import "app/Loop.h"
+#import "app/Log.h"
 #import "app/PThread.h"
 #import "app/TableViewController.h"
 
@@ -17,12 +18,18 @@ static int64_t kReloadInterval = 500000;
   return NO;
 }
 
+- (BOOL)acceptURLs:(NSArray *)urls {
+  return NO;
+}
+
 - (BOOL)tableView:(NSTableView *)aTableView acceptDrop:(id <NSDraggingInfo>)info row:(NSInteger)row dropOperation:(NSTableViewDropOperation)operation {
   NSPasteboard *pasteboard = [info draggingPasteboard];
-  NSArray *paths = [pasteboard propertyListForType:NSFilenamesPboardType];
-  //[localLibrary_ scan:paths];
-  return [paths count] ? YES : NO;
+  NSArray *items = [pasteboard readObjectsForClasses:[NSArray arrayWithObjects:[NSURL class], nil]
+    options:nil];
+  INFO(@"acceptDrop: %@", items);
+  return [self acceptURLs:items];
 }
+
 
 - (NSDragOperation)tableView:(NSTableView *)aTableView validateDrop:(id < NSDraggingInfo >)info proposedRow:(NSInteger)row proposedDropOperation:(NSTableViewDropOperation)operation {
 

@@ -1,5 +1,9 @@
 #include <stdint.h>
+#include <sys/stat.h>
+#include <sys/time.h>
 #import <Cocoa/Cocoa.h>
+// vim: set filetype=objcpp
+
 /* The number of microseconds per second */
 extern const int64_t kUSPerS;
 
@@ -18,4 +22,5 @@ typedef struct {
 
 NTPTime NowNTPTime();
 
-
+int64_t TimeSpecToUSec(struct timespec t);
+int64_t ModifiedAt(NSString *path);

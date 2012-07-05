@@ -1,7 +1,15 @@
-#include <sys/time.h>
 #import "app/Util.h"
 
 const int64_t kUSPerS = 1000000;
+const int64_t kNSPerS = 1000000000;
+
+/* Get the current time in ultra seconds */
+
+int64_t TimeSpecToUSec(struct timespec t) {
+  int64_t ret = t.tv_nsec;
+  ret += kNSPerS * t.tv_sec;
+  return ret;
+}
 
 int64_t Now() {
   struct timeval t;
@@ -9,6 +17,15 @@ int64_t Now() {
   int64_t ret = t.tv_usec;
   ret += t.tv_sec * kUSPerS;
   return ret;
+}
+
+int64_t ModifiedAt(NSString *path) {
+  struct stat fsStatus;
+  if (stat(path.UTF8String, &fsStatus) >= 0) {
+    return TimeSpecToUSec(fsStatus.st_mtimespec);
+  } else {
+    return -1;
+  }
 }
 
 NSArray *GetSubDirectories(NSArray *dirs) {

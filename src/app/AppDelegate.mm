@@ -156,12 +156,13 @@ static NSString *CoverArtPath() {
     options:nil];
   NSMutableArray *paths = [NSMutableArray array];
   for (NSURL *u in items) {
-    if (![u isFileURL]) {
+    if (!u.isFileURL) {
       continue;
     }
     [paths addObject:u.path];
   }
-  [localLibrary_ scan:paths];
+  if (paths.count > 0)
+    [localLibrary_ scan:paths];
 }
 
 - (void)setupDockIcon {
@@ -315,7 +316,7 @@ static NSString *CoverArtPath() {
   IgnoreSigPIPE();
   int found = -1;
   if (track_) {
-    found = EnumIndexOf(self.mainWindowController.trackBrowser.tracks, track_);
+    found = IndexOf(self.mainWindowController.trackBrowser.tracks, track_);
   }
   [self playTrackAtIndex:found + 1];
 }
@@ -323,7 +324,7 @@ static NSString *CoverArtPath() {
 - (void)playPreviousTrack {
   int found = 0;
   if (track_) {
-    found = EnumIndexOf(self.mainWindowController.trackBrowser.tracks, track_);
+    found = IndexOf(self.mainWindowController.trackBrowser.tracks, track_);
   }
   if (found > 0) {
     [self playTrackAtIndex:found - 1];

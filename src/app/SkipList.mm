@@ -1,10 +1,6 @@
 #import "app/SkipList.h"
 #import "app/Log.h"
 
-#ifndef DEBUGSKIPLIST
-#define DEBUGSKIPLIST 0
-#endif
-
 static const long kMaxLevel = 12;
 
 static NSComparator DefaultComparator = ^(id left, id right) {
@@ -36,6 +32,7 @@ static NSComparator DefaultComparator = ^(id left, id right) {
   return ret;
 };
 
+
 typedef struct SkipListNode {
   id key;
   id value;
@@ -56,7 +53,7 @@ static Node *node_new(id key, id value, int level) {
   node->forward = (Node **)calloc(level, sizeof(Node *));
   node->length = (int *)calloc(level, sizeof(int));
   for (int i = 0; i < level; i++) {
-    node->length[i] = 1;
+    node->length[i] = 0;
   }
   return node;
 }
@@ -84,6 +81,10 @@ static void node_free(Node *node) {
     (void)ret;
     close(fd);
     srandom(seed);
+  } else {
+    ERROR(@"failed to seed: %d", (int)seed);
+    srandom(seed);
+
   }
 }
 
@@ -105,6 +106,9 @@ static void node_free(Node *node) {
 }
 
 - (void)reindex {
+#if DEBUGSKIPLIST
+  [self validate];
+#endif
   count_ = 1;
   Node *oldHead = head_;
   head_ = node_new(nil, nil, kMaxLevel);
@@ -118,6 +122,9 @@ static void node_free(Node *node) {
     node_free(t);
   }
   node_free(oldHead);
+#if DEBUGSKIPLIST
+  [self validate];
+#endif
 }
 
 - (void)eachItem:(MapEnumBlock)block {
@@ -150,25 +157,35 @@ static void node_free(Node *node) {
   return node->key;
 }
 
+
+
 - (NSString *)description {
   NSString *ret = @"";
+  ret = [ret stringByAppendingFormat:@"0x%X\n", self];
+  ret = [ret stringByAppendingFormat:@"\t- count: %d,\n", count_];
+  ret = [ret stringByAppendingFormat:@"\t- nodes: \n"];
   for (Node *node = head_;
       node;
       node = node->forward[0]) {
-    NSString *nodeRepr = @"\n{";
-    nodeRepr = [nodeRepr stringByAppendingFormat:@"0x%08X\nkey: %@\nedges: ", node, node->key];
+    ret = [ret stringByAppendingFormat:@"\t\t0x%08X\n", node];
+    ret = [ret stringByAppendingFormat:@"\t\t\t- key: %@\n", node->key];
     #if DEBUGSKIPLIST
+    ret = [ret stringByAppendingFormat:@"\t\t\t- edges (%d): [", node->level];
     for (int i = node->level - 1; i >= 0; i--) {
-      nodeRepr = [nodeRepr stringByAppendingFormat:@" 0x%08X,%d", node->forward[i], node->length[i]];
+      if (i < (node->level - 1))
+        ret = [ret stringByAppendingFormat:@" "];
+      ret = [ret stringByAppendingFormat:@"0x%08X:%d", node->forward[i], node->length[i]];
     }
+    ret = [ret stringByAppendingFormat:@"]\n", node->level];
     #endif
-    nodeRepr = [nodeRepr stringByAppendingString:@"}\n"];
-    ret = [ret stringByAppendingString:nodeRepr];
   }
   return ret;
 }
 
 - (void)clear {
+#if DEBUGSKIPLIST
+  [self validate];
+#endif
   Node *node = head_->forward[0];
   while (node) {
     Node *next = node->forward[0];
@@ -177,9 +194,13 @@ static void node_free(Node *node) {
   }
   for (int i = 0; i < kMaxLevel; i++) {
     head_->forward[i] = NULL;
+    head_->length[i] = 0;
   }
   level_ = 1;
   count_ = 0;
+#if DEBUGSKIPLIST
+  [self validate];
+#endif
 }
 
 - (id)initWithComparator:(NSComparator)comparator {
@@ -191,6 +212,9 @@ static void node_free(Node *node) {
     count_ = 0;
     level_ = 1;
     comparator_ = [[comparator copy] retain];
+#if DEBUGSKIPLIST
+  [self validate];
+#endif
   }
   return self;
 }
@@ -198,7 +222,7 @@ static void node_free(Node *node) {
 - (int)randomLevel {
   int kBranching = 4;
   int level = 1;
-  while (level < kMaxLevel && ((lrand48() % kBranching) == 0)) {
+  while (level < kMaxLevel && ((random() % kBranching) == 0)) {
     level++;
   }
   assert(level > 0);
@@ -220,23 +244,68 @@ static void node_free(Node *node) {
   return x;
 }
 
+#if DEBUGSKIPLIST
+void ValidateNodeLength(Node *node) {
+  int count = 0;
+  for (Node *i = node; i; i = i->forward[0]) {
+    count++;
+  }
+  for (int i = 0; i < node->level; i++) {
+    if (!node->forward[i]) {
+      assert(node->length[i] == 0);
+    } else {
+      Node *search = node->forward[i];
+      int distance = 0;
+      for (Node *j = node; (j && (j != search)); j = j->forward[0]) {
+        distance++;
+      }
+      assert(distance == node->length[i]);
+    }
+  }
+}
+
+- (void)validate {
+  for (int i = 0; i < kMaxLevel; i++) {
+    if (!head_->forward[i]) {
+      assert(head_->length[i] == 0);
+    }
+  }
+  int j = 0;
+  for (Node *node = head_; node; node = node->forward[0]) {
+    ValidateNodeLength(node);
+    j++;
+  }
+}
+#endif
+
 - (void)delete:(id)key {
+#if DEBUGSKIPLIST
+  [self validate];
+#endif
   Node *update[kMaxLevel];
   Node *x = [self findNodePreviousToKey:key previousNodes:update];
   if (!x) {
     return;
   }
   x = x->forward[0];
+  if (!x)
+    return;
   if (comparator_(x->key, key) != 0) {
     return;
   }
   for (int level = 0; level < level_; level++) {
     if (update[level]->forward[level] == x) {
-      update[level]->length[level] += x->length[level] - 1;
+      if (x->forward[level])
+        update[level]->length[level] += x->length[level] - 1;
+      else
+        update[level]->length[level] = 0;
       update[level]->forward[level] = x->forward[level];
     } else {
-      update[level]->length[level] -= 1;
+      if (update[level]->forward[level])
+        update[level]->length[level] -= 1;
     }
+    if (update[level]->forward[level])
+      assert(update[level]->length[level] > 0);
   }
   node_free(x);
   for (int i = level_ - 1; i > 0; i--) {
@@ -245,6 +314,9 @@ static void node_free(Node *node) {
     }
   }
   count_--;
+#if DEBUGSKIPLIST
+  [self validate];
+#endif
 }
 
 - (void)dealloc {
@@ -295,6 +367,10 @@ static void node_free(Node *node) {
 }
 
 - (void)set:(id)key to:(id)object {
+#if DEBUGSKIPLIST
+  INFO(@"insert %@", key);
+  [self validate];
+#endif
   Node *update[kMaxLevel];
   int updatePos[kMaxLevel];
   int pos = 0;
@@ -315,9 +391,9 @@ static void node_free(Node *node) {
         lastCmpKey = x->forward[level]->key;
       }
       if (lastCmpVal >= 0) break;
-      x = x->forward[level];
       updatePos[level] += x->length[level];
       pos += x->length[level];
+      x = x->forward[level];
     }
     update[level] = x;
   }
@@ -339,26 +415,47 @@ static void node_free(Node *node) {
     }
   }
   int newLevel = [self randomLevel];
-  if (newLevel > level_) {
-    for (int i = level_; i < newLevel; i++) {
-      update[i] = head_;
-    }
-    level_ = newLevel;
-  }
+
 
   Node *node = node_new(key, object, newLevel);
   int steps = 0;
   for (int i = 0; i < newLevel; i++) {
     node->forward[i] = update[i] ? update[i]->forward[i] : NULL;
     update[i]->forward[i] = node;
-    node->length[i] = update[i]->length[i] - steps;
-    update[i]->length[i] = steps + 1;
+    if (i < level_) {
+      if (node->forward[i])
+        node->length[i] = update[i]->length[i] - steps;
+      else
+        node->length[i] = 0;
+      update[i]->length[i] = steps + 1;
+      assert(update[i]->length[i] > 0);
+    } else {
+      update[i]->length[i] = pos - 1;
+      node->length[i] = 0;
+    }
     steps += updatePos[i];
   }
-  for (int i = newLevel; i < kMaxLevel; i++) {
-    update[i]->length[i] += 1;
+  for (int i = newLevel; i < level_; i++) {
+    if (update[i]->forward[i])
+      update[i]->length[i]++;
+  }
+  for (int i = level_; i < newLevel; i++) {
+    if (update[i]->forward[i])
+      update[i]->length[i]++;
+  }
+  if (newLevel > level_) {
+#if DEBUGSKIPLIST
+    INFO(@"changing level to %d", newLevel);
+#endif
+    level_ = newLevel;
+  }
+  for (int i = level_; i < kMaxLevel; i++) {
+    update[i]->length[i] = 0;
   }
   count_++;
+#if DEBUGSKIPLIST
+  [self validate];
+#endif
 }
 
 - (bool)contains:(id)key {
@@ -386,6 +483,12 @@ static void node_free(Node *node) {
   }
   return self;
 }
+
+#if DEBUGSKIPLIST
+- (void)validate {
+  [skipList_ validate];
+}
+#endif
 
 - (void)dealloc {
   [skipList_ release];

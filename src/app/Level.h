@@ -21,15 +21,15 @@
 - (void)delete:(id)key;
 - (void)put:(id)value forKey:(id)key;
 - (void)each:(void (^)(id key, id val))block;
-- (char *)encodeKey:(id)key length:(size_t *)length;
-- (char *)encodeValue:(id)value length:(size_t *)length;
-- (id)decodeValue:(const char *)bytes length:(size_t)length;
-- (id)decodeKey:(const char *)bytes length:(size_t)length;
+- (NSData *)encodeKey:(id)key;
+- (NSData *)encodeValue:(id)value;
+- (id)decodeValue:(NSData *)data;
+- (id)decodeKey:(NSData *)data;
 - (void)clear;
 - (NSNumber *)nextID;
 /* Get the number of entries */
 - (int)count;
-/* Prefix keys with this value.  This allows for multiple databases to exist within one Level database. */
+/* Prefix keys with this value.  This allows for multiple indices to exist within one Level database. */
 - (const char *)keyPrefix;
 @end
 

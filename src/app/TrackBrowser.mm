@@ -1,4 +1,5 @@
 #import "app/AppDelegate.h"
+#import "app/Enum.h"
 #import "app/Log.h"
 #import "app/NSNumberTimeFormat.h"
 #import "app/Pthread.h"
@@ -60,6 +61,14 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
 - (NSArray *)selectedTracks {
   NSIndexSet *indices = self.tableView.selectedRowIndexes;
   return [self.tracks getMany:indices];
+}
+
+- (BOOL)acceptURLs:(NSArray *)urls {
+  INFO(@"accept URLS:", urls);
+  NSArray *fileURLs = Filter(urls, ^(id url) { return (bool)[url isFileURL]; });
+  NSArray *paths = [fileURLs valueForKey:@"path"];
+  [self.library scan:paths];
+  return paths.count > 0;
 }
 
 - (NSArray *)cutSelectedTracks {

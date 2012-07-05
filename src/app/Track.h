@@ -44,6 +44,7 @@ extern NSArray *allTrackKeys;
 }
 
 - (bool)isAudioOrVideo;
+- (NSDictionary *)dictionary;
 
 /* Read the ID3 tag stored at URL */
 - (int)readTag;
@@ -68,7 +69,7 @@ extern NSArray *allTrackKeys;
 @property (retain, nonatomic) NSString *trackNumber;
 @property (retain, nonatomic) NSString *year;
 
-+ (Track *)fromJSON:(NSDictionary *)json;
++ (Track *)trackFromDictionary:(NSDictionary *)dict;
 
 @end
 

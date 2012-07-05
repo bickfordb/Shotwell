@@ -10,7 +10,13 @@ NSString * const kLibraryTrackChanged = @"LibraryTrackChanged";
 @synthesize lastUpdatedAt = lastUpdatedAt_;
 
 - (void)each:(void (^)(Track *t)) t { };
-- (int)count { return 0; };
+- (int)count {
+  return 0;
+};
+
+- (void)scan:(NSArray *)paths {
+
+}
 
 - (void)delete:(Track *)track { }
 

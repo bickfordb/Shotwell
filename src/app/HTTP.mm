@@ -52,6 +52,9 @@ NSMutableDictionary *FromEvKeyValQ(struct evkeyvalq *kv) {
     address:(NSString *)address
     port:(uint16_t)port
     with:(void (^)(HTTPResponse *response))onResponse {
+  if (!request || !address || !onResponse) {
+    return false;
+  }
   onResponse = [onResponse copy];
   struct evhttp_connection *conn = evhttp_connection_base_new(base_, NULL, address.UTF8String, port);
   void (^onReq)(struct evhttp_request *req) = ^(evhttp_request *req) {
