@@ -7,7 +7,11 @@
 	<key>CFBundleExecutable</key>
 	<string>Shotwell</string>
 	<key>CFBundleIconFile</key>
-	<string></string>
+	<string>dock</string>
+  <key>CFBundleIconFiles</key>
+  <array>
+    <string>dock</string>
+  </array>
 	<key>CFBundleIdentifier</key>
 	<string>org.shotwell.Shotwell</string>
 	<key>CFBundleInfoDictionaryVersion</key>

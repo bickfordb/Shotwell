@@ -165,9 +165,7 @@ static NSString *CoverArtPath() {
     [localLibrary_ scan:paths];
 }
 
-- (void)setupDockIcon {
-  [NSApp setApplicationIconImage:[NSImage imageNamed:@"dock"]];
-}
+
 
 
 - (void)parseDefaults {
@@ -178,7 +176,6 @@ static NSString *CoverArtPath() {
 - (void)applicationDidFinishLaunching:(NSNotification *)n {
   __block AppDelegate *weakSelf = self;
   self.audioSink = [[[CoreAudioSink alloc] init] autorelease];
-  [self setupDockIcon];
   [self parseDefaults];
   self.audioOutputs = [NSMutableArray array];
   self.libraries = [NSMutableArray array];
