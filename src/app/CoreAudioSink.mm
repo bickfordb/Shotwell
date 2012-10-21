@@ -6,106 +6,102 @@
         return; \
     }
 
-static OSStatus GetAudioCallback(void *context,
-    AudioUnitRenderActionFlags *flags,
-    const AudioTimeStamp *timestamp,
-    uint32_t busNumber,
-    uint32_t numFrames,
-    AudioBufferList *ioData) {
-  CoreAudioSink *sink = (CoreAudioSink *)context;
-  for (uint32_t i = 0; i < ioData->mNumberBuffers; i++) {
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-    id <AudioSource> src = sink.audioSource;
-    [src retain];
-    memset(ioData->mBuffers[i].mData, 0, ioData->mBuffers[i].mDataByteSize);
-    [src
-      getAudio:(uint8_t *)ioData->mBuffers[i].mData
-      length:ioData->mBuffers[i].mDataByteSize];
-    [src release];
-    [pool release];
-  }
-  return 0;
-}
+const int kCoreAudioSinkNumBuffers = 3;
+
 
 @interface CoreAudioSink (Private)
-- (void)stopOutputUnit;
-- (void)startOutputUnit;
+- (void)queue:(AudioQueueRef)aQueue fillBuffer:(AudioQueueBufferRef)buffer;
+- (void)stopQueue;
+- (void)startQueue;
+
 @end
+
+static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBufferRef buffer) {
+  CoreAudioSink *sink = (CoreAudioSink *)inUserData;
+  [sink queue:queue fillBuffer:buffer];
+}
 
 @implementation CoreAudioSink
 @synthesize audioSource = audioSource_;
+
+- (void)queue:(AudioQueueRef)aQueue fillBuffer:(AudioQueueBufferRef)buffer {
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  id <AudioSource> src = self.audioSource;
+  [src retain];
+  buffer->mAudioDataByteSize = [src getAudio:(uint8_t *)buffer->mAudioData length:buffer->mAudioDataBytesCapacity];
+  buffer->mPacketDescriptionCount = 0;
+  [src release];
+  [pool release];
+  AudioQueueEnqueueBuffer(aQueue, buffer, 0, NULL);
+}
 
 - (id)init {
   self = [super init];
   if (self) {
     volume_ = 0.5;
     isPaused_ = true;
+    queue_ = NULL;
+    AudioStreamBasicDescription fmt;
+    memset(&fmt, 0, sizeof(fmt));
+    // Hardcode to S16LE stereo
+    fmt.mFormatID = kAudioFormatLinearPCM;
+    fmt.mFormatFlags = kLinearPCMFormatFlagIsPacked;
+    fmt.mChannelsPerFrame = 2;
+    fmt.mSampleRate = 44100;
+    fmt.mBitsPerChannel = 16;
+    fmt.mFormatFlags |= kLinearPCMFormatFlagIsSignedInteger;
+
+    fmt.mFramesPerPacket = 1;
+    fmt.mBytesPerFrame = fmt.mBitsPerChannel * fmt.mChannelsPerFrame / 8;
+    fmt.mBytesPerPacket = fmt.mBytesPerFrame * fmt.mFramesPerPacket;
+    OSStatus newStatus = AudioQueueNewOutput(&fmt, BufferCallback, (void *)self, nil, nil, 0, &queue_);
+    if (newStatus) {
+      ERROR(@"failed to allocate output queue: %d", (int)newStatus);
+    }
+    numBuffers_ = 0;
   }
   return self;
 }
-- (void)stopOutputUnit {
-  AudioOutputUnitStop(outputAudioUnit_);
-  struct AURenderCallbackStruct callback;
-  callback.inputProc = NULL;
-  callback.inputProcRefCon = NULL;
-  AudioUnitSetProperty(outputAudioUnit_, kAudioUnitProperty_SetRenderCallback,
-      kAudioUnitScope_Input, 0, &callback, sizeof(callback));
-  CloseComponent(outputAudioUnit_);
+
+- (void)stopQueue {
+  AudioQueueStop(queue_, YES);
+  for (int i = 0; i < numBuffers_; i++) {
+    AudioQueueFreeBuffer(queue_, buffers_[i]);
+    buffers_[i] = NULL;
+  }
+  numBuffers_ = 0;
 }
 
-- (void)startOutputUnit {
-  memset(&outputAudioUnit_, 0, sizeof(outputAudioUnit_));
-  Component comp;
-  ComponentDescription desc;
-  struct AURenderCallbackStruct callback;
-  AudioStreamBasicDescription requestedDesc;
-  OSStatus result = 0;
-
-  // Hardcode to s16le stereo:
-  requestedDesc.mFormatID = kAudioFormatLinearPCM;
-  requestedDesc.mFormatFlags = kLinearPCMFormatFlagIsPacked;
-  requestedDesc.mChannelsPerFrame = 2;
-  requestedDesc.mSampleRate = 44100;
-  requestedDesc.mBitsPerChannel = 16;
-  requestedDesc.mFormatFlags |= kLinearPCMFormatFlagIsSignedInteger;
-
-  requestedDesc.mFramesPerPacket = 1;
-  requestedDesc.mBytesPerFrame = requestedDesc.mBitsPerChannel * requestedDesc.mChannelsPerFrame / 8;
-  requestedDesc.mBytesPerPacket = requestedDesc.mBytesPerFrame * requestedDesc.mFramesPerPacket;
-
-  /* Locate the default output audio unit */
-  desc.componentType = kAudioUnitType_Output;
-  desc.componentSubType = kAudioUnitSubType_DefaultOutput;
-  desc.componentManufacturer = kAudioUnitManufacturer_Apple;
-  desc.componentFlags = 0;
-  desc.componentFlagsMask = 0;
-
-  comp = FindNextComponent(NULL, &desc);
-  if (comp == NULL) {
-    ERROR(@"Failed to start CoreAudio: FindNextComponent returned NULL");
+- (void)startQueue {
+  OSStatus startRet = AudioQueueStart(queue_, NULL);
+  if (startRet) {
+    ERROR(@"failed to start queue: %d", (int)startRet);
     return;
   }
-  result = OpenAComponent(comp, &outputAudioUnit_);
-  result = AudioUnitInitialize(outputAudioUnit_);
-  AudioUnitSetProperty(outputAudioUnit_,
-      kAudioUnitProperty_StreamFormat,
-      kAudioUnitScope_Input,
-      0,
-      &requestedDesc,
-      sizeof(requestedDesc));
-  callback.inputProc = GetAudioCallback;
-  callback.inputProcRefCon = self;
-  AudioUnitSetProperty(outputAudioUnit_, kAudioUnitProperty_SetRenderCallback,
-      kAudioUnitScope_Input, 0, &callback, sizeof(callback));
-  AudioOutputUnitStart(outputAudioUnit_);
-  AudioUnitSetParameter(outputAudioUnit_,
-      kHALOutputParam_Volume, kAudioUnitScope_Output, 0, (AudioUnitParameterValue)volume_, 0);
+  while (numBuffers_ < 3) {
+    AudioQueueBufferRef buf = NULL;
+    OSStatus allocStatus = AudioQueueAllocateBuffer(queue_, 32768, &buf);
+    if (allocStatus != 0) {
+      ERROR(@"failed to allocated buffer: %d", (int)allocStatus);
+      return;
+    }
+    buffers_[numBuffers_] = buf;
+    [self queue:queue_ fillBuffer:buf];
+    numBuffers_++;
+  }
 }
 
 - (void)dealloc {
   if (!isPaused_) {
-    [self stopOutputUnit];
+    [self stopQueue];
     isPaused_ = true;
+  }
+  if (queue_) {
+    OSStatus st = AudioQueueDispose(queue_, NO);
+    if (st != 0) {
+      ERROR(@"failed to dipose of queue: %d", (int)st);
+    }
+    queue_ = NULL;
   }
   [audioSource_ release];
   [super dealloc];
@@ -122,26 +118,30 @@ static OSStatus GetAudioCallback(void *context,
       return;
     }
     if (!isPaused) {
-      [self startOutputUnit];
+      [self startQueue];
     } else {
-      [self stopOutputUnit];
+      [self stopQueue];
     }
     isPaused_ = isPaused;
   }
 }
 
 - (double)volume {
-  return volume_;
+  Float32 result = 0.0;
+  OSStatus status = AudioQueueGetParameter(queue_, kAudioQueueParam_Volume,  &result);
+  if (status != 0) {
+    ERROR(@"failed to read volume (%d)", (int)status);
+  }
+  return (double)result;
 }
 
 - (void)setVolume:(double)pct {
   volume_ = pct;
   if (isPaused_)
     return;
-  OSStatus status = AudioUnitSetParameter(outputAudioUnit_,
-      kHALOutputParam_Volume, kAudioUnitScope_Output, 0, (AudioUnitParameterValue)pct, 0);
+  OSStatus status = AudioQueueSetParameter(queue_, kAudioQueueParam_Volume, (Float32)pct);
   if (status != 0)
-    ERROR(@"failed to set volume (%d)", status);
+    ERROR(@"failed to set volume (%d)", (int)status);
 }
 
 - (int64_t)elapsed {
@@ -158,6 +158,22 @@ static OSStatus GetAudioCallback(void *context,
 
 - (bool)isSeeking {
   return self.audioSource.isSeeking;
+}
+
+- (void)setOutputDeviceID:(NSString *)uid {
+  INFO(@"set output device ID: %@", uid);
+
+  [self stopQueue];
+
+	OSStatus status = AudioQueueSetProperty(queue_, kAudioQueueProperty_CurrentDevice, &uid, sizeof(uid));
+	if (status != noErr) {
+		ERROR(@"unexpected error while setting the output device: %d", (int)status);
+		if (status == kAudioQueueErr_InvalidRunState) {
+			ERROR(@"Invalid run state");
+		}
+    return;
+	}
+  [self startQueue];
 }
 
 @end

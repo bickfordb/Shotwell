@@ -240,7 +240,7 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
     self.onDoubleAction = ^(int row){
       [SharedAppDelegate() playTrackAtIndex:row];
     };
-    self.onCellValue = ^(int row, NSTableColumn *tableColumn) {
+    self.onCellValue = ^id(int row, NSTableColumn *tableColumn) {
       Track *t = [weakSelf.tracks get:row];
       NSString *ident = tableColumn.identifier;
       bool isPlaying = [SharedAppDelegate().track isEqual:t];

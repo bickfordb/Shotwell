@@ -161,13 +161,13 @@ static void node_free(Node *node) {
 
 - (NSString *)description {
   NSString *ret = @"";
-  ret = [ret stringByAppendingFormat:@"0x%X\n", self];
-  ret = [ret stringByAppendingFormat:@"\t- count: %d,\n", count_];
+  ret = [ret stringByAppendingFormat:@"0x%p\n", self];
+  ret = [ret stringByAppendingFormat:@"\t- count: %ld,\n", count_];
   ret = [ret stringByAppendingFormat:@"\t- nodes: \n"];
   for (Node *node = head_;
       node;
       node = node->forward[0]) {
-    ret = [ret stringByAppendingFormat:@"\t\t0x%08X\n", node];
+    ret = [ret stringByAppendingFormat:@"\t\t0x%p\n", node];
     ret = [ret stringByAppendingFormat:@"\t\t\t- key: %@\n", node->key];
     #if DEBUGSKIPLIST
     ret = [ret stringByAppendingFormat:@"\t\t\t- edges (%d): [", node->level];
@@ -231,8 +231,9 @@ static void node_free(Node *node) {
 }
 
 - (Node *)findNodePreviousToKey:(id)key previousNodes:(Node **)prev {
-  if (prev)
-    memset(prev, 0, sizeof(prev));
+  //if (prev)
+  //  memset(prev, 0, sizeof(prev));
+
   Node *x = head_;
   for (int level = level_ - 1; level >= 0; level--) {
     while (x->forward[level] && comparator_(x->forward[level]->key, key) < 0) {

@@ -19,13 +19,15 @@ CoverBrowserTrackToKey CoverBrowserGroupByArtist = ^(Track *track) {
 };
 
 CoverBrowserTracksToPredicate CoverBrowserSearchByFolder = ^(NSSet *tracks) {
+  NSString *ret = nil;
   for (Track *t in tracks) {
     if (!t.path || !t.path.length) {
       continue;
     }
-    return [NSString stringWithFormat:@"path:\"%@\"", t.path.stringByDeletingLastPathComponent];
+    ret = [NSString stringWithFormat:@"path:\"%@\"", t.path.stringByDeletingLastPathComponent];
+    break;
   }
-  return nil;
+  return ret;
 };
 
 CoverBrowserTracksToPredicate CoverBrowserSearchByArtist = ^(NSSet *tracks) {
@@ -35,7 +37,7 @@ CoverBrowserTracksToPredicate CoverBrowserSearchByArtist = ^(NSSet *tracks) {
     }
     return [NSString stringWithFormat:@"artist:\"%@\"", t.artist];
   }
-  return nil;
+  return (id)nil;
 };
 
 CoverBrowserTracksToString CoverBrowserArtistTitle = ^(NSSet *tracks) {
@@ -49,6 +51,7 @@ CoverBrowserTracksToString CoverBrowserFolderTitle = ^(NSSet *tracks) {
     NSString *artist = nil;
     NSString *album = nil;
     NSString *title = nil;
+    NSString *result = nil;
     for (Track *t in tracks) {
       if (!artist) {
         artist = t.artist;
@@ -63,29 +66,32 @@ CoverBrowserTracksToString CoverBrowserFolderTitle = ^(NSSet *tracks) {
       title = t.title;
     }
     if (album && artist) {
-      return [NSString stringWithFormat:@"%@ - %@", artist, album];
+      result = [NSString stringWithFormat:@"%@ - %@", artist, album];
     } else if (album) {
-      return album;
+      result = album;
     } else if (artist) {
-      return artist;
+      result = artist;
     } else if (title) {
-      return title;
+      result = title;
     } else {
-      return [[[tracks anyObject] url] absoluteString];
+      result = [[[tracks anyObject] url] absoluteString];
     }
+    return result;
 };
 
 CoverBrowserTracksToString CoverBrowserFolderSubtitle = ^(NSSet *tracks)  {
+  NSString *result = nil;
   for (Track *t in tracks) {
     if (t.year && t.year.length) {
-      return t.year;
+      result = t.year;
     }
   }
-  return nil;
+  return result;
 };
 
 CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
   NSMutableSet *albums = [NSMutableSet set];
+  NSString *result = nil;
   int n = 0;
   for (Track *t in tracks){
     n++;
@@ -95,10 +101,9 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
   }
   int i = albums.count;
   if (i > 0 || n > 0) {
-    return [NSString stringWithFormat:@"%d Tracks / %d Albums", n, i];
-  } else {
-    return nil;
+    result = [NSString stringWithFormat:@"%d Tracks / %d Albums", n, i];
   }
+  return result;
 };
 
 @implementation CoverBrowserItem

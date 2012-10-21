@@ -9,4 +9,6 @@
 - (int64_t)duration;
 - (void)seek:(int64_t)usec;
 - (bool)isSeeking;
+- (void)setOutputDeviceID:(NSString *)outputID;
+
 @end

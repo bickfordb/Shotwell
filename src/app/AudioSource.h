@@ -10,7 +10,7 @@ typedef enum {
   kEOFAudioSourceState} AudioSourceState;
 
 @protocol AudioSource <NSObject>
-- (void)getAudio:(uint8_t *)bytes length:(size_t)len;
+- (size_t)getAudio:(uint8_t *)bytes length:(size_t)len;
 - (void)seek:(int64_t)usecs;
 - (bool)isSeeking;
 - (int64_t)duration;

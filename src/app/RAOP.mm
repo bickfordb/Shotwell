@@ -372,10 +372,10 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
 }
 
 - (bool)openTiming {
-  INFO(@"binding timing");
   if (self.version == kRAOPV1) {
     return true;
   }
+  INFO(@"binding timing");
   // Timing socket
   timingFd_ = socket(AF_INET, SOCK_DGRAM, 0);
   fcntl(timingFd_, F_SETFL, fcntl(timingFd_, F_GETFL, 0) | O_NONBLOCK);
@@ -397,10 +397,10 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
 }
 
 - (bool)openControl {
-  INFO(@"binding control");
   if (self.version == kRAOPV1) {
     return true;
   }
+  INFO(@"binding control");
   // Control socket
   controlFd_ = socket(AF_INET, SOCK_DGRAM, 0);
   struct sockaddr_in addr;
@@ -622,10 +622,10 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   RAND_bytes((unsigned char *)&ssrc_, sizeof(ssrc_));
   uint32_t path;
   RAND_bytes((unsigned char *)&path, sizeof(path));
-  self.pathID = [NSString stringWithFormat:@"%lu", path];
+  self.pathID = [NSString stringWithFormat:@"%u", path];
   int64_t cidNum;
   RAND_bytes((unsigned char *)&cidNum, sizeof(cidNum));
-  self.cid = [NSString stringWithFormat:@"%08X%08X", cidNum >> 32, cidNum];
+  self.cid = [NSString stringWithFormat:@"%08llX%08llX", cidNum >> 32, cidNum];
   cseq_ = 0;
   self.challenge = [[NSData randomDataWithLength:AES_BLOCK_SIZE] encodeBase64];
 }
@@ -778,7 +778,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   RTSPRequest *request = [self createRequest];
   request.method = @"FLUSH";
   [request.headers setValue:@"ntp=0-" forKey:@"Range"];
-  NSString *rtpInfo = [NSString stringWithFormat:@"seq=%hu;rtptime=%lu",
+  NSString *rtpInfo = [NSString stringWithFormat:@"seq=%hu;rtptime=%u",
    rtpSequence_, rtpTimestamp_];
   [request.headers setValue:rtpInfo forKey:@"RTP-Info"];
   __block RAOPSink *weakSelf = self;
@@ -889,7 +889,7 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   request.method = @"RECORD";
   [request.headers setValue:@"ntp=0-" forKey:@"Range"];
   [request.headers setValue:
-    [NSString stringWithFormat:@"seq=%hu;rtptime=%lu", rtpSequence_, rtpTimestamp_]
+    [NSString stringWithFormat:@"seq=%hu;rtptime=%u", rtpSequence_, rtpTimestamp_]
     forKey:@"RTP-Info"];
   __block RAOPSink *weakSelf = self;
   [self sendRequest:request with:^(RTSPResponse *response) {
@@ -926,6 +926,8 @@ static NSString *FormatRAOPTimingPacket(RAOPTimingPacket *packet) {
   [self sendRequest:req with:^(RTSPResponse *r) {
     weakSelf->rtspState_ = r.status == kOK ? kConnectedRTSPState : kErrorRTSPState;
   }];
+}
+- (void)setOutputDeviceID:(NSString *)uid {
 }
 
 @end

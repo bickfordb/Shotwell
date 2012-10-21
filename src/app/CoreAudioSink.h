@@ -1,16 +1,19 @@
 
 #import <CoreAudio/CoreAudio.h>
-#import <CoreServices/CoreServices.h>
-#import <AudioUnit/AudioUnit.h>
+#import <Foundation/Foundation.h>
+//#import <AudioUnit/AudioUnit.h>
+#import <AudioToolbox/AudioQueue.h>
 
 #import "app/AudioSink.h"
 
+
 @interface CoreAudioSink : NSObject <AudioSink> {
   id <AudioSource, NSObject> audioSource_;
-  AudioUnit outputAudioUnit_;
-	void *buffer_;
-	uint32_t bufferOffset_;
-	uint32_t bufferSize_;
+  AudioQueueRef queue_;
+  UInt64 packetIndex_;
+  UInt32 numPacketsToRead_;
+  int numBuffers_;
+  AudioQueueBufferRef buffers_[3];
   double volume_;
   bool isPaused_;
 }

@@ -46,6 +46,7 @@ LDFLAGS += -lcrypto
 LDFLAGS += -lswscale
 LDFLAGS += -lz
 LDFLAGS += -framework AppKit
+LDFLAGS += -framework AudioToolbox
 LDFLAGS += -framework AudioUnit
 LDFLAGS += -framework Carbon
 LDFLAGS += -framework Cocoa

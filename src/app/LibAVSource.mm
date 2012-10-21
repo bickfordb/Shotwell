@@ -182,7 +182,8 @@ static AVPacket flushPacket;
   return seekTo_ >= 0;
 }
 
-- (void)getAudio:(uint8_t *)stream length:(size_t)len {
+- (size_t)getAudio:(uint8_t *)stream length:(size_t)len {
+  size_t ret = 0;
   while (len > 0) {
     if (currAudioFrameRemaining_ > 0) {
       int amt = MIN(len, currAudioFrameRemaining_);
@@ -192,6 +193,7 @@ static AVPacket flushPacket;
           amt);
       len -= amt;
       stream += amt;
+      ret += amt;
       currAudioFrameRemaining_ -= amt;
       currAudioFrameOffset_ += amt;
       continue;
@@ -201,6 +203,7 @@ static AVPacket flushPacket;
       break;
     }
   }
+  return ret;
 }
 
 - (bool)readFrame {

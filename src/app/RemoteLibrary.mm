@@ -81,11 +81,11 @@ int kRefreshInterval = 10000;
 
 - (NSURL *)coverArtURLForTrack:(Track *)t {
   NSString *c = t.coverArtID;
-  return c ? [NSURL URLWithString:[NSString stringWithFormat:@"http://%@:%d/art/%@", netService_.ipv4Address, netService_.port, c]] : nil;
+  return c ? [NSURL URLWithString:[NSString stringWithFormat:@"http://%@:%ld/art/%@", netService_.ipv4Address, netService_.port, c]] : nil;
 }
 
 - (NSURL *)urlForTrack:(Track *)t {
-  return [NSURL URLWithString:[NSString stringWithFormat:@"http://%@:%d/tracks/%@", netService_.ipv4Address, netService_.port, t.id]];
+  return [NSURL URLWithString:[NSString stringWithFormat:@"http://%@:%ld/tracks/%@", netService_.ipv4Address, netService_.port, t.id]];
 }
 @end
 

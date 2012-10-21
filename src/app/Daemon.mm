@@ -217,9 +217,9 @@ static void OnRequest(evhttp_request *r, void *ctx) {
   [request
     addResponseHeader:@"Content-Range"
     value:[NSString stringWithFormat:@"bytes %d-%d/%d",
-            offset,
-            (offset + len - 1),
-            the_stat.st_size]];
+            (int)offset,
+            (int)(offset + len - 1),
+            (int)the_stat.st_size]];
   evbuffer_add_file(buf, fd, offset, len);
   [request respondWithStatus:status message:msg buffer:buf];
   evbuffer_free(buf);

@@ -1,83 +1,112 @@
+#include <AvailabilityMacros.h>
+#import <Foundation/Foundation.h>
+#import <CoreAudio/CoreAudio.h>
+
+
 #import "app/ServicePopUpButton.h"
 #import "app/Log.h"
 
+id AudioObjectGetObjectProperty( AudioObjectID objectID, UInt32 selector);
+NSArray *QueryOutputServices();
+
+id AudioObjectGetObjectProperty( AudioObjectID objectID, UInt32 selector) {
+  id result = nil;
+  UInt32 propSize;
+  AudioObjectPropertyAddress query;
+	query.mSelector = selector;
+	query.mScope = kAudioObjectPropertyScopeOutput;
+	query.mElement = kAudioObjectPropertyElementMaster;
+  AudioObjectGetPropertyData(objectID, &query, 0, NULL, &propSize, &result);
+  return result;
+}
+
+NSArray *QueryOutputServices() {
+  NSMutableArray *result = [NSMutableArray array];
+  AudioObjectPropertyAddress addr;
+  addr.mSelector = kAudioHardwarePropertyDevices;
+  addr.mScope = kAudioObjectPropertyScopeOutput;
+  addr.mElement = kAudioObjectPropertyElementWildcard;
+  UInt32 propSize;
+  AudioObjectGetPropertyDataSize(kAudioObjectSystemObject, &addr, 0, NULL, &propSize);
+  UInt32 numDevices = propSize / sizeof(AudioDeviceID);
+  AudioDeviceID deviceIDs[numDevices];
+  AudioObjectGetPropertyData(kAudioObjectSystemObject, &addr, 0, NULL, &propSize, deviceIDs);
+  for (int i = 0; i < numDevices; i++) {
+    AudioDeviceID deviceID = deviceIDs[i];
+    INFO(@"Device ID: %d", (int)deviceID);
+    NSString *outputID = AudioObjectGetObjectProperty(deviceID, kAudioDevicePropertyDeviceUID);
+    if (!outputID)
+      outputID = @"";
+    NSString *title = AudioObjectGetObjectProperty(deviceID, kAudioObjectPropertyName);
+    if (!title)
+      title = @"";
+    INFO(@"title: %@", title);
+
+    NSDictionary *item = @{
+      @"id": outputID,
+      @"deviceID": [NSNumber numberWithLong:(long)deviceID],
+      @"title": title};
+    [result addObject:item];
+  }
+  return result;
+}
+
+@interface ServicePopUpButton (Private)
+- (void)reloadServices;
+- (NSString *)selectedID;
+
+@end
+
 @implementation ServicePopUpButton
 @synthesize services = services_;
-@synthesize loop = loop_;
 @synthesize onService = onService_;
-@synthesize browser = browser_;
 
 - (void)dealloc {
-  [browser_ release];
-  [loop_ release];
   [onService_ release];
   [services_ release];
   [super dealloc];
 }
 
-- (id)initWithFrame:(CGRect)frame serviceTypes:(NSSet *)serviceTypes {
+- (id)initWithFrame:(CGRect)frame {
   self = [super initWithFrame:frame];
   if (self) {
-    self.services = [NSMutableArray array];
-    self.loop = [Loop loop];
-    self.browser = [[[NSNetServiceBrowser alloc] init] autorelease];
-    [self.browser setDelegate:self];
-    for (NSString *serviceType in serviceTypes) {
-      [self.browser searchForServicesOfType:serviceType inDomain:@"local."];
-    }
     self.target = self;
     self.action = @selector(onClick:);
+    [self reloadServices];
   }
   return self;
 }
 
-- (void)onClick:(id)sender {
-  int i = (int)self.indexOfSelectedItem;
-  if (i >= 0 && i < services_.count && onService_) {
-    onService_([[services_ objectAtIndex:i] valueForKey:@"value"]);
+- (NSDictionary *)selectedOutput {
+  int i = self.indexOfSelectedItem;
+  if (i >= 0 && i < self.services.count) {
+    return self.services[i];
+  } else {
+    return nil;
   }
+
 }
 
-- (void)netServiceBrowser:(NSNetServiceBrowser *)netServiceBrowser didFindDomain:(NSString *)domainName moreComing:(BOOL)moreDomainsComing {
-}
-
-- (void)netServiceBrowser:(NSNetServiceBrowser *)netServiceBrowser didFindService:(NSNetService *)netService moreComing:(BOOL)moreServicesComing {
-  [netService retain];
-  [netService setDelegate:self];
-  [netService resolveWithTimeout:10.0];
-}
-
-- (void)appendItemWithTitle:(NSString *)title value:(id)value {
-  NSMutableDictionary *d = [NSMutableDictionary dictionary];
-  [d setValue:title forKey:@"title"];
-  [d setValue:value forKey:@"value"];
-  [self.services addObject:d];
-  [self reload];
-}
-
-- (void)reload {
-  int index = self.indexOfSelectedItem;
+- (void)reloadServices {
+  NSDictionary *selected = [self selectedOutput];
+  self.services = QueryOutputServices();
   [self removeAllItems];
-  for (NSDictionary *d in self.services) {
-    [self addItemWithTitle:[d objectForKey:@"title"]];
+  int i = 0;
+  for (NSDictionary *s in self.services) {
+    [self addItemWithTitle:s[@"title"]];
+    if ([selected[@"id"] isEqual:s[@"id"]]) {
+      [self selectItemAtIndex:i];
+    }
+    i++;
   }
-  if (index < 0) {
-    index = 0;
+  INFO(@"services: %@", self.services);
+}
+
+- (void)onClick:(id)sender {
+  NSDictionary *output = self.selectedOutput;
+  if (output && onService_) {
+    onService_(output);
   }
-  [self selectItemAtIndex:index];
-}
-
-- (void)netServiceDidResolveAddress:(NSNetService *)netService {
-  [self appendItemWithTitle:netService.name value:netService];
-  [netService release];
-}
-
-- (void)netService:(NSNetService *)sender didNotResolve:(NSMutableDictionary *)errorDict {
-  [sender release];
-}
-
-- (NSMutableDictionary *)getItem:(NSNetService *)netService {
-  return nil;
 }
 
 @end

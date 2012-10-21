@@ -32,13 +32,10 @@
 }
 
 
-//- (NSArray *)cutTracksAtIndices:(NSIndexSet *)indices;
 - (void)playNextTrack;
 - (void)playPreviousTrack;
 - (void)playTrackAtIndex:(int)idx;
 - (void)pollMovie;
-//- (void)pollStats;
-- (void)setupDockIcon;
 - (void)setupPlugins;
 - (void)setupSharing;
 - (void)playClicked:(id)sender;

@@ -105,7 +105,7 @@ static NSString *CoverArtPath() {
   i = [editMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
   i = [editMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
   i = [editMenu addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
-  i = [editMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:[NSString stringWithFormat:@"%C", NSBackspaceCharacter]];
+  i = [editMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:[NSString stringWithFormat:@"%C", (unsigned short)NSBackspaceCharacter]];
   [i setKeyEquivalentModifierMask:0];
   i = [editMenu addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
   i = [editMenu addItemWithTitle:@"Select None" action:@selector(deselectAll:) keyEquivalent:@"A"];
@@ -128,8 +128,8 @@ static NSString *CoverArtPath() {
 
   NSMenuItem *playItem = [playbackMenu addItemWithTitle:@"Play" action:@selector(playClicked:) keyEquivalent:@" "];
   [playItem setKeyEquivalentModifierMask:0];
-  NSString *leftArrow = [NSString stringWithFormat:@"%C", 0xF702];
-  NSString *rightArrow = [NSString stringWithFormat:@"%C", 0xF703];
+  NSString *leftArrow = [NSString stringWithFormat:@"%C", (unsigned short)0xF702];
+  NSString *rightArrow = [NSString stringWithFormat:@"%C", (unsigned short)0xF703];
   [playbackMenu addItemWithTitle:@"Previous" action:@selector(previousClicked:) keyEquivalent:leftArrow];
   [playbackMenu addItemWithTitle:@"Next" action:@selector(nextClicked:) keyEquivalent:rightArrow];
 }

@@ -23,6 +23,7 @@ typedef void(^OnElapsed)(int64_t seconds);
 @property bool isEnabled;
 @property (retain) NSTextField *durationTextField;
 @property (retain) NSTextField *elapsedTextField;
+- (id)initWithFrame:(CGRect)frame;
 @end
 
 // vim: filetype=objcpp

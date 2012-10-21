@@ -424,23 +424,12 @@ static NSString *GetWindowTitle(Track *t) {
   int x = ((NSView *)[self.window contentView]).bounds.size.width;
   x -= w + 10;
   x -= 32;
-  self.audioOutputPopUpButton = [[[ServicePopUpButton alloc] initWithFrame:CGRectMake(x, 2, w, 18)
-    serviceTypes:[NSSet setWithObjects:kRAOPServiceType, nil]] autorelease];
+  self.audioOutputPopUpButton = [[[ServicePopUpButton alloc] initWithFrame:CGRectMake(x, 2, w, 18)] autorelease];
   self.audioOutputPopUpButton.onService = ^(id v) {
-    NSNetService *netService = (NSNetService *)v;
-    bool isPaused = SharedAppDelegate().audioSink.isPaused;
-    id <AudioSource> audioSource = SharedAppDelegate().audioSink.audioSource;
-    SharedAppDelegate().audioSink.audioSource = nil;
-    SharedAppDelegate().audioSink.isPaused = true;
-    if (netService) {
-      SharedAppDelegate().audioSink = [[[RAOPSink alloc] initWithAddress:netService.ipv4Address port:netService.port] autorelease];
-    } else {
-      SharedAppDelegate().audioSink = [[[CoreAudioSink alloc] init] autorelease];
-    }
-    SharedAppDelegate().audioSink.audioSource = audioSource;
-    SharedAppDelegate().audioSink.isPaused = isPaused;
+    NSDictionary *item = (NSDictionary *)v;
+    INFO(@"set output to: %@", item);
+    [SharedAppDelegate().audioSink setOutputDeviceID:item[@"id"]];
   };
-  [self.audioOutputPopUpButton appendItemWithTitle:@"Computer Speakers" value:nil];
   self.audioOutputPopUpButton.autoresizingMask = NSViewMinXMargin | NSViewMaxYMargin;
   NSButtonCell *buttonCell = (NSButtonCell *)[self.audioOutputPopUpButton cell];
   [buttonCell setFont:[NSFont systemFontOfSize:11.0]];
@@ -539,7 +528,7 @@ static NSString *GetWindowTitle(Track *t) {
   }
   self.artists = artists;
   self.albums = albums;
-  self.statusBarText.stringValue = [NSString stringWithFormat:@"%d Tracks, %d Artists, %d Albums", i, self.artists.count, self.albums.count];
+  self.statusBarText.stringValue = [NSString stringWithFormat:@"%d Tracks, %d Artists, %d Albums", i, (int)self.artists.count, (int)self.albums.count];
 }
 @end
 
