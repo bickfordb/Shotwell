@@ -5,7 +5,6 @@
 #import "app/NSNetServiceAddress.h"
 #import "app/PThread.h"
 #import "app/RemoteLibrary.h"
-#import "app/RAOP.h"
 #import "app/CoreAudioSink.h"
 
 static NSString * const kArtistIconName = @"NSEveryone";
@@ -15,7 +14,6 @@ static NSString * const kRemoteLibraryIconName = @"NSNetwork";
 static NSString * const kNetworkIconName = @"NSNetwork";
 static NSString * const kLocalLibraryIconName = @"NSComputer";
 static NSString * const kNextButton = @"NextButton";
-static NSString * const kRAOPServiceType = @"_raop._tcp.";
 static NSString * const kPlayButton = @"PlayButton";
 static NSString * const kPreviousButton = @"PreviousButton";
 static NSString * const kProgressControl = @"ProgressControl";
