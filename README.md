@@ -14,7 +14,7 @@ Features
  * Scans your media fast
  * Loads cover art and artist metadata from the web
  * Load artist and track metadata from the MusicBrainz database
- * Airport Express (RAOP v1) support
+ * Airport Express support
  * Extensible with Javascript plugins
  * Your library is automatically shared over the local network through HTTP and multicast DNS (Bonjour)
  * No EULA --- does not prompt you with an onerous license agreement on every minor point release
