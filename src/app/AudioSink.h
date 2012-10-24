@@ -6,6 +6,7 @@
 @property double volume;
 @property (retain, atomic) id <AudioSource> audioSource;
 @property bool isPaused;
+@property BOOL isDone;
 @property (copy) On0 onDone;
 
 - (int64_t)elapsed;

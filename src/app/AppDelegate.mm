@@ -268,6 +268,7 @@ static NSString *CoverArtPath() {
   [self.mainWindowController trackStarted:track_];
   self.audioSource = [[[LibAVSource alloc] initWithURL:self.track.url] autorelease];
   self.audioSink.audioSource = self.audioSource;
+  self.audioSink.isPaused = NO;
   self.audioSink.volume = self.mainWindowController.volumeControl.level;
   [self.mainWindowController.trackBrowser seekTo:index];
   [self.mainWindowController.trackBrowser reload];
@@ -304,15 +305,10 @@ static NSString *CoverArtPath() {
 
 - (void)playClicked:(id)sender {
   ForkWith(^{
-    if (audioSource_) {
-        bool playing = audioSource_.state == kPlayingAudioSourceState;
-        if (playing) {
-          audioSource_.isPaused = true;
-        } else {
-          audioSource_.isPaused = false;
-        }
-      } else {
-        [self playNextTrack];
+    if (!audioSink_.isDone) {
+        audioSink_.isPaused = !audioSink_.isPaused;
+    } else {
+      [self playNextTrack];
       }
   });
 }

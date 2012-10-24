@@ -12,10 +12,11 @@
   AudioQueueRef queue_;
   int numBuffers_;
   BOOL isPaused_;
-  //BOOL isDone_;
+  BOOL isDone_;
   NSString *outputIdentifier_;
 }
 
 @property (copy) On0 onDone;
+@property BOOL isDone;
 
 @end

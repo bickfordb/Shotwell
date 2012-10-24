@@ -32,20 +32,24 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
 @implementation CoreAudioSink
 //@synthesize audioSource = audioSource_;
 @synthesize onDone = onDone_;
+@synthesize isDone = isDone_;
 
 - (id <AudioSource>)audioSource {
   return audioSource_;
 }
 
 - (void)setAudioSource:(id <AudioSource>)audioSource {
+  [self willChangeValueForKey:@"audioSource"];
   @synchronized (self) {
     [audioSource retain];
     [audioSource_ release];
     audioSource_ = audioSource;
-    if (isPaused_) {
-      [self startQueue];
-    }
   }
+  self.isDone = NO;
+  if (!isPaused_) {
+    [self startQueue];
+  }
+  [self didChangeValueForKey:@"audioSource"];
 }
 
 - (void)onBuffer:(AudioQueueBufferRef)buffer {
@@ -56,13 +60,10 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
     // Free the buffer since we're done with it.
     CheckStatus(AudioQueueFreeBuffer, queue_, buffer);
     numBuffers_--;
-    // Stop the queue when we're out of audio.
-    //CheckStatus(AudioQueueStop, queue_, false);
-    DEBUG(@"reached the end.  stopping queue.");
+    isDone_ = YES;
     if (onDone_) {
       onDone_();
     }
-    isPaused_ = YES;
   }
 }
 
@@ -177,8 +178,10 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
     if (!isPaused) {
       [self startQueue];
     } else {
-      if (queue_)
-        CheckStatus(AudioQueueStop, queue_, false);
+      if (queue_) {
+        INFO(@"pausing");
+        CheckStatus(AudioQueuePause, queue_);
+      }
     }
     isPaused_ = isPaused;
   }
