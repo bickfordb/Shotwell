@@ -8,23 +8,82 @@
 
 const int kCoreAudioSinkNumBuffers = 3;
 
-
 @interface CoreAudioSink (Private)
-- (void)queue:(AudioQueueRef)aQueue fillBuffer:(AudioQueueBufferRef)buffer;
-- (void)stopQueue;
+- (void)fillBuffer:(AudioQueueBufferRef)buffer;
 - (void)startQueue;
-
+- (BOOL)isRunning;
+- (void)onBuffer:(AudioQueueBufferRef)buffer;
 @end
+
+OSStatus _CheckStatus(int line, const char *file, const char *fname, const char *args, OSStatus status) {
+  if (status) {
+    LogMessage(file, line, ErrorLogLevel, @"%s() failed with status: %d", fname, args, (int)status);
+  }
+  return status;
+}
+
+#define CheckStatus(F, ...) _CheckStatus(__LINE__, __FILE__, #F, #__VA_ARGS__, F(__VA_ARGS__))
 
 static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBufferRef buffer) {
   CoreAudioSink *sink = (CoreAudioSink *)inUserData;
-  [sink queue:queue fillBuffer:buffer];
+  [sink onBuffer:buffer];
 }
 
 @implementation CoreAudioSink
-@synthesize audioSource = audioSource_;
+//@synthesize audioSource = audioSource_;
+@synthesize onDone = onDone_;
 
-- (void)queue:(AudioQueueRef)aQueue fillBuffer:(AudioQueueBufferRef)buffer {
+- (id <AudioSource>)audioSource {
+  return audioSource_;
+}
+
+- (void)setAudioSource:(id <AudioSource>)audioSource {
+  @synchronized (self) {
+    [audioSource retain];
+    [audioSource_ release];
+    audioSource_ = audioSource;
+    if (isPaused_) {
+      [self startQueue];
+    }
+  }
+}
+
+- (void)onBuffer:(AudioQueueBufferRef)buffer {
+  [self fillBuffer:buffer];
+  if (buffer->mAudioDataByteSize > 0) {
+    CheckStatus(AudioQueueEnqueueBuffer, queue_, buffer, 0, NULL);
+  } else {
+    // Free the buffer since we're done with it.
+    CheckStatus(AudioQueueFreeBuffer, queue_, buffer);
+    numBuffers_--;
+    // Stop the queue when we're out of audio.
+    //CheckStatus(AudioQueueStop, queue_, false);
+    DEBUG(@"reached the end.  stopping queue.");
+    if (onDone_) {
+      onDone_();
+    }
+    isPaused_ = YES;
+  }
+}
+
+- (AudioStreamBasicDescription)stereoFormat {
+  AudioStreamBasicDescription format;
+  memset(&format, 0, sizeof(format));
+  // Hardcode to S16LE stereo
+  format.mFormatID = kAudioFormatLinearPCM;
+  format.mFormatFlags = kLinearPCMFormatFlagIsPacked;
+  format.mChannelsPerFrame = 2;
+  format.mSampleRate = 44100;
+  format.mBitsPerChannel = 16;
+  format.mFormatFlags |= kLinearPCMFormatFlagIsSignedInteger;
+
+  format.mFramesPerPacket = 1;
+  format.mBytesPerFrame = format.mBitsPerChannel * format.mChannelsPerFrame / 8;
+  format.mBytesPerPacket = format.mBytesPerFrame * format.mFramesPerPacket;
+  return format;
+}
+
+- (void)fillBuffer:(AudioQueueBufferRef)buffer {
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   id <AudioSource> src = self.audioSource;
   [src retain];
@@ -32,79 +91,80 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
   buffer->mPacketDescriptionCount = 0;
   [src release];
   [pool release];
-  AudioQueueEnqueueBuffer(aQueue, buffer, 0, NULL);
 }
 
 - (id)init {
   self = [super init];
   if (self) {
-    volume_ = 0.5;
-    isPaused_ = true;
     queue_ = NULL;
-    AudioStreamBasicDescription fmt;
-    memset(&fmt, 0, sizeof(fmt));
-    // Hardcode to S16LE stereo
-    fmt.mFormatID = kAudioFormatLinearPCM;
-    fmt.mFormatFlags = kLinearPCMFormatFlagIsPacked;
-    fmt.mChannelsPerFrame = 2;
-    fmt.mSampleRate = 44100;
-    fmt.mBitsPerChannel = 16;
-    fmt.mFormatFlags |= kLinearPCMFormatFlagIsSignedInteger;
-
-    fmt.mFramesPerPacket = 1;
-    fmt.mBytesPerFrame = fmt.mBitsPerChannel * fmt.mChannelsPerFrame / 8;
-    fmt.mBytesPerPacket = fmt.mBytesPerFrame * fmt.mFramesPerPacket;
-    OSStatus newStatus = AudioQueueNewOutput(&fmt, BufferCallback, (void *)self, nil, nil, 0, &queue_);
-    if (newStatus) {
-      ERROR(@"failed to allocate output queue: %d", (int)newStatus);
-    }
+    outputIdentifier_ = nil;
+    isPaused_ = YES;
     numBuffers_ = 0;
+    [self newQueue];
   }
+  DEBUG(@"done init");
   return self;
 }
 
-- (void)stopQueue {
-  AudioQueueStop(queue_, YES);
-  for (int i = 0; i < numBuffers_; i++) {
-    AudioQueueFreeBuffer(queue_, buffers_[i]);
-    buffers_[i] = NULL;
+- (void)newQueue {
+  DEBUG(@"new queue");
+  double volume = 0.5;
+  if (queue_) {
+    volume = self.volume;
+    CheckStatus(AudioQueueDispose, queue_, true);
+    queue_ = NULL;
+    numBuffers_ = 0;
   }
-  numBuffers_ = 0;
+  AudioStreamBasicDescription format = [self stereoFormat];
+  CheckStatus(AudioQueueNewOutput, &format, BufferCallback, (void *)self, nil, nil, 0, &queue_);
+  if (outputIdentifier_) {
+    CheckStatus(AudioQueueSetProperty, queue_, kAudioQueueProperty_CurrentDevice, &outputIdentifier_, sizeof(outputIdentifier_));
+  }
+  self.volume = volume;
+}
+
+- (BOOL)isRunning {
+  UInt32 isRunning = 0;
+  UInt32 sz = sizeof(isRunning);
+  if (queue_)
+    CheckStatus(AudioQueueGetProperty, queue_, kAudioQueueProperty_IsRunning, &isRunning, &sz);
+  return isRunning != 0;
 }
 
 - (void)startQueue {
-  OSStatus startRet = AudioQueueStart(queue_, NULL);
-  if (startRet) {
-    ERROR(@"failed to start queue: %d", (int)startRet);
-    return;
-  }
-  while (numBuffers_ < 3) {
+  DEBUG(@"starting queue");
+  CheckStatus(AudioQueueStart, queue_, NULL);
+  while (numBuffers_ < (kCoreAudioSinkNumBuffers - 1)) {
     AudioQueueBufferRef buf = NULL;
-    OSStatus allocStatus = AudioQueueAllocateBuffer(queue_, 32768, &buf);
-    if (allocStatus != 0) {
-      ERROR(@"failed to allocated buffer: %d", (int)allocStatus);
+    if (CheckStatus(AudioQueueAllocateBuffer, queue_, 32768, &buf)) {
       return;
     }
-    buffers_[numBuffers_] = buf;
-    [self queue:queue_ fillBuffer:buf];
+    [self fillBuffer:buf];
     numBuffers_++;
+    if (buf->mAudioDataByteSize > 0) {
+      CheckStatus(AudioQueueEnqueueBuffer, queue_, buf, 0, NULL);
+      INFO(@"enqueueing buffer");
+    } else {
+      DEBUG(@"freeing empty buffer");
+      CheckStatus(AudioQueueFreeBuffer, queue_, buf);
+      numBuffers_--;
+      break;
+    }
   }
+  INFO(@"is running: %d", (int)self.isRunning);
 }
 
 - (void)dealloc {
-  if (!isPaused_) {
-    [self stopQueue];
-    isPaused_ = true;
-  }
+  DEBUG(@"dealloc: %d", self);
   if (queue_) {
-    OSStatus st = AudioQueueDispose(queue_, NO);
-    if (st != 0) {
-      ERROR(@"failed to dipose of queue: %d", (int)st);
-    }
+    CheckStatus(AudioQueueDispose, queue_, NO);
     queue_ = NULL;
   }
+  [outputIdentifier_ release];
   [audioSource_ release];
+  [onDone_ release];
   [super dealloc];
+
 }
 
 - (bool)isPaused {
@@ -112,15 +172,13 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
 }
 
 - (void)setIsPaused:(bool)isPaused {
+  INFO(@"paused: %d", (int)isPaused);
   @synchronized(self) {
-    if (isPaused == isPaused_) {
-      INFO(@"already %d", (int)isPaused);
-      return;
-    }
     if (!isPaused) {
       [self startQueue];
     } else {
-      [self stopQueue];
+      if (queue_)
+        CheckStatus(AudioQueueStop, queue_, false);
     }
     isPaused_ = isPaused;
   }
@@ -128,20 +186,16 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
 
 - (double)volume {
   Float32 result = 0.0;
-  OSStatus status = AudioQueueGetParameter(queue_, kAudioQueueParam_Volume,  &result);
-  if (status != 0) {
-    ERROR(@"failed to read volume (%d)", (int)status);
+  if (queue_) {
+    CheckStatus(AudioQueueGetParameter, queue_, kAudioQueueParam_Volume,  &result);
   }
   return (double)result;
 }
 
 - (void)setVolume:(double)pct {
-  volume_ = pct;
-  if (isPaused_)
-    return;
-  OSStatus status = AudioQueueSetParameter(queue_, kAudioQueueParam_Volume, (Float32)pct);
-  if (status != 0)
-    ERROR(@"failed to set volume (%d)", (int)status);
+  if (queue_) {
+    CheckStatus(AudioQueueSetParameter, queue_, kAudioQueueParam_Volume, (Float32)pct);
+  }
 }
 
 - (int64_t)elapsed {
@@ -162,18 +216,14 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
 
 - (void)setOutputDeviceID:(NSString *)uid {
   INFO(@"set output device ID: %@", uid);
-
-  [self stopQueue];
-
-	OSStatus status = AudioQueueSetProperty(queue_, kAudioQueueProperty_CurrentDevice, &uid, sizeof(uid));
-	if (status != noErr) {
-		ERROR(@"unexpected error while setting the output device: %d", (int)status);
-		if (status == kAudioQueueErr_InvalidRunState) {
-			ERROR(@"Invalid run state");
-		}
-    return;
-	}
-  [self startQueue];
+  @synchronized(self) {
+    [outputIdentifier_ release];
+    outputIdentifier_ = [uid retain];
+  }
+  [self newQueue];
+  if (!isPaused_) {
+    [self startQueue];
+  }
 }
 
 @end

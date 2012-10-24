@@ -6,16 +6,16 @@
 
 #import "app/AudioSink.h"
 
-
 @interface CoreAudioSink : NSObject <AudioSink> {
   id <AudioSource, NSObject> audioSource_;
+  On0 onDone_;
   AudioQueueRef queue_;
-  UInt64 packetIndex_;
-  UInt32 numPacketsToRead_;
   int numBuffers_;
-  AudioQueueBufferRef buffers_[3];
-  double volume_;
-  bool isPaused_;
+  BOOL isPaused_;
+  //BOOL isDone_;
+  NSString *outputIdentifier_;
 }
+
+@property (copy) On0 onDone;
 
 @end

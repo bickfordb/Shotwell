@@ -176,6 +176,9 @@ static NSString *CoverArtPath() {
 - (void)applicationDidFinishLaunching:(NSNotification *)n {
   __block AppDelegate *weakSelf = self;
   self.audioSink = [[[CoreAudioSink alloc] init] autorelease];
+  self.audioSink.onDone = ^{
+    [weakSelf playNextTrack];
+  };
   [self parseDefaults];
   self.audioOutputs = [NSMutableArray array];
   self.libraries = [NSMutableArray array];
@@ -232,10 +235,11 @@ static NSString *CoverArtPath() {
 
 
 - (void)pollMovie {
+  /*
   if (audioSource_ && ([audioSource_ state] == kEOFAudioSourceState)) {
     [self playNextTrack];
     return;
-  }
+  }*/
 }
 
 - (Library *)library {
@@ -292,8 +296,8 @@ static NSString *CoverArtPath() {
   self.audioSource = [[[LibAVSource alloc] initWithURL:self.track.url] autorelease];
   self.audioSource.isPaused = false;
   self.audioSink.audioSource = self.audioSource;
-  if (self.audioSink.isPaused)
-    self.audioSink.isPaused = false;
+  //if (self.audioSink.isPaused)
+  self.audioSink.isPaused = false;
   self.audioSink.volume = self.mainWindowController.volumeControl.level;
   [self.mainWindowController.trackBrowser seekTo:index];
   [self.mainWindowController.trackBrowser reload];

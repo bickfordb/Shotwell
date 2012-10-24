@@ -187,16 +187,22 @@ OSStatus OnPropertyChange(AudioObjectID inObjectID,
   self = [super initWithFrame:frame];
   if (self) {
     self.target = self;
-    //self.action = @selector(onClick:);
+    self.action = @selector(onClick:);
     [self reloadServices];
     AudioObjectPropertyAddress addr;
     addr.mSelector = kAudioHardwarePropertyDevices;
     addr.mScope = kAudioObjectPropertyScopeOutput;
     addr.mElement = kAudioObjectPropertyElementWildcard;
     AudioObjectAddPropertyListener(kAudioObjectSystemObject, &addr, OnPropertyChange, self);
-    //[[self cell] setPullsDown:YES];
   }
   return self;
+}
+
+- (void)onClick:(id)sender {
+  NSDictionary *item = [self selectedOutput];
+  if (item && onService_) {
+    self.onService(item);
+  }
 }
 
 - (NSDictionary *)selectedOutput {
@@ -214,7 +220,6 @@ OSStatus OnPropertyChange(AudioObjectID inObjectID,
 }
 
 - (void)reloadServices {
-  //NSDictionary *selected = [self selectedOutput];
   NSArray *services = [QueryOutputServices()
    sortedArrayUsingComparator:^NSComparisonResult(id left, id right) {
     return [left[@"isAirplay"] intValue] - [right[@"isAirplay"] intValue];
@@ -224,7 +229,6 @@ OSStatus OnPropertyChange(AudioObjectID inObjectID,
   for (NSDictionary *s in services) {
     [self addItemWithTitle:s[@"title"]];
   }
-  INFO(@"services: %@", self.services);
 }
 
 @end
