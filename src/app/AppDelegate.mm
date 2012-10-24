@@ -18,12 +18,6 @@
 #import "app/WebPlugin.h"
 #import "app/TableView.h"
 
-static const int64_t kLibraryRefreshInterval = 2 * 1000000;
-static const int64_t kPollMovieInterval = 150000;
-static const int64_t kPollServicesInterval = 5 * 1000000;
-
-static NSString * const kGeneralPreferenceTab = @"GeneralPreferenceTab";
-
 static NSString *LibraryDir();
 static NSString *LibraryPath();
 
@@ -53,19 +47,16 @@ static NSString *CoverArtPath() {
 @synthesize daemonBrowser = daemonBrowser_;
 @synthesize libraries = libraries_;
 @synthesize localLibrary = localLibrary_;
-@synthesize loop = loop_;
 @synthesize mainWindowController = mainWindowController_;
 @synthesize audioSource = audioSource_;
 @synthesize plugins = plugins_;
 @synthesize preferencesWindowController = preferencesWindowController_;
-@synthesize raopServiceBrowser = raopServiceBrowser_;
 @synthesize selectedAudioOutput = selectedAudioOutput_;
 @synthesize track = track_;
 
 - (void)dealloc {
   [[NSNotificationCenter defaultCenter]
     removeObserver:self];
-  [loop_ release];
   [daemon_ release];
   [daemonBrowser_ release];
   [library_ release];
@@ -75,7 +66,6 @@ static NSString *CoverArtPath() {
   [audioSource_ release];
   [plugins_ release];
   [preferencesWindowController_ release];
-  [raopServiceBrowser_ release];
   [selectedAudioOutput_ release];
   [track_ release];
   [super dealloc];
@@ -165,9 +155,6 @@ static NSString *CoverArtPath() {
     [localLibrary_ scan:paths];
 }
 
-
-
-
 - (void)parseDefaults {
   [[NSUserDefaults standardUserDefaults] setBool:TRUE forKey:@"WebKitDeveloperExtras"];
   [[NSUserDefaults standardUserDefaults] synchronize];
@@ -190,10 +177,6 @@ static NSString *CoverArtPath() {
   [self.localLibrary prune];
   self.preferencesWindowController = [[[PreferencesWindowController alloc] initWithLocalLibrary:self.localLibrary] autorelease];
   self.mainWindowController = [[[MainWindowController alloc] init] autorelease];
-  self.loop = [Loop loop];
-  [self.loop every:kPollMovieInterval with:^{
-    [weakSelf pollMovie];
-  }];
 
   [self setupPlugins];
   [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
@@ -230,16 +213,6 @@ static NSString *CoverArtPath() {
     [plugins_ addObject:webPlugin];
   }
 
-}
-
-
-
-- (void)pollMovie {
-  /*
-  if (audioSource_ && ([audioSource_ state] == kEOFAudioSourceState)) {
-    [self playNextTrack];
-    return;
-  }*/
 }
 
 - (Library *)library {
@@ -294,10 +267,7 @@ static NSString *CoverArtPath() {
   self.track = [self.mainWindowController.trackBrowser.tracks get:index];
   [self.mainWindowController trackStarted:track_];
   self.audioSource = [[[LibAVSource alloc] initWithURL:self.track.url] autorelease];
-  self.audioSource.isPaused = false;
   self.audioSink.audioSource = self.audioSource;
-  //if (self.audioSink.isPaused)
-  self.audioSink.isPaused = false;
   self.audioSink.volume = self.mainWindowController.volumeControl.level;
   [self.mainWindowController.trackBrowser seekTo:index];
   [self.mainWindowController.trackBrowser reload];

@@ -16,7 +16,6 @@
   Daemon *daemon_;
   Library *library_;
   LocalLibrary *localLibrary_;
-  Loop *loop_;
   id <AudioSink> audioSink_;
   id <AudioSource> audioSource_;
   NSMenuItem *stopMenuItem_;
@@ -24,18 +23,15 @@
   NSMutableArray *plugins_;
   NSMutableArray *audioOutputs_;
   NSNetServiceBrowser *daemonBrowser_;
-  NSNetServiceBrowser *raopServiceBrowser_;
   NSMutableDictionary *selectedAudioOutput_;
   MainWindowController *mainWindowController_;
   PreferencesWindowController *preferencesWindowController_;
   Track *track_;
 }
 
-
 - (void)playNextTrack;
 - (void)playPreviousTrack;
 - (void)playTrackAtIndex:(int)idx;
-- (void)pollMovie;
 - (void)setupPlugins;
 - (void)setupSharing;
 - (void)playClicked:(id)sender;
@@ -46,7 +42,6 @@
 @property (retain) Daemon *daemon;
 @property (retain) Library *library;
 @property (retain) LocalLibrary *localLibrary;
-@property (retain) Loop *loop;
 @property (retain) MainWindowController *mainWindowController;
 @property (retain) id <AudioSource> audioSource;
 @property (retain) NSMutableArray *audioOutputs;
@@ -54,7 +49,6 @@
 @property (retain) NSMutableArray *plugins;
 @property (retain) NSMutableDictionary *selectedAudioOutput;
 @property (retain) NSNetServiceBrowser *daemonBrowser;
-@property (retain) NSNetServiceBrowser *raopServiceBrowser;
 @property (retain) PreferencesWindowController *preferencesWindowController;
 @property (retain) Track *track;
 - (void)search:(NSString *)term after:(On0)after;
