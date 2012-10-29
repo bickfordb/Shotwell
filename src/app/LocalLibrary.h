@@ -6,37 +6,11 @@
 #include <sys/time.h>
 #include <event2/event.h>
 
-@interface TrackTable : JSONTable {
-}
-@end
-
-@interface URLTable : JSONTable {
-}
-@end
-
 extern NSString * const kScanPathsChanged;
 
-
 @interface LocalLibrary : Library {
-  TrackTable *trackTable_;
-  URLTable *urlTable_;
-  Loop *pruneLoop_;
-  Loop *scanLoop_;
-  Loop *coverArtLoop_;
-  bool pruneRequested_;
-  int numCoverArtQueries_;
-  NSMutableSet *pathsToScan_;
-  FSEventStreamRef fsEventStreamRef_;
-  NSMutableSet *pendingCoverArtTracks_;
-  Level *coverArtDB_;
 }
 
-@property (retain) TrackTable *trackTable;
-@property (retain) URLTable *urlTable;
-@property (retain) Loop *pruneLoop;
-@property (retain) Loop *scanLoop;
-@property (retain) Loop *coverArtLoop;
-@property (retain) Level *coverArtDB;
 @property bool pruneRequested;
 @property (retain) NSMutableSet *pathsToScan;
 @property (retain) NSMutableSet *pendingCoverArtTracks;

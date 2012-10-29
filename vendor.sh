@@ -1,16 +1,13 @@
 #!/bin/bash
 # Script for building vendor libraries
-# This has only been tested on and is specific to OS X 10.7
+# This has only been tested on and is specific to OS X 10.8
 # This builds vendor library specifically to not include shared libraries (.so/.dylib) so that the linker finds static libraries by default.
 
 set -e
-x=$(dirname -- $0)
-projectroot=$(cd $x; echo $PWD)
-BUILDROOT=$projectroot/vendor-build
-SCRATCH=${BUILDROOT}/scratch
-VENDOR=$projectroot/vendor
-INSTALL_PREFIX=${BUILDROOT}/vendor
-STAMP=${BUILDROOT}/stamp
+x=$(dirname -- ${0})
+export PROJECTROOT=$(cd $x; echo $PWD)
+echo PROJECT=$PROJECTROOT
+. ./env.sh
 
 function is_stamped { 
   [ -e "$STAMP/$1" ];
@@ -35,18 +32,13 @@ mkdir -p \
   ${INSTALL_PREFIX}/share \
   ${INSTALL_PREFIX}/sbin
 
-export CFLAGS="-ggdb -O3 ${CFLAGS}"
-export CXXFLAGS="-ggdb -O3 ${CXXFLAGS}"
-export CPPFLAGS="-I${INSTALL_PREFIX}/include"
-export LDFLAGS="-L${INSTALL_PREFIX}/lib"
-export PATH="${INSTALL_PREFIX}/bin:$PATH"
 
 if ! is_stamped libav 
 then
     scratch
     tar xzvf ${VENDOR}/libav-0.8.1.tar.gz
     cd libav-0.8.1
-    CFLAGS="-O2 -ggdb" ./configure --prefix=${INSTALL_PREFIX} --disable-shared --enable-debug=3 --disable-optimizations
+    CFLAGS="-O2 -ggdb" ./configure --prefix=${INSTALL_PREFIX} --disable-shared --enable-static
     make
     make install
     stamp libav
@@ -125,4 +117,47 @@ then
   stamp chromaprint
 fi
 
+if ! is_stamped protobuf
+then
+  echo building protobuf
+  scratch
+  tar xjvf ${VENDOR}/protobuf-2.4.1.tar.bz2
+  pushd protobuf-2.4.1
+  ./configure --prefix ${INSTALL_PREFIX} --enable-static --disable-shared
+  make
+  make install
+  popd
+  stamp protobuf
+fi
+
+if ! is_stamped protobuf-objc
+then
+  echo building protobuf-objc
+  scratch
+  tar xzvf ${VENDOR}/booyah-protobuf-objc-696b7b6.tar.gz
+  pushd booyah-protobuf-objc-696b7b6
+  ./autogen.sh
+  ./configure --prefix=${INSTALL_PREFIX} --disable-shared --enable-static
+  make install
+  popd
+  stamp protobuf-objc
+fi
+
+
+if ! is_stamped protobuf-objc-runtime
+then
+  echo building protobuf-objc runtime
+  scratch
+  tar xzvf ${VENDOR}/booyah-protobuf-objc-696b7b6.tar.gz
+  pushd booyah-protobuf-objc-696b7b6
+  clang -c -iquote src/runtime -iquote src/runtime/Classes -include ProtocolBuffers_Prefix.pch src/runtime/Classes/*.m
+  ar rcs libProtocolBuffers.a *.o
+  mv libProtocolBuffers.a ${INSTALL_PREFIX}/lib
+  mkdir ${INSTALL_PREFIX}/include/ProtocolBuffers
+  mv src/runtime/Classes/*.h ${INSTALL_PREFIX}/include/ProtocolBuffers
+  popd
+  stamp protobuf-objc-runtime
+fi
+
 stamp vendor
+

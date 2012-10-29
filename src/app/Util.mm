@@ -52,3 +52,10 @@ NTPTime TimeValToNTP(struct timeval t) {
   return ret;
 }
 
+NSString *StringToNSString(const std::string *s) {
+  if (!s)
+    return nil;
+  NSString *result = [[[NSString alloc] initWithBytes:s.c_str() length:s.length() encoding:NSUTF8StringEncoding] autorelease];
+  return result;
+}
+

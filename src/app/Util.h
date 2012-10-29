@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <string>
+
 #import <Cocoa/Cocoa.h>
 // vim: set filetype=objcpp
 
@@ -24,3 +26,7 @@ NTPTime NowNTPTime();
 
 int64_t TimeSpecToUSec(struct timespec t);
 int64_t ModifiedAt(NSString *path);
+
+
+NSString *StringToNSString(const std::string *s);
+

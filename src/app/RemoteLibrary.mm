@@ -85,7 +85,7 @@ int kRefreshInterval = 10000;
 }
 
 - (NSURL *)urlForTrack:(Track *)t {
-  return [NSURL URLWithString:[NSString stringWithFormat:@"http://%@:%ld/tracks/%@", netService_.ipv4Address, netService_.port, t.id]];
+  return [NSURL URLWithString:[NSString stringWithFormat:@"http://%@:%ld/tracks/%llu", netService_.ipv4Address, netService_.port, t.id]];
 }
 @end
 

@@ -4,6 +4,7 @@
 #include <sys/utsname.h>
 
 #import "app/AppDelegate.h"
+#import "app/AudioSource.h"
 #import "app/CoreAudioSink.h"
 #import "app/LibAVSource.h"
 #import "app/Log.h"
@@ -48,7 +49,6 @@ static NSString *CoverArtPath() {
 @synthesize libraries = libraries_;
 @synthesize localLibrary = localLibrary_;
 @synthesize mainWindowController = mainWindowController_;
-@synthesize audioSource = audioSource_;
 @synthesize plugins = plugins_;
 @synthesize preferencesWindowController = preferencesWindowController_;
 @synthesize selectedAudioOutput = selectedAudioOutput_;
@@ -63,7 +63,6 @@ static NSString *CoverArtPath() {
   [libraries_ release];
   [localLibrary_ release];
   [mainWindowController_ release];
-  [audioSource_ release];
   [plugins_ release];
   [preferencesWindowController_ release];
   [selectedAudioOutput_ release];
@@ -255,8 +254,7 @@ static NSString *CoverArtPath() {
 }
 
 - (void)playTrackAtIndex:(int)index {
-  if (audioSource_) {
-    audioSource_.isPaused = true;
+  if (track_) {
     @synchronized (plugins_) {
       for (Plugin *p in plugins_) {
         [p trackEnded:track_];
@@ -266,8 +264,7 @@ static NSString *CoverArtPath() {
   }
   self.track = [self.mainWindowController.trackBrowser.tracks get:index];
   [self.mainWindowController trackStarted:track_];
-  self.audioSource = [[[LibAVSource alloc] initWithURL:self.track.url] autorelease];
-  self.audioSink.audioSource = self.audioSource;
+  self.audioSink.audioSource = [[[LibAVSource alloc] initWithURL:self.track.url] autorelease];
   self.audioSink.isPaused = NO;
   self.audioSink.volume = self.mainWindowController.volumeControl.level;
   [self.mainWindowController.trackBrowser seekTo:index];

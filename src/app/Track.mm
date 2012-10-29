@@ -24,12 +24,6 @@ extern "C" {
 #include <libavfilter/avfilter.h>
 }
 
-typedef enum {
-  IsVideoTrackFlag = 1 << 0,
-  IsAudioTrackFlag = 1 << 1,
-  CoverArtChecked = 1 << 2
-  } TrackFlags;
-
 using namespace std;
 
 static Class trackClass;
@@ -72,7 +66,10 @@ static NSDictionary *tagKeyToTrackKey;
 static NSArray *mediaExtensions = nil;
 static NSArray *ignoreExtensions = nil;
 
-@implementation Track
+@implementation Track {
+  Library *library_;
+}
+
 @synthesize album = album_;
 @synthesize artist = artist_;
 @synthesize coverArtID = coverArtID_;
@@ -100,24 +97,8 @@ static NSArray *ignoreExtensions = nil;
 }
 
 - (void)dealloc {
-  [album_ release];
-  [artist_ release];
-  [coverArtID_ release];
-  [createdAt_ release];
-  [duration_ release];
-  [genre_ release];
-  [isCoverArtChecked_ release];
-  [id_ release];
-  [isAudio_ release];
-  [isVideo_ release];
-  [lastPlayedAt_ release];
+  delete ((proto::Track *)proto_);
   [library_ release];
-  [path_ release];
-  [publisher_ release];
-  [title_ release];
-  [trackNumber_ release];
-  [updatedAt_ release];
-  [year_ release];
   [super dealloc];
 }
 
@@ -179,20 +160,6 @@ static NSArray *ignoreExtensions = nil;
   return ret;
 }
 
-- (void)setId:(NSNumber *)anID {
-  @synchronized(self) {
-    NSNumber *t = id_;
-    id_ = [anID retain];
-    [t release];
-  }
-  idCache_ = [anID longLongValue];
-}
-
-- (NSNumber *)id {
-  return id_;
-}
-
-
 - (BOOL)isEqual:(id)other {
   if (other == self) {
     return YES;
@@ -200,14 +167,14 @@ static NSArray *ignoreExtensions = nil;
     return NO;
   } else if ((object_getClass(other) == trackClass) || [other isKindOfClass:trackClass]) {
     Track *other0 = (Track *)other;
-    return idCache_ == other0->idCache_;
+    return other0->proto_->id() == proto_->id();
   } else {
     return NO;
   }
 }
 
 - (NSUInteger)hash {
-  return (NSUInteger)[id_ longLongValue];
+  return (NSUInteger)proto_->id();
 }
 
 - (int)readTag {
@@ -250,16 +217,16 @@ static NSArray *ignoreExtensions = nil;
   }
 
   if (audioStreamIndex >= 0) {
-    int64_t d = ((c->streams[audioStreamIndex]->duration * c->streams[audioStreamIndex]->time_base.num) / c->streams[audioStreamIndex]->time_base.den) * 1000000;
-    self.duration = [NSNumber numberWithLongLong:d];
+    UInt64 d = ((c->streams[audioStreamIndex]->duration * c->streams[audioStreamIndex]->time_base.num) / c->streams[audioStreamIndex]->time_base.den) * 1000000;
+    self.duration = d;
   }
   for (int i = 0; i < c->nb_streams; i++) {
     if (c->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
-      self.isVideo = [NSNumber numberWithBool:YES];
+      self.isVideo = YES;
       continue;
     }
     if (c->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
-      self.isAudio = [NSNumber numberWithBool:YES];
+      self.isAudio = YES;
       continue;
     }
   }
@@ -283,12 +250,7 @@ done:
 }
 
 - (bool)isAudioOrVideo {
-  if (self.isVideo) {
-    return (bool)(self.isVideo.boolValue ? true : false);
-  } else if (self.isAudio) {
-    return (bool)(self.isAudio.boolValue ? true : false);
-  }
-  return false;
+  return self.isAudio || self.isVideo;
 }
 
 - (NSDictionary *)dictionary {
@@ -311,18 +273,18 @@ done:
   t.album = [dict objectForKey:kAlbum];
   t.artist = [dict objectForKey:kArtist];
   t.coverArtID = [dict objectForKey:kCoverArtID];
-  t.duration = [dict objectForKey:kDuration];
+  t.duration = [[dict objectForKey:kDuration] unsignedLongLongValue];
   t.genre = [dict objectForKey:kGenre];
-  t.id = [dict objectForKey:kID];
-  t.isAudio = [dict objectForKey:kIsAudio];
-  t.isCoverArtChecked = [dict objectForKey:kIsCoverArtChecked];
-  t.isVideo = [dict objectForKey:kIsVideo];
-  t.lastPlayedAt = [dict objectForKey:kLastPlayedAt];
+  t.id = [[dict objectForKey:kID] unsignedLongLongValue];
+  t.isAudio = [[dict objectForKey:kIsAudio] boolValue];
+  t.isCoverArtChecked = [[dict objectForKey:kIsCoverArtChecked] boolValue];
+  t.isVideo = [[dict objectForKey:kIsVideo] boolValue];
+  t.lastPlayedAt = [[dict objectForKey:kLastPlayedAt] unsignedLongLongValue];
   t.path = [dict objectForKey:kPath];
   t.publisher = [dict objectForKey:kPublisher];
   t.title = [dict objectForKey:kTitle];
   t.trackNumber = [dict objectForKey:kTrackNumber];
-  t.updatedAt = [dict objectForKey:kUpdatedAt];
+  t.updatedAt = [[dict objectForKey:kUpdatedAt] unsignedLongLongValue];
   t.year = [dict objectForKey:kYear];
   return t;
 }
@@ -350,10 +312,63 @@ done:
 - (id)init {
   self = [super init];
   if (self) {
-    self.updatedAt = [NSNumber numberWithLong:Now()];
-    self.createdAt = [NSNumber numberWithLong:Now()];
+    proto_ = new proto::Track();
+    proto_->set_updatedat(Now());
+    proto_->set_createdat(Now());
   }
   return self;
 }
+
+#define DefineStringProperty(PROTOFIELD, OBJCGETTER, OBJCSETTER) \
+- (NSString *)OBJCGETTER { \
+  if (!proto_->has_##PROTOFIELD()) { \
+    return nil; \
+  } \
+  std::string *s = proto_->mutable_##PROTOFIELD(); \
+  NSString *ret = [[[NSString alloc] initWithBytes:s->c_str() length:s->length() encoding:NSUTF8StringEncoding] autorelease]; \
+  return ret; \
+} \
+\
+- (void) OBJCSETTER :(NSString *)value { \
+  if (value.length == 0) \
+    value = nil; \
+  if (!value) { \
+    proto_->clear_##PROTOFIELD(); \
+  } else { \
+    const char *buf = [value UTF8String]; \
+    proto_->set_##PROTOFIELD(buf); \
+  } \
+}
+
+
+#define DefineCProperty(TYPE, PROTO, OCGET, OCSET) \
+- (TYPE)OCGET { \
+  return proto_->PROTO(); \
+} \
+\
+- (void)OCSET:(TYPE)v { \
+  proto_->set_##PROTO(v); \
+} \
+
+#define DefineUInt64Property(PROTO, OCGET, OCSET) DefineCProperty(UInt64, PROTO, OCGET, OCSET)
+#define DefineBoolProperty(PROTO, OCGET, OCSET) DefineCProperty(BOOL, PROTO, OCGET, OCSET)
+
+
+DefineStringProperty(album, album, setAlbum)
+DefineStringProperty(artist, artist, setArtist)
+DefineStringProperty(coverartid, coverArtID, setCoverArtID)
+DefineStringProperty(genre, genre, setGenre)
+DefineStringProperty(path, path, setPath)
+DefineStringProperty(publisher, publisher, setPublisher)
+DefineStringProperty(title, title, setTitle)
+DefineStringProperty(year, year, setYear)
+DefineStringProperty(tracknumber, trackNumber, setTrackNumber)
+DefineUInt64Property(id, id, setId)
+DefineBoolProperty(isaudio, isAudio, setIsAudio)
+DefineBoolProperty(isvideo, isVideo, setIsVideo)
+DefineBoolProperty(iscoverartchecked, isCoverArtChecked, setIsCoverArtChecked)
+DefineUInt64Property(createdat, createdAt, setCreatedAt)
+DefineUInt64Property(duration, duration, setDuration)
+
 
 @end

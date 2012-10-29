@@ -147,7 +147,7 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
 
 - (id)imageRepresentation {
   for (Track *t in self.tracks) {
-    if (t.coverArtID) {
+    if (t.coverArtId) {
       return [[[NSImage alloc] initWithContentsOfURL:t.coverArtURL] autorelease];
     }
   }
@@ -252,7 +252,7 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
 - (void)removeTrack:(Track *)t {
   if (!t)
     return;
-  CoverBrowserItem *item = [trackToItem_ pop:t.id];
+  CoverBrowserItem *item = [trackToItem_ pop:@(t.id)];
   if (!item)
     return;
   @synchronized(item.tracks) {
@@ -292,7 +292,7 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
 
   for (Track *track in tracks) {
     CoverBrowserItem *item = nil;
-    if ([trackToItem_ get:track.id]) {
+    if ([trackToItem_ get:@(track.id)]) {
       continue;
     }
     NSString *key = toKey_(track);
@@ -316,7 +316,7 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
     @synchronized(item.tracks) {
       [item.tracks addObject:track];
     }
-    [trackToItem_ set:track.id value:item];
+    [trackToItem_ set:@(track.id) value:item];
     if (isNew) {
       [self.items add:item];
     } else if (![item.imageTitle isEqualToString:oldTitle]) {

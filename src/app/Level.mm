@@ -3,8 +3,6 @@
 #import "app/Log.h"
 #include <string>
 
-using namespace std;
-
 @implementation Level
 @synthesize db = db_;
 - (id)initWithPath:(NSString *)path {
@@ -22,24 +20,6 @@ using namespace std;
 - (void)dealloc {
   delete db_;
   [super dealloc];
-}
-
-
-- (void)setData:(NSData *)data forKey:(NSData *)key {
-  leveldb::Slice key0((const char *)key.bytes, key.length);
-  leveldb::Slice data0((const char *)data.bytes, data.length);
-  db_->Put(leveldb::WriteOptions(), key0, data0);
-}
-
-- (NSData *)getDataForKey:(NSData *)key {
-  leveldb::Slice key0((const char *)key.bytes, key.length);
-  std::string val;
-  NSData *ret = nil;
-  leveldb::Status st = db_->Get(leveldb::ReadOptions(), key0, &val);
-  if (st.ok() && !st.IsNotFound())  {
-    ret = [NSData dataWithBytes:val.c_str() length:val.length()];
-  }
-  return ret;
 }
 @end
 
@@ -61,22 +41,20 @@ using namespace std;
   [super dealloc];
 }
 
-- (NSData *)encodeKey:(id)key {
+- (void)encodeKey:(id)key to:(std::string *)s{
   assert(0);
-  return [NSData data];
 }
 
-- (NSData *)encodeValue:(id)value {
+- (void)encodeValue:(id)value to:(std::string *)s {
   assert(0);
-  return [NSData data];
 }
 
-- (id)decodeValue:(NSData *)data {
+- (id)decodeValue:(const leveldb::Slice *)data {
   assert(0);
   return nil;
 }
 
-- (id)decodeKey:(NSData *)bytes  {
+- (id)decodeKey:(const leveldb::Slice *)bytes  {
   assert(0);
   return nil;
 }
@@ -84,33 +62,29 @@ using namespace std;
 - (id)get:(id)key {
   if (!key)
     return nil;
-  NSData *keyBytes = [self encodeKey:key];
-  string s([self keyPrefix]);
-  s.append((const char *)keyBytes.bytes, keyBytes.length);
+  std::string s([self keyPrefix]);
+  [self encodeKey:key to:&s];
   std::string val;
-
   id ret = nil;
   leveldb::Status st = level_.db->Get(leveldb::ReadOptions(), s, &val);
   if (st.ok() && !st.IsNotFound())  {
-    NSData *data = [NSData dataWithBytesNoCopy:(void *)val.c_str() length:val.length() freeWhenDone:NO];
-    ret = [self decodeValue:data];
+    leveldb::Slice valSlice(val);
+    ret = [self decodeValue:&valSlice];
   }
   return ret;
 }
 
 - (void)put:(id)value forKey:(id)key {
-  string key0([self keyPrefix]);
-  NSData *keyBytes = [self encodeKey:key];
-  key0.append((const char *)keyBytes.bytes, keyBytes.length);
-  NSData *valBytes = [self encodeValue:value];
-  leveldb::Slice valSlice((const char *)valBytes.bytes, valBytes.length);
-  level_.db->Put(leveldb::WriteOptions(), key0, valSlice);
+  std::string key0([self keyPrefix]);
+  [self encodeKey:key to:&key0];
+  std::string val;
+  [self encodeValue:value to:&val];
+  level_.db->Put(leveldb::WriteOptions(), key0, val);
 }
 
 - (void)delete:(id)key {
-  string key0([self keyPrefix]);
-  NSData *keyBytes = [self encodeKey:key];
-  key0.append((const char *)keyBytes.bytes, keyBytes.length);
+  std::string key0([self keyPrefix]);
+  [self encodeKey:key to:&key0];
   level_.db->Delete(leveldb::WriteOptions(), key0);
 }
 
@@ -120,19 +94,15 @@ using namespace std;
   i->Seek(prefixSlice);
   while (i->Valid()) {
     leveldb::Slice keySlice = i->key();
-    if (keySlice.starts_with(prefixSlice)) {
-      leveldb::Slice valueSlice = i->value();
-      NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-      NSData *valueBytes = [NSData dataWithBytesNoCopy:(void *)valueSlice.data() length:valueSlice.size() freeWhenDone:NO];
-      keySlice.remove_prefix(prefixSlice.size());
-      NSData *keyBytes = [NSData dataWithBytesNoCopy:(void *)keySlice.data() length:keySlice.size() freeWhenDone:NO];
-      id key = [self decodeKey:keyBytes];
-      id value = [self decodeValue:valueBytes];
-      block(key, value);
-      [pool release];
-    } else {
+    if (!keySlice.starts_with(prefixSlice))
       break;
-    }
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    keySlice.remove_prefix(prefixSlice.size());
+    leveldb::Slice valueSlice = i->value();
+    id key = [self decodeKey:&keySlice];
+    id value = [self decodeValue:&valueSlice];
+    block(key, value);
+    [pool release];
     i->Next();
   }
   delete i;
@@ -142,15 +112,16 @@ using namespace std;
   std::string key("autoinc:");
   key.append([self keyPrefix]);
   std::string val;
-  uint32_t ret = 1;
+  uint64_t ret = 1;
   leveldb::Status st = level_.db->Get(leveldb::ReadOptions(), key, &val);
   if (st.ok() && !st.IsNotFound()) {
-    memcpy(&ret, val.c_str(), MIN(sizeof(ret), val.length()));
+    ret = *((uint64_t *)val.c_str());
+    //ret = ntohll(ret);
     ret++;
   }
   std::string newValue((const char *)&ret, sizeof(ret));
   level_.db->Put(leveldb::WriteOptions(), key, newValue);
-  return [NSNumber numberWithUnsignedInt:ret];
+  return [NSNumber numberWithUnsignedLongLong:ret];
 }
 
 - (int)count {
@@ -179,27 +150,3 @@ using namespace std;
 
 @end
 
-@interface JSONTable (P)
-- (NSData *)encodeJSON:(id)value;
-- (id)decodeJSON:(const char *)value length:(size_t)length;
-@end
-
-@implementation JSONTable
-
-- (NSData *)encodeValue:(id)value {
-  return ToJSONData(value);
-}
-
-- (NSData *)encodeKey:(id)value {
-  return ToJSONData(value);
-}
-
-- (id)decodeValue:(NSData *)data {
-  return FromJSONData(data);
-}
-
-- (id)decodeKey:(NSData *)data {
-  return FromJSONData(data);
-}
-
-@end

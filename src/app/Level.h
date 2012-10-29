@@ -8,8 +8,10 @@
 
 @property (nonatomic) leveldb::DB *db;
 - (id)initWithPath:(NSString *)path;
+/*
 - (void)setData:(NSData *)data forKey:(NSData *)key;
 - (NSData *)getDataForKey:(NSData *)key;
+*/
 @end
 
 @interface LevelTable : NSObject {
@@ -21,10 +23,10 @@
 - (void)delete:(id)key;
 - (void)put:(id)value forKey:(id)key;
 - (void)each:(void (^)(id key, id val))block;
-- (NSData *)encodeKey:(id)key;
-- (NSData *)encodeValue:(id)value;
-- (id)decodeValue:(NSData *)data;
-- (id)decodeKey:(NSData *)data;
+- (void)encodeKey:(id)key to:(std::string *)out;
+- (void)encodeValue:(id)value to:(std::string *)out;
+- (id)decodeValue:(const leveldb::Slice *)data;
+- (id)decodeKey:(const leveldb::Slice *)data;
 - (void)clear;
 - (NSNumber *)nextID;
 /* Get the number of entries */
@@ -33,5 +35,3 @@
 - (const char *)keyPrefix;
 @end
 
-@interface JSONTable : LevelTable
-@end

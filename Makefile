@@ -10,11 +10,14 @@ all:
 
 APPNAME ?= Shotwell
 BUILD ?= build
-VENDOR_BUILD ?= vendor-build
+VENDOR_BUILD ?= $(abspath .)/vendor/build
 APP_DIR = $(BUILD)/$(APPNAME).app
 IBTOOL ?= ibtool
 DIST ?= dist
 GDB ?= gdb
+VENDOR_BIN := $(VENDOR_BUILD)/bin
+PROTOC := $(VENDOR_BIN)/protoc
+PATH := $(VENDOR_BIN):${PATH}
 
 PROG = $(APP_DIR)/Contents/MacOS/$(APPNAME)
 
@@ -23,16 +26,17 @@ VENDOR = $(VENDOR_BUILD)/stamp/vendor
 CXXFLAGS += -iquote src
 CXXFLAGS += -Werror -Wall
 CXXFLAGS += -ferror-limit=2
-CXXFLAGS += -I$(VENDOR_BUILD)/vendor/include
+CXXFLAGS += -I$(VENDOR_BUILD)/include
 CXXFLAGS += -ggdb
 CXXFLAGS += -O0
-LDFLAGS += -L$(VENDOR_BUILD)/vendor/lib
+LDFLAGS += -L$(VENDOR_BUILD)/lib
 LDFLAGS += -lleveldb
 LDFLAGS += -ljansson
 LDFLAGS += -levent
 LDFLAGS += -levent_pthreads
 LDFLAGS += -lstdc++
 LDFLAGS += -lpthread
+LDFLAGS += -lprotobuf
 LDFLAGS += -licuuc
 LDFLAGS += -licudata
 LDFLAGS += -lavcodec
@@ -69,6 +73,10 @@ OBJS := $(patsubst src/app/%, $(BUILD)/objs/app/%, $(patsubst %.mm, %.o, $(wildc
 TESTOBJS := $(patsubst src/test/%, $(BUILD)/objs/test/%, $(patsubst %.mm, %.o, $(wildcard src/test/*.mm)))
 DEPS := $(patsubst src/app/%, $(BUILD)/deps/app/%, $(patsubst %.mm, %.d, $(wildcard src/app/*.mm)))
 TESTDEPS := $(patsubst src/test/%, $(BUILD)/deps/test/%, $(patsubst %.mm, %.d, $(wildcard src/test/*.mm)))
+#OBJS += $(BUILD)/objs/app/Track.pb.o
+#DEPS += $(BUILD)/deps/app/Track.pb.d
+
+#$(BUILD)/deps/app/%.pb.d: src/app/%.pb.h
 
 check_dirs = $(foreach i, $1, $(shell [ -d "$1" ] || mkdir -p $1 ))
 create_parent_dir = $(call check_dirs, $(dir $@))
@@ -86,17 +94,35 @@ $(RESOURCES_DIR)/%: $(SRC_RES)/%
 # Convert the XIB into a nib.
 program: $(RESOURCES_DIR)/en.lproj/MainMenu.nib
 
-$(BUILD)/deps/%.d: src/%.mm $(VENDOR)
+$(BUILD)/deps/%.d: src/%.mm
 	$(call create_parent_dir)
 	$(CXX) $(CXXFLAGS) -MM -MT $(BUILD)/objs/$*.o $< >$@
 
-# This will force the .d files to build.
--include $(DEPS)
--include $(TESTDEPS)
+$(BUILD)/deps/%.d: $(BUILD)/protos
+$(BUILD)/deps/%.d: $(VENDOR)
 
+%/.dir:
+	$(create_parent_dir)
+	touch $@
+
+$(BUILD)/protos: src/app/Messages.proto
+	cd src/app && \
+		$(PROTOC) --objc_out=. Messages.proto
+	touch $@
+
+# This will force the .d files to build.
+-include $(VENDOR)
+-include $(BUILD)/.dir
+-include $(BUILD)/protos
+-include $(DEPS)
+#-include $(TESTDEPS)
 $(BUILD)/objs/%.o: src/%.mm
 	$(call create_parent_dir)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+#src/app/Track.pb.m src/app/Track.pb.h: src/app/track.proto
+#	cd src/app && \
+#		$(PROTOC) --objc_out=. track.proto
 
 $(PROG): $(OBJS) $(VENDOR) $(APPDIRS)
 	$(call create_parent_dir)
@@ -164,7 +190,6 @@ test-gdb: test-program
 	$(GDB) -f -x $(BUILD)/gdb-commands $(BUILD)/test
 
 TAGS: src/app/*.mm src/app/*.h
-	#ctags -r src/app/* $$(find $(BUILD)/vendor/include)
 	etags --language=objc -o TAGS src/app/*.h src/app/*.mm
 
 cscope:
@@ -199,3 +224,10 @@ build/test: $(VENDOR) $(TEST_SRCS) $(ALL_TEST_OBJS)
 dist: dist/$(DMG)
 
 .PHONY: dist
+
+build/x: src/x.mm
+	$(CXX) $(CXXFLAGS) -I/usr/local/include -o $@ $+ -lstdc++ -L/usr/local/lib -lboost_chrono-mt -lboost_system-mt $(LDFLAGS)
+
+x: build/x
+	./build/x
+
