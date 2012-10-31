@@ -6,7 +6,6 @@
 set -e
 x=$(dirname -- ${0})
 export PROJECTROOT=$(cd $x; echo $PWD)
-echo PROJECT=$PROJECTROOT
 . ./env.sh
 
 function is_stamped { 
@@ -130,33 +129,17 @@ then
   stamp protobuf
 fi
 
-if ! is_stamped protobuf-objc
+if ! is_stamped curl
 then
-  echo building protobuf-objc
+  echo building curl
   scratch
-  tar xzvf ${VENDOR}/booyah-protobuf-objc-696b7b6.tar.gz
-  pushd booyah-protobuf-objc-696b7b6
-  ./autogen.sh
+  tar xjvf ${VENDOR}/curl-7.28.0.tar.gz
+  pushd curl-7.28.0
   ./configure --prefix=${INSTALL_PREFIX} --disable-shared --enable-static
+  make
   make install
   popd
-  stamp protobuf-objc
-fi
-
-
-if ! is_stamped protobuf-objc-runtime
-then
-  echo building protobuf-objc runtime
-  scratch
-  tar xzvf ${VENDOR}/booyah-protobuf-objc-696b7b6.tar.gz
-  pushd booyah-protobuf-objc-696b7b6
-  clang -c -iquote src/runtime -iquote src/runtime/Classes -include ProtocolBuffers_Prefix.pch src/runtime/Classes/*.m
-  ar rcs libProtocolBuffers.a *.o
-  mv libProtocolBuffers.a ${INSTALL_PREFIX}/lib
-  mkdir ${INSTALL_PREFIX}/include/ProtocolBuffers
-  mv src/runtime/Classes/*.h ${INSTALL_PREFIX}/include/ProtocolBuffers
-  popd
-  stamp protobuf-objc-runtime
+  stamp curl
 fi
 
 stamp vendor

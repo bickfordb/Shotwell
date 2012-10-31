@@ -7,6 +7,7 @@
 #include <leveldb/slice.h>
 
 #import "app/AppDelegate.h"
+#import "app/CoverArtScraper.h"
 #import "app/HTTP.h"
 #import "app/HTTPResponse.h"
 #import "app/ITunesScan.h"
@@ -19,16 +20,44 @@
 #import "app/Track.h"
 #import "app/Tuple.h"
 #import "app/Util.h"
-#include "app/track.pb.h"
+#import "app/pb/Track.pb.h"
 
-#define GET_URL_KEY(url) (kURLTablePrefix + url)
 static NSString * const kPathsToScan = @"PathsToScan";
 static NSString * const kIsITunesImported = @"IsITunesImported";
 NSString * const kScanPathsChanged = @"ScanPathsChanged";
 static CFTimeInterval kMonitorLatency = 2.0;
-static NSString * const kITunesAffiliateURL = @"http://itunes.apple.com/search";
-static int kMaxConcurrentCoverArtQueries = 1;
-static int kCheckCoverArtDelay = 10 * 1000000;
+
+NSString *DecodeString(const leveldb::Slice *data) {
+  return [[[NSString alloc] initWithBytes:data->data() length:data->size() encoding:NSUTF8StringEncoding] autorelease];
+}
+
+NSData *DecodeData(const leveldb::Slice *data) {
+  return [NSData dataWithBytes:data->data() length:data->size()];
+}
+
+void EncodeDataTo(NSData *data, std::string *out) {
+  if (data) {
+    out->append((const char *)data.bytes, data.length);
+  }
+}
+
+void EncodeStringTo(NSString *s, std::string *out) {
+  if (s) {
+    out->append(s.UTF8String);
+  }
+}
+
+void EncodeUInt64(uint64_t v, std::string *out) {
+  out->append(((const char *)&v), sizeof(v));
+}
+
+uint64_t DecodeUInt64(const leveldb::Slice *slice) {
+  uint64_t result = 0;
+  if (slice->size() >= sizeof(result)) {
+    result = *((uint64_t *)slice->data());
+  }
+  return result;
+}
 
 @interface TrackTable : LevelTable {
 }
@@ -38,90 +67,73 @@ static int kCheckCoverArtDelay = 10 * 1000000;
 }
 @end
 
-@interface LocalLibrary (Private)
-- (void)scanQueuedPaths;
-- (void)pruneQueued;
-- (void)monitorPaths;
-- (void)search:(NSString *)d entity:(NSString *)entity withResult:(void(^)(int status, NSArray *results))onResults;
-- (void)searchCoverArt:(NSString *)term withArtworkData:(void (^)(int status, NSData *d))block;
-- (void)popPendingCoverArt;
-@property (retain) TrackTable *trackTable;
-@property (retain) PathIndex *pathIndex;
-@property (retain) Loop *pruneLoop;
-@property (retain) Loop *scanLoop;
-@property (retain) Loop *coverArtLoop;
-@property (retain) Level *coverArtDB;
+@interface CoverArtTable : LevelTable {
+}
 @end
 
+@interface LocalLibrary (Private)
+- (void)monitorPaths;
+- (Track *)index:(NSString *)path;
+- (void)checkCoverArtForTrack:(uint64_t)trackID;
+- (bool)hasCoverArt:(NSString *)coverArtID;
+- (void)saveCoverArt:(NSString *)coverArtID data:(NSData *)data;
+@end
 
 @implementation TrackTable
-- (const char *)keyPrefix {
-  return "t:";
-}
-
 - (id)decodeValue:(const leveldb::Slice *)bytes {
   Track *t = [[[Track alloc] init] autorelease];
-  t->proto_->ParsePartialFromArray(bytes->data(), bytes->size());
+  [t message]->ParsePartialFromArray(bytes->data(), bytes->size());
   return t;
 }
 
-- (std::string *)encodeValue:(id)val {
+- (void)encodeValue:(id)val to:(std::string *)dst {
   Track *t = (Track *)val;
-  std::string *s = new std::string;
-  t->proto_->SerializeToString(s);
-  return s;
+  [t message]->SerializeToString(dst);
 }
 
 - (void)encodeKey:(id)key to:(std::string *)dst {
-  proto::TrackTableKey key0;
-  key0.set_id([key unsignedLongLongValue]);
-  key0.SerializeToString(dst);
+  EncodeUInt64([((NSNumber *)key) unsignedLongLongValue], dst);
 }
 
 - (id)decodeKey:(const leveldb::Slice *)key {
-  proto::TrackTableKey key0;
-  if (key0.ParsePartialFromArray(key->data(), key->size()) && key0.has_id()) {
-    return @(key0.id());
-  } else {
-    return nil;
-  }
+  return @(DecodeUInt64(key));
+}
+@end
+
+@implementation CoverArtTable
+- (void)encodeKey:(id)key to:(std::string *)out {
+  EncodeStringTo(key, out);
 }
 
+- (id)decodeKey:(const leveldb::Slice *)data {
+  return DecodeString(data);
+}
+
+- (void)encodeValue:(id)key to:(std::string *)out {
+  return EncodeDataTo(key, out);
+}
+
+- (id)decodeValue:(const leveldb::Slice *)value {
+  return DecodeData(value);
+}
 @end
 
 @implementation PathIndex
-- (const char *)keyPrefix {
-  return "w:";
-}
+
 - (id)decodeValue:(const leveldb::Slice *)bytes {
-  proto::PathIndexValue p;
-  if (!p.ParsePartialFromArray(bytes->data(), bytes->size()))
-    return nil;
-  return @(p.id());
+  return @(DecodeUInt64(bytes));
 }
 
-- (std::string *)encodeValue:(id)val {
-  proto::PathIndexValue p;
-  p.set_id([((NSNumber *)val) unsignedLongLongValue]);
-  std::string *s = new string();
-  p.SerializeToString(s);
-  return s;
+- (void)encodeValue:(id)val to:(std::string *)out {
+  EncodeUInt64([((NSNumber *)val) unsignedLongLongValue], out);
 }
 
-- (std::string *)encodeKey:(id)key {
-  proto::PathIndexKey p;
-  p.set_path([((NSString *)key) UTF8String]);
-  std::string *s = new string();
-  p.SerializeToString(s);
-  return s;
+- (void)encodeKey:(id)key to:(std::string *)out {
+  EncodeStringTo(key, out);
 }
 
-- (id)decodeKey:(leveldb::Slice *)key {
-  proto::PathIndexKey p;
-  if (!p.ParsePartialFromArray(key.data(), key.length())) {
-    return nil;
-  }
-  return StringToNSString(p.path());
+- (id)decodeKey:(const leveldb::Slice *)key {
+  return DecodeString(key);
 }
 @end
 
@@ -151,98 +163,27 @@ static void OnFileEvent(
 
 @implementation LocalLibrary {
   TrackTable *trackTable_;
-  URLTable *urlTable_;
-  Loop *pruneLoop_;
-  Loop *scanLoop_;
-  Loop *coverArtLoop_;
-  bool pruneRequested_;
+  PathIndex *pathIndex_;
+  dispatch_queue_t indexQueue_;
+  dispatch_queue_t pruneQueue_;
+  dispatch_queue_t coverArtQueue_;
   int numCoverArtQueries_;
-  NSMutableSet *pathsToScan_;
   FSEventStreamRef fsEventStreamRef_;
   NSMutableSet *pendingCoverArtTracks_;
-  Level *coverArtDB_;
+  CoverArtTable *coverArtTable_;
 }
 
-@synthesize trackTable = trackTable_;
-@synthesize coverArtLoop = coverArtLoop_;
-@synthesize urlTable = urlTable_;
-@synthesize pathsToScan = pathsToScan_;
-@synthesize pruneRequested = pruneRequested_;
-@synthesize pruneLoop = pruneLoop_;
-@synthesize scanLoop = scanLoop_;
-@synthesize pathsToAutomaticallyScan = pathsToAutomaticallyScan_;
-@synthesize pendingCoverArtTracks = pendingCoverArtTracks_;
-@synthesize coverArtDB = coverArtDB_;
-
-- (void)search:(NSString *)term withArtworkData:(void (^)(int code, NSData *d))block {
-  __block LocalLibrary *weakSelf = self;
-  block = [block copy];
-  [self search:term entity:@"album" withResult:^(int status, NSArray *results) {
-    if (results && results.count) {
-      NSString *artworkURL = [[results objectAtIndex:0] objectForKey:@"artworkUrl100"];
-      artworkURL = [artworkURL
-        stringByReplacingOccurrencesOfString:@".100x100" withString:@".600x600"];
-      if (artworkURL && artworkURL.length) {
-        [weakSelf.coverArtLoop fetchURL:[NSURL URLWithString:artworkURL] with:^(HTTPResponse *response) {
-          block(response.status, response.status == 200 ? response.body : nil);
-        }];
-      } else {
-        block(status, nil);
-      }
-    } else {
-      block(status, nil);
-    }
-  }];
-}
-
-- (void)search:(NSString *)term entity:(NSString *)entity withResult:(void(^)(int status, NSArray *results))onResults {
-  onResults = [onResults copy];
-  NSURL *url = [NSURL URLWithString:kITunesAffiliateURL];
-  url = [url pushKey:@"term" value:term];
-  url = [url pushKey:@"entity" value:entity];
-  [coverArtLoop_ fetchURL:url with:^(HTTPResponse *r) {
-    NSArray *results = [NSArray array];
-    if (r.status == 200) {
-      NSDictionary *data = (NSDictionary *)FromJSONData(r.body);
-      results = [data objectForKey:@"results"];
-    }
-    onResults(r.status, results);
-  }];
-}
-
-- (id)initWithDBPath:(NSString *)dbPath
-  coverArtPath:(NSString *)coverArtPath {
+- (id)initWithDBPath:(NSString *)dbPath {
   self = [super init];
   if (self) {
-    self.coverArtLoop = [Loop loop];
-    //self.coverArtPath = coverArtPath;
-    Level *level = [[[Level alloc] initWithPath:dbPath] autorelease];
-    urlTable_ = [[URLTable alloc] initWithLevel:level];
-    trackTable_ = [[TrackTable alloc] initWithLevel:level];
-    self.coverArtDB = coverArtPath ? [[[Level alloc] initWithPath:coverArtPath] autorelease] : nil;
-    self.pendingCoverArtTracks = [NSMutableSet set];
-    self.pathsToScan = [NSMutableSet set];
-    self.pruneRequested = false;
-    self.pruneLoop = [Loop loop];
-    self.scanLoop = [Loop loop];
-    __block LocalLibrary *weakSelf = self;
-    [pruneLoop_ onTimeout:1000000 with:^(Event *e, short flags) {
-      if (weakSelf.pruneRequested) {
-        weakSelf.pruneRequested = false;
-        [weakSelf pruneQueued];
-      }
-      [e add:1000000];
-    }];
-    [scanLoop_ onTimeout:1000000 with:^(Event *e, short flags) {
-      [weakSelf scanQueuedPaths];
-      [e add:1000000];
-    }];
+    indexQueue_ = dispatch_queue_create("shotwell.index", NULL);
+    pruneQueue_ = dispatch_queue_create("shotwell.prune", NULL);
+    coverArtQueue_ = dispatch_queue_create("shotwell.cover-art", NULL);
 
-    numCoverArtQueries_ = 0;
-    [coverArtLoop_ every:10000 with:^{
-      [weakSelf popPendingCoverArt];
-    }];
-
+    pathIndex_ = [[PathIndex alloc] initWithPath:[dbPath stringByAppendingPathComponent:@"paths"]];
+    trackTable_ = [[TrackTable alloc] initWithPath:[dbPath stringByAppendingPathComponent:@"tracks"]];
+    coverArtTable_ = [[CoverArtTable alloc] initWithPath:[dbPath stringByAppendingPathComponent:@"cover-art"]];
+    pendingCoverArtTracks_ = [[NSMutableSet set] retain];
     fsEventStreamRef_ = nil;
     [self monitorPaths];
   }
@@ -250,39 +191,30 @@ static void OnFileEvent(
 }
 
 
+- (void)queueCheckCoverArt:(Track *)track {
+  uint64_t id = track.id;
+  __block LocalLibrary *weakSelf = self;
+  dispatch_async(coverArtQueue_, ^{
+    [weakSelf checkCoverArtForTrack:id];
+  });
+}
+
 - (void)checkCoverArt {
   __block LocalLibrary *weakSelf = self;
-  [coverArtLoop_ onTimeout:kCheckCoverArtDelay with:^(Event *e, short flags) {
+  dispatch_async(coverArtQueue_, ^{
     [weakSelf each:^(Track *t) {
-      if (!t.coverArtURL)
-        return;
-      if (t.isCoverArtChecked)
-        return;
-      @synchronized(weakSelf.pendingCoverArtTracks) {
-        [weakSelf.pendingCoverArtTracks addObject:@(t.id)];
+      uint64_t trackID = t.id;
+      if (!t.isCoverArtChecked) {
+        dispatch_async(weakSelf->coverArtQueue_, ^{
+          [weakSelf checkCoverArtForTrack:trackID];
+        });
       }
     }];
-  }];
+  });
 }
 
-- (void)popPendingCoverArt {
-  if (numCoverArtQueries_ >= kMaxConcurrentCoverArtQueries)
-    return;
-  Track *track = nil;
-  @synchronized(pendingCoverArtTracks_) {
-    NSNumber *trackID = pendingCoverArtTracks_.anyObject;
-    track = [self get:trackID];
-    if (trackID) {
-      [pendingCoverArtTracks_ removeObject:trackID];
-    }
-  }
-  if (track) {
-    [self checkCoverArtForTrack:track];
-  }
-}
-
-- (void)checkCoverArtForTrack:(Track *)track {
-  __block LocalLibrary *weakSelf = self;
+- (void)checkCoverArtForTrack:(uint64_t)trackID {
+  Track *track = trackTable_[@(trackID)];
   NSString *artist = track.artist;
   NSString *album = track.album;
   if (!track || !artist || !artist.length || !album || !album.length
@@ -291,25 +223,24 @@ static void OnFileEvent(
   }
   NSString *term = [NSString stringWithFormat:@"%@ %@", artist, album];
   NSString *coverArtID = term.sha1;
-  if ([self hasCoverArt:coverArtID]) {
+  NSData *coverArt = coverArtTable_[coverArtID];
+  if (coverArt) {
     track.coverArtID = coverArtID;
     track.isCoverArtChecked = YES;
-    [self save:track];
     return;
+  } else {
+    NSData *artwork = ScrapeCoverArt(term);
+    if (artwork) {
+      DEBUG(@"found cover art for term: %@", term);
+      coverArtTable_[coverArtID] = artwork;
+    } else {
+      // 0 length entries => 404
+      DEBUG(@"couldn't find cover art for: %@", term);
+      coverArtTable_[coverArtID] = [NSData data];
+    }
   }
-  numCoverArtQueries_++;
-  [self search:term withArtworkData:^(int status, NSData *data) {
-    weakSelf->numCoverArtQueries_--;
-    if (data) {
-      [weakSelf saveCoverArt:coverArtID data:data];
-    }
-    Track *t = [weakSelf get:@(track.id)];
-    if (data) {
-      t.coverArtID = coverArtID;
-    }
-    t.isCoverArtChecked = YES;
-    [weakSelf save:t];
-  }];
+  track.isCoverArtChecked = YES;
+  [self save:track];
 }
 
 - (bool)hasCoverArt:(NSString *)coverArtID {
@@ -317,15 +248,11 @@ static void OnFileEvent(
 }
 
 - (void)saveCoverArt:(NSString *)coverArtID data:(NSData *)data {
-  const char *s = coverArtID.UTF8String;
-  NSData *coverArtID0 = [NSData dataWithBytes:s length:strlen(s)];
-  return [coverArtDB_ setData:data forKey:coverArtID0];
+  coverArtTable_[coverArtID] = data;
 }
 
 - (NSData *)getCoverArt:(NSString *)coverArtID {
-  const char *s = coverArtID.UTF8String;
-  NSData *coverArtID0 = [NSData dataWithBytes:s length:strlen(s)];
-  return [coverArtDB_ getDataForKey:coverArtID0];
+  return coverArtTable_[coverArtID];
 }
 
 - (void)monitorPaths {
@@ -356,12 +283,9 @@ static void OnFileEvent(
 }
 
 - (void)dealloc {
-  [coverArtLoop_ invalidate];
-  [coverArtLoop_ release];
-  [pruneLoop_ invalidate];
-  [pruneLoop_ release];
-  [scanLoop_ invalidate];
-  [scanLoop_ release];
+  dispatch_release(coverArtQueue_);
+  dispatch_release(indexQueue_);
+  dispatch_release(pruneQueue_);
   if (fsEventStreamRef_) {
     FSEventStreamStop(fsEventStreamRef_);
     FSEventStreamInvalidate(fsEventStreamRef_);
@@ -369,35 +293,17 @@ static void OnFileEvent(
     fsEventStreamRef_ = nil;
   }
 
-  [pendingCoverArtTracks_ release];
-  [coverArtDB_ release];
-  [pathsToScan_ release];
+  [coverArtTable_ release];
   [trackTable_ release];
-  [urlTable_ release];
+  [pathIndex_ release];
   [super dealloc];
 }
 
-- (void)scanQueuedPaths {
-  NSArray *paths0;
-  @synchronized(pathsToScan_)  {
-    paths0 = pathsToScan_.allObjects;
-    [pathsToScan_ removeAllObjects];
-  }
-  if (paths0.count == 0) {
-    return;
-  }
-  for (NSString *p in paths0) {
-    [self noteAddedPath:p];
-  }
-  int n = paths0.count;
-  char * paths[n + 1];
-  int i = 0;
-  for (NSString *p in paths0) {
-    paths[i] = (char *)p.UTF8String;
-    i++;
-  }
-  paths[n] = NULL;
-
+- (void)scanPath:(NSString *)path {
+  [self noteAddedPath:path];
+  char *paths[2];
+  paths[0] = (char *)path.UTF8String;
+  paths[1] = NULL;
   NSAutoreleasePool *pool = nil;
   FTS *tree = fts_open(paths, FTS_NOCHDIR, 0);
   if (!tree)
@@ -425,10 +331,12 @@ static void OnFileEvent(
 - (Track *)index:(NSString *)filename {
   if (!filename)
     return nil;
-  int64_t lastModified = ModifiedAt(filename);
-  if (lastModified < 0)
+  uint64_t lastModified = ModifiedAt(filename);
+  if (!lastModified) {
+    // Not Found
     return nil;
-  NSNumber *trackID = [urlTable_ get:filename];
+  }
+  NSNumber *trackID = [pathIndex_ get:filename];
   Track *t = trackID ? [trackTable_ get:trackID] : nil;
   if (!t) {
     t = [[[Track alloc] init] autorelease];
@@ -445,9 +353,13 @@ static void OnFileEvent(
       @synchronized(pendingCoverArtTracks_) {
         [pendingCoverArtTracks_ addObject:@(t.id)];
       }
+      [self checkCoverArtForTrack:t.id];
+    } else {
+      DEBUG(@"missing audio, skipping: %@", t);
     }
   } else {
-    if (t.updatedAt < lastModified) {
+    if (t.createdAt < lastModified) {
+      DEBUG(@"re-indexing: %@ because %llu < %llu", t.path, t.createdAt, lastModified);
       [t readTag];
       [self save:t];
     }
@@ -455,31 +367,8 @@ static void OnFileEvent(
   return t;
 }
 
-- (id)init {
-  self = [super init];
-  if (self) {
-    pruneLoop_ = [[Loop alloc] init];
-    scanLoop_ = [[Loop alloc] init];
-    pruneRequested_ = false;
-    pathsToScan_ = [NSMutableSet set];
-    self.lastUpdatedAt = Now();
-  }
-  return self;
-}
-
-- (void)pruneQueued {
-  __block LocalLibrary *weakSelf = self;
-  [trackTable_ each:^(id key, id val) {
-    Track *track = (Track *)val;
-    track.library = weakSelf;
-    struct stat fsStatus;
-    if (stat(track.path.UTF8String, &fsStatus) < 0 && errno == ENOENT) {
-      [weakSelf delete:track];
-    }
-  }];
-}
-
 - (void)save:(Track *)track {
+  DEBUG(@"%@: saving %@", self, track);
   if (!track.path) {
     return;
   }
@@ -488,9 +377,8 @@ static void OnFileEvent(
   if (isNew) {
     track.id = [[trackTable_ nextID] unsignedLongValue];
   }
-
-  [urlTable_ put:@(track.id) forKey:track.path];
-  [trackTable_ put:track forKey:@(track.id)];
+  pathIndex_[track.path] = @(track.id);
+  trackTable_[@(track.id)] = track;
   if (isNew) {
     [self notifyTrack:track change:kLibraryTrackAdded];
   } else {
@@ -507,17 +395,16 @@ static void OnFileEvent(
 }
 
 - (void)clear {
-  [urlTable_ clear];
+  [pathIndex_ clear];
   [trackTable_ clear];
 }
 
 - (void)delete:(Track *)track {
   [trackTable_ delete:@(track.id)];
   if (track.url)
-    [urlTable_ delete:track.path];
+    [pathIndex_ delete:track.path];
   self.lastUpdatedAt = Now();
   [self notifyTrack:track change:kLibraryTrackDeleted];
-
 }
 
 - (int)count {
@@ -534,14 +421,28 @@ static void OnFileEvent(
 
 - (void)scan:(NSArray *)paths {
   DEBUG(@"scan: %@", paths);
-  @synchronized(pathsToScan_) {
-    if (paths)
-      [pathsToScan_ addObjectsFromArray:paths];
-  }
+  __block LocalLibrary *weakSelf = self;
+  dispatch_async(indexQueue_, ^{
+    for (NSString *p in paths) {
+      [weakSelf noteAddedPath:p];
+      [weakSelf scanPath:p];
+    }
+  });
 }
 
 - (void)prune {
-  pruneRequested_ = true;
+  __block LocalLibrary *weakSelf = self;
+  dispatch_async(
+    pruneQueue_, ^{
+      [weakSelf->trackTable_ each:^(id key, id val) {
+        Track *track = (Track *)val;
+        track.library = weakSelf;
+        struct stat fsStatus;
+        if (stat(track.path.UTF8String, &fsStatus) < 0 && errno == ENOENT) {
+        [weakSelf delete:track];
+        }
+    }];
+  });
 }
 
 - (void)noteAddedPath:(NSString *)aPath {

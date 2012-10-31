@@ -147,7 +147,7 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
 
 - (id)imageRepresentation {
   for (Track *t in self.tracks) {
-    if (t.coverArtId) {
+    if (t.coverArtID) {
       return [[[NSImage alloc] initWithContentsOfURL:t.coverArtURL] autorelease];
     }
   }

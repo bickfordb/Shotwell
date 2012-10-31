@@ -1,7 +1,6 @@
 
 #import "app/Level.h"
 #import "app/Library.h"
-#import "app/Loop.h"
 #include <leveldb/db.h>
 #include <sys/time.h>
 #include <event2/event.h>
@@ -15,7 +14,7 @@ extern NSString * const kScanPathsChanged;
 @property (retain) NSMutableSet *pathsToScan;
 @property (retain) NSMutableSet *pendingCoverArtTracks;
 
-- (id)initWithDBPath:(NSString *)dbPath coverArtPath:(NSString *)coverArtPath;
+- (id)initWithDBPath:(NSString *)dbPath;
 - (void)save:(Track *)t;
 - (Track *)get:(NSNumber *)trackID;
 - (void)clear;
@@ -25,14 +24,12 @@ extern NSString * const kScanPathsChanged;
 - (void)checkITunesImport;
 - (void)noteAddedPath:(NSString *)aPath;
 - (void)checkAutomaticPaths;
-- (void)checkCoverArtForTrack:(Track *)t;
-- (void)checkCoverArt;
-- (bool)hasCoverArt:(NSString *)coverArtID;
-- (Track *)index:(NSString *)path;
-- (void)saveCoverArt:(NSString *)coverArtID data:(NSData *)data;
 - (NSData *)getCoverArt:(NSString *)coverArtID;
+- (void)scan:(NSArray *)paths;
+- (void)checkCoverArt;
 
 @property bool isITunesImported;
 @property (copy) NSArray *pathsToAutomaticallyScan;
+
 @end
 

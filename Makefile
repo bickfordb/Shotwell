@@ -30,6 +30,7 @@ CXXFLAGS += -I$(VENDOR_BUILD)/include
 CXXFLAGS += -ggdb
 CXXFLAGS += -O0
 LDFLAGS += -L$(VENDOR_BUILD)/lib
+LDFLAGS += -lcurl
 LDFLAGS += -lleveldb
 LDFLAGS += -ljansson
 LDFLAGS += -levent
@@ -48,6 +49,7 @@ LDFLAGS += -lbz2
 LDFLAGS += -lssl
 LDFLAGS += -lcrypto
 LDFLAGS += -lswscale
+LDFLAGS += -lsnappy
 LDFLAGS += -lz
 LDFLAGS += -framework AppKit
 LDFLAGS += -framework AudioToolbox
@@ -73,10 +75,8 @@ OBJS := $(patsubst src/app/%, $(BUILD)/objs/app/%, $(patsubst %.mm, %.o, $(wildc
 TESTOBJS := $(patsubst src/test/%, $(BUILD)/objs/test/%, $(patsubst %.mm, %.o, $(wildcard src/test/*.mm)))
 DEPS := $(patsubst src/app/%, $(BUILD)/deps/app/%, $(patsubst %.mm, %.d, $(wildcard src/app/*.mm)))
 TESTDEPS := $(patsubst src/test/%, $(BUILD)/deps/test/%, $(patsubst %.mm, %.d, $(wildcard src/test/*.mm)))
-#OBJS += $(BUILD)/objs/app/Track.pb.o
-#DEPS += $(BUILD)/deps/app/Track.pb.d
 
-#$(BUILD)/deps/app/%.pb.d: src/app/%.pb.h
+OBJS += $(BUILD)/objs/app/pb/Track.pb.o
 
 check_dirs = $(foreach i, $1, $(shell [ -d "$1" ] || mkdir -p $1 ))
 create_parent_dir = $(call check_dirs, $(dir $@))
@@ -94,35 +94,30 @@ $(RESOURCES_DIR)/%: $(SRC_RES)/%
 # Convert the XIB into a nib.
 program: $(RESOURCES_DIR)/en.lproj/MainMenu.nib
 
-$(BUILD)/deps/%.d: src/%.mm
+$(BUILD)/pb: src/app/pb/Track.proto
+	cd src/app/pb && \
+		$(PROTOC) --cpp_out=. Track.proto
+	touch $@
+
+$(BUILD)/deps/%.d: src/%.mm $(BUILD)/pb $(VENDOR)
 	$(call create_parent_dir)
 	$(CXX) $(CXXFLAGS) -MM -MT $(BUILD)/objs/$*.o $< >$@
-
-$(BUILD)/deps/%.d: $(BUILD)/protos
-$(BUILD)/deps/%.d: $(VENDOR)
 
 %/.dir:
 	$(create_parent_dir)
 	touch $@
 
-$(BUILD)/protos: src/app/Messages.proto
-	cd src/app && \
-		$(PROTOC) --objc_out=. Messages.proto
-	touch $@
 
 # This will force the .d files to build.
--include $(VENDOR)
--include $(BUILD)/.dir
--include $(BUILD)/protos
 -include $(DEPS)
 #-include $(TESTDEPS)
 $(BUILD)/objs/%.o: src/%.mm
 	$(call create_parent_dir)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-#src/app/Track.pb.m src/app/Track.pb.h: src/app/track.proto
-#	cd src/app && \
-#		$(PROTOC) --objc_out=. track.proto
+$(BUILD)/objs/%.o: src/%.cc
+	$(call create_parent_dir)
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(PROG): $(OBJS) $(VENDOR) $(APPDIRS)
 	$(call create_parent_dir)
@@ -225,9 +220,6 @@ dist: dist/$(DMG)
 
 .PHONY: dist
 
-build/x: src/x.mm
-	$(CXX) $(CXXFLAGS) -I/usr/local/include -o $@ $+ -lstdc++ -L/usr/local/lib -lboost_chrono-mt -lboost_system-mt $(LDFLAGS)
-
-x: build/x
-	./build/x
+clean-application-support:
+	rm -rf ~/Library/Application\ Support/Shotwell
 

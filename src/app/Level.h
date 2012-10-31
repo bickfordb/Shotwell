@@ -1,24 +1,11 @@
 #import <Cocoa/Cocoa.h>
-#include <leveldb/db.h>
 #include <string>
-
-@interface Level : NSObject {
-  leveldb::DB *db_;
-}
-
-@property (nonatomic) leveldb::DB *db;
-- (id)initWithPath:(NSString *)path;
-/*
-- (void)setData:(NSData *)data forKey:(NSData *)key;
-- (NSData *)getDataForKey:(NSData *)key;
-*/
-@end
+#include <leveldb/db.h>
 
 @interface LevelTable : NSObject {
-  Level *level_;
 }
 
-- (id)initWithLevel:(Level *)level;
+- (id)initWithPath:(NSString *)path;
 - (id)get:(id)key;
 - (void)delete:(id)key;
 - (void)put:(id)value forKey:(id)key;
@@ -32,6 +19,7 @@
 /* Get the number of entries */
 - (int)count;
 /* Prefix keys with this value.  This allows for multiple indices to exist within one Level database. */
-- (const char *)keyPrefix;
+- (void)setObject:(id)newValue forKeyedSubscript:(id)key;
+- (id)objectForKeyedSubscript:(id)key;
 @end
 

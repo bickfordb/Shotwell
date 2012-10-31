@@ -1,5 +1,5 @@
 #import <Cocoa/Cocoa.h>
-#include "app/Messages.pb.h"
+#include "app/pb/Track.pb.h"
 
 // vim: set filetype=objcpp
 
@@ -12,6 +12,7 @@ extern NSString * const kDuration;
 extern NSString * const kGenre;
 extern NSString * const kID;
 extern NSString * const kIsAudio;
+extern NSString * const kIsCoverArtChecked;
 extern NSString * const kIsVideo;
 extern NSString * const kLastPlayedAt;
 extern NSString * const kPublisher;
@@ -23,12 +24,12 @@ extern NSString * const kUpdatedAt;
 extern NSString * const kYear;
 extern NSArray *allTrackKeys;
 
-
 @class Library;
-@interface Track : TrackMessage {
+@interface Track : NSObject {
+  track::Track *message_;
+  Library *library_;
 }
 
-- (bool)isAudioOrVideo;
 - (NSDictionary *)dictionary;
 
 /* Read the ID3 tag stored at URL */
@@ -36,8 +37,26 @@ extern NSArray *allTrackKeys;
 @property (copy, nonatomic, readonly) NSURL *url;
 @property (retain, nonatomic) Library *library;
 @property (copy, nonatomic) NSURL *coverArtURL;
+@property (copy) NSString *path;
+@property (copy) NSString *artist;
+@property (copy) NSString *album;
+@property (copy) NSString *genre;
+@property (copy) NSString *publisher;
+@property (copy) NSString *title;
+@property (copy) NSString *trackNumber;
+@property (copy) NSString *year;
+@property (copy) NSString *coverArtID;
+@property uint64_t createdAt;
+@property uint64_t duration;
+@property uint64_t lastPlayedAt;
+@property uint64_t updatedAt;
+@property uint64_t id;
+@property BOOL isAudio;
+@property BOOL isVideo;
+@property BOOL isCoverArtChecked;
 
 + (Track *)trackFromDictionary:(NSDictionary *)dict;
+- (track::Track *)message;
 @end
 
 // vim: filetype=objcpp

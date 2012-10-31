@@ -19,10 +19,7 @@
 #import "app/WebPlugin.h"
 #import "app/TableView.h"
 
-static NSString *LibraryDir();
-static NSString *LibraryPath();
-
-static NSString *LibraryDir() {
+static NSString *AppSupportPath() {
   NSArray *paths = NSSearchPathForDirectoriesInDomains(
       NSApplicationSupportDirectory,
       NSUserDomainMask,
@@ -31,14 +28,6 @@ static NSString *LibraryDir() {
   path = [path stringByAppendingPathComponent:@"Shotwell"];
   mkdir(path.UTF8String, 0755);
   return path;
-}
-
-static NSString *LibraryPath() {
-  return [LibraryDir() stringByAppendingPathComponent:@"library.db"];
-}
-
-static NSString *CoverArtPath() {
-  return [LibraryDir() stringByAppendingPathComponent:@"coverart.db"];
 }
 
 @implementation AppDelegate
@@ -168,7 +157,7 @@ static NSString *CoverArtPath() {
   [self parseDefaults];
   self.audioOutputs = [NSMutableArray array];
   self.libraries = [NSMutableArray array];
-  self.localLibrary = [[[LocalLibrary alloc] initWithDBPath:LibraryPath() coverArtPath:CoverArtPath()] autorelease];
+  self.localLibrary = [[[LocalLibrary alloc] initWithDBPath:[AppSupportPath() stringByAppendingPathComponent:@"db"]] autorelease];
   self.library = self.localLibrary;
   self.track = nil;
 
@@ -185,7 +174,7 @@ static NSString *CoverArtPath() {
   [self setupMenu];
   [self.localLibrary each:^(Track *t) {
     if (!t.url) {
-      ERROR(@"%@ is missing a URL");
+      ERROR(@"%@ is missing a URL", t);
     }
   }];
 }

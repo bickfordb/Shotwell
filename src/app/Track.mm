@@ -67,26 +67,8 @@ static NSArray *mediaExtensions = nil;
 static NSArray *ignoreExtensions = nil;
 
 @implementation Track {
-  Library *library_;
 }
-
-@synthesize album = album_;
-@synthesize artist = artist_;
-@synthesize coverArtID = coverArtID_;
-@synthesize createdAt = createdAt_;
-@synthesize duration = duration_;
 @synthesize library = library_;
-@synthesize isCoverArtChecked = isCoverArtChecked_;
-@synthesize genre = genre_;
-@synthesize isAudio = isAudio_;
-@synthesize isVideo = isVideo_;
-@synthesize lastPlayedAt = lastPlayedAt_;
-@synthesize path = path_;
-@synthesize title = title_;
-@synthesize publisher = publisher_;
-@synthesize trackNumber = trackNumber_;
-@synthesize updatedAt = updatedAt_;
-@synthesize year = year_;
 
 - (NSURL *)url {
   return [library_ urlForTrack:self];
@@ -97,7 +79,7 @@ static NSArray *ignoreExtensions = nil;
 }
 
 - (void)dealloc {
-  delete ((proto::Track *)proto_);
+  delete ((track::Track *)message_);
   [library_ release];
   [super dealloc];
 }
@@ -109,12 +91,11 @@ static NSArray *ignoreExtensions = nil;
   avfilter_register_all();
   av_register_all();
   avformat_network_init();
-  mediaExtensions = [[NSArray arrayWithObjects:@".mp3", @".ogg", @".m4a", @".aac", @".avi", @".mp4", @".fla", @".flc", @".mov", @".m4a", @".mkv", @".mpg", nil] retain];
-  ignoreExtensions = [[NSArray arrayWithObjects:@".jpg", @".nfo", @".sfv",
-                   @".torrent", @".m3u", @".diz", @".rtf", @".ds_store", @".txt", @".m3u8",
+  mediaExtensions = [@[@".mp3", @".ogg", @".m4a", @".aac", @".avi", @".mp4", @".fla", @".flc", @".mov", @".m4a", @".mkv", @".mpg"] retain];
+  ignoreExtensions = [@[@".jpg", @".nfo", @".sfv", @".torrent", @".m3u", @".diz", @".rtf", @".ds_store", @".txt", @".m3u8",
                    @".htm", @".url", @".html", @".atom", @".rss", @".crdownload", @".dmg",
                    @".zip", @".rar", @".jpeg", @".part", @".ini", @".", @".log", @".db",
-                   @".cue", @".gif", @".png", nil] retain];
+                   @".cue", @".gif", @".png"] retain];
 
   allTrackKeys = [[NSArray arrayWithObjects:
     kAlbum,
@@ -167,40 +148,43 @@ static NSArray *ignoreExtensions = nil;
     return NO;
   } else if ((object_getClass(other) == trackClass) || [other isKindOfClass:trackClass]) {
     Track *other0 = (Track *)other;
-    return other0->proto_->id() == proto_->id();
+    return other0->message_->id() == message_->id();
   } else {
     return NO;
   }
 }
 
 - (NSUInteger)hash {
-  return (NSUInteger)proto_->id();
+  return (NSUInteger)message_->id();
 }
 
 - (int)readTag {
   int ret = 0;
+  NSString *path = self.path;
+  DEBUG(@"reading tag: %@", path);
   AVFormatContext *c = NULL;
   struct stat st;
   AVDictionaryEntry *tag = NULL;
   int audioStreamIndex = -1;
-  NSString *s;
 
-  if (!path_ || !path_.length)
-    return -1;
+  if (!path || !path.length) {
+    ret = -1;
+    goto done;
+  }
 
   for (NSString *ext in ignoreExtensions) {
-    if ([path_ hasSuffix:ext]) {
-      return -1;
+    if ([path hasSuffix:ext]) {
+      ret = -10;
+      goto done;
     }
   }
 
   memset(&st, 0, sizeof(st));
-  if (stat(self.url.path.UTF8String, &st) < 0) {
+  if (!path || stat(path.UTF8String, &st) < 0) {
     ret = -2;
     goto done;
   }
-  s = self.url.isFileURL ? self.path : self.url.absoluteString;
-  if (avformat_open_input(&c, s.UTF8String, NULL, NULL) < 0) {
+  if (avformat_open_input(&c, path.UTF8String, NULL, NULL) < 0) {
     ret = -3;
     goto done;
   }
@@ -246,6 +230,7 @@ done:
     avformat_close_input(&c);
   if (c)
     avformat_free_context(c);
+  DEBUG(@"read tag result: %d", (int)ret);
   return ret;
 }
 
@@ -312,19 +297,23 @@ done:
 - (id)init {
   self = [super init];
   if (self) {
-    proto_ = new proto::Track();
-    proto_->set_updatedat(Now());
-    proto_->set_createdat(Now());
+    message_ = new track::Track();
+    message_->set_updatedat(Now());
+    message_->set_createdat(Now());
   }
   return self;
 }
 
+- (track::Track *)message {
+  return message_;
+}
+
 #define DefineStringProperty(PROTOFIELD, OBJCGETTER, OBJCSETTER) \
 - (NSString *)OBJCGETTER { \
-  if (!proto_->has_##PROTOFIELD()) { \
+  if (!message_->has_##PROTOFIELD()) { \
     return nil; \
   } \
-  std::string *s = proto_->mutable_##PROTOFIELD(); \
+  std::string *s = message_->mutable_##PROTOFIELD(); \
   NSString *ret = [[[NSString alloc] initWithBytes:s->c_str() length:s->length() encoding:NSUTF8StringEncoding] autorelease]; \
   return ret; \
 } \
@@ -333,21 +322,21 @@ done:
   if (value.length == 0) \
     value = nil; \
   if (!value) { \
-    proto_->clear_##PROTOFIELD(); \
+    message_->clear_##PROTOFIELD(); \
   } else { \
     const char *buf = [value UTF8String]; \
-    proto_->set_##PROTOFIELD(buf); \
+    message_->set_##PROTOFIELD(buf); \
   } \
 }
 
 
 #define DefineCProperty(TYPE, PROTO, OCGET, OCSET) \
 - (TYPE)OCGET { \
-  return proto_->PROTO(); \
+  return message_->PROTO(); \
 } \
 \
 - (void)OCSET:(TYPE)v { \
-  proto_->set_##PROTO(v); \
+  message_->set_##PROTO(v); \
 } \
 
 #define DefineUInt64Property(PROTO, OCGET, OCSET) DefineCProperty(UInt64, PROTO, OCGET, OCSET)

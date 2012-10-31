@@ -7,26 +7,16 @@
 // vim: set filetype=objcpp
 
 /* The number of microseconds per second */
-extern const int64_t kUSPerS;
+extern const uint64_t kUSPerS;
 
-typedef int64_t usec;
+typedef uint64_t usec;
 
 /* Get the Unix epoch time in microseconds */
 usec Now();
 
 /* Get a list of subdirectories inside of dirs */
 NSArray *GetSubDirectories(NSArray *dirs);
-
-typedef struct {
-  uint32_t sec;
-  uint32_t frac;
-} NTPTime;
-
-NTPTime NowNTPTime();
-
-int64_t TimeSpecToUSec(struct timespec t);
-int64_t ModifiedAt(NSString *path);
-
-
+uint64_t TimeSpecToUSec(struct timespec t);
+uint64_t ModifiedAt(NSString *path);
 NSString *StringToNSString(const std::string *s);
-
+void MakeDirectories(NSString *path);

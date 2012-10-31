@@ -1,17 +1,17 @@
 #import "app/Util.h"
 
-const int64_t kUSPerS = 1000000;
-const int64_t kNSPerS = 1000000000;
+const uint64_t kUSPerS = 1000000;
+const uint64_t kNSPerS = 1000000000;
 
 /* Get the current time in ultra seconds */
 
-int64_t TimeSpecToUSec(struct timespec t) {
-  int64_t ret = t.tv_nsec;
-  ret += kNSPerS * t.tv_sec;
+uint64_t TimeSpecToUSec(struct timespec t) {
+  uint64_t ret = t.tv_nsec * (kNSPerS / kUSPerS);
+  ret += kUSPerS * t.tv_sec;
   return ret;
 }
 
-int64_t Now() {
+uint64_t Now() {
   struct timeval t;
   gettimeofday(&t, NULL);
   int64_t ret = t.tv_usec;
@@ -19,12 +19,12 @@ int64_t Now() {
   return ret;
 }
 
-int64_t ModifiedAt(NSString *path) {
+uint64_t ModifiedAt(NSString *path) {
   struct stat fsStatus;
   if (stat(path.UTF8String, &fsStatus) >= 0) {
     return TimeSpecToUSec(fsStatus.st_mtimespec);
   } else {
-    return -1;
+    return 0;
   }
 }
 
@@ -44,18 +44,17 @@ NSArray *GetSubDirectories(NSArray *dirs) {
   return ret;
 }
 
-NTPTime TimeValToNTP(struct timeval t) {
-  NTPTime ret;
-  ret.sec = t.tv_sec + 0x83aa7e80;
-#define FRAC 0
-  ret.frac = (uint32_t)((double)t.tv_usec * 1e-6 * FRAC);
-  return ret;
-}
-
 NSString *StringToNSString(const std::string *s) {
   if (!s)
     return nil;
-  NSString *result = [[[NSString alloc] initWithBytes:s.c_str() length:s.length() encoding:NSUTF8StringEncoding] autorelease];
+  NSString *result = [[[NSString alloc] initWithBytes:s->c_str() length:s->length() encoding:NSUTF8StringEncoding] autorelease];
   return result;
+}
+
+void MakeDirectories(NSString *path) {
+  if (!path || [path isEqualToString:@""] || [path isEqualToString:@"/"])
+    return;
+  MakeDirectories(path.stringByDeletingLastPathComponent);
+  mkdir(path.UTF8String, 0755);
 }
 
