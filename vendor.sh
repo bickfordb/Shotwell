@@ -103,12 +103,12 @@ then
   stamp gtest
 fi
 
-if ! is_stamped chromaprint
+if ! is_stamped chromaprint0.7
 then
   echo "building chromaprint"
   scratch
-  tar xzvf ${VENDOR}/chromaprint-0.6.tar.gz
-  pushd chromaprint-0.6
+  tar xzvf ${VENDOR}/chromaprint-0.7.tar.gz
+  pushd chromaprint-0.7
   cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF .
   make 
   make install
