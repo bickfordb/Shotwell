@@ -5,4 +5,7 @@
 *.swp
 dist
 build
+cscope.out
+src/app/pb/Messages.pb.cc
+src/app/pb/Messages.pb.h
 
