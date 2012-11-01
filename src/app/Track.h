@@ -22,6 +22,8 @@ extern NSString * const kURL;
 extern NSString * const kPath;
 extern NSString * const kUpdatedAt;
 extern NSString * const kYear;
+extern NSString * const kAcoustID;
+extern NSString * const kIsAcoustIDChecked;
 extern NSArray *allTrackKeys;
 
 @class Library;
@@ -54,9 +56,12 @@ extern NSArray *allTrackKeys;
 @property BOOL isAudio;
 @property BOOL isVideo;
 @property BOOL isCoverArtChecked;
+@property BOOL isAcoustIDChecked;
+@property (copy, readonly) NSDictionary *acoustID;
 
 + (Track *)trackFromDictionary:(NSDictionary *)dict;
 - (track::Track *)message;
+- (void)refreshAcoustID;
 @end
 
 // vim: filetype=objcpp

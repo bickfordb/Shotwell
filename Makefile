@@ -240,6 +240,10 @@ chromaprint: build/chromaprint $(BUILD)/chromaprint-commands
 	#$(GDB) -f -x $(BUILD)/chromaprint-commands build/chromaprint
 	build/chromaprint ~/Music/rsynced/Beach\ House\ -\ Bloom\ \(2012\)\ -\ V0/01\ -\ Myth.mp3
 
+build/loop: build/objs/loop.o
+	$(CXX) $+ $(LDFLAGS) -o $@
 
+loop: build/loop
+	build/loop
 
 

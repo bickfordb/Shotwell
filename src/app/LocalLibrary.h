@@ -27,6 +27,7 @@ extern NSString * const kScanPathsChanged;
 - (NSData *)getCoverArt:(NSString *)coverArtID;
 - (void)scan:(NSArray *)paths;
 - (void)checkCoverArt;
+- (void)checkAcoustIDs;
 
 @property bool isITunesImported;
 @property (copy) NSArray *pathsToAutomaticallyScan;

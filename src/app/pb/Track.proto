@@ -1,5 +1,63 @@
 package track;
 
+message Artist {
+  optional string id = 1;
+  optional string name = 2;
+}
+
+message TrackInfo {
+  repeated Artist artist = 1;
+  optional uint32 position = 2;
+  optional string title = 3;
+}
+
+message Medium {
+  optional string format = 1;
+  optional uint32 position = 2;
+  optional uint32 track_count = 3;
+  repeated TrackInfo track = 4;
+}
+
+message Date {
+  optional uint32 day = 1;
+  optional uint32 month = 2;
+  optional uint32 year = 3;
+
+}
+
+message Release {
+  repeated Artist artist = 1;
+  optional string country = 2;
+  optional Date date = 3;
+  optional string id = 4;
+  optional uint32 medium_count = 5;
+  repeated Medium medium = 6;
+  optional string title = 7;
+  optional uint32 track_count = 8;
+}
+
+message ReleaseGroup {
+  optional string type = 1;
+  optional string id = 2;
+  optional string title = 3;
+  repeated Artist artist = 4;
+  repeated Release release = 5;
+}
+message Recording {
+  optional uint64 duration = 1;
+  repeated ReleaseGroup releasegroup = 2;
+  optional string title = 3;
+  optional string id = 4;
+  repeated Artist artist = 5;
+  optional uint32 sources = 6;
+
+}
+message AcoustID {
+  repeated Recording recording = 1;
+  optional double score = 2;
+  optional string id = 3;
+}
+
 message Track {
   optional uint64 id = 1;
   optional uint64 createdAt = 2;
@@ -18,17 +76,8 @@ message Track {
   optional bool isCoverArtChecked = 16;
   optional string trackNumber = 17;
   optional uint64 duration = 18;
-}
-
-message TrackTableKey {
-  optional uint64 id = 1;
-}
-
-message PathIndexKey{
-  optional string path = 1;
-}
-
-message PathIndexValue {
-  optional uint64 id = 1;
+  optional string acoustIDFingerprint = 19;
+  optional AcoustID acoustID = 20;
+  optional bool isAcoustIDChecked = 21;
 }
 

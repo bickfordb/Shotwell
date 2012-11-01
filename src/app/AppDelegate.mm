@@ -171,6 +171,7 @@ static NSString *AppSupportPath() {
   [self.localLibrary checkITunesImport];
   [self.localLibrary checkAutomaticPaths];
   [self.localLibrary checkCoverArt];
+  [self.localLibrary checkAcoustIDs];
   [self setupMenu];
   [self.localLibrary each:^(Track *t) {
     if (!t.url) {

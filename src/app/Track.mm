@@ -13,6 +13,7 @@
 #import "app/JSON.h"
 #include <objc/runtime.h>
 
+#import "app/Chromaprint.h"
 #import "app/Library.h"
 #import "app/Track.h"
 #import "app/Log.h"
@@ -24,7 +25,83 @@ extern "C" {
 #include <libavfilter/avfilter.h>
 }
 
-using namespace std;
+#define CopyString(src, sel) { \
+  if (src) { sel([((NSString *)src[key]) UTF8String]); } \
+}
+
+#define CopyUInt32(src, sel) { \
+  if (src) { sel([((NSString *)src[key]) UnsignedIntValue]); } \
+}
+
+void CopyArtist(NSDictionary *artist, track::Artist *pb) {
+  CopyString(artist[@"id"], pb->set_id);
+  CopyString(artist[@"name"], pb->set_name);
+}
+
+void CopyTrackInfo(NSDictionary *trackInfo, track::TrackInfo *pb) {
+  for (id artist in trackINfo[@"artists"]) {
+    CopyArtist(artist, pb->add_artist());
+  }
+  CopyUInt32(trackInfo[@"position"], pb->set_position);
+  CopyString(trackInfo[@"title"], pb->set_title);
+}
+
+void CopyMedium(NSDictionary *medium, track::Medium *pb) {
+  CopyString(medium[@"format"], pb->set_format);
+  CopyUInt32(medium[@"position"], pb->set_position);
+  CopyUInt32(medium[@"track_count"], pb->set_track_count);
+  for (id track in medium[@"tracks"])
+    CopyTrackInfo(track, medium->add_track_info());
+}
+
+void CopyRelease(NSDictionary *release, track::Release *pb) {
+  for (id artist in release[@"artists"])
+    CopyArtist(artist, pb->add_artist());
+  CopyString(release[@"country"], pb->set_country);
+  CopyUInt32(release[@"date"][@"day"], pb->mutable_date()->set_day);
+  CopyUInt32(release[@"date"][@"month"], pb->mutable_date()->set_month);
+  CopyUInt32(release[@"date"][@"year"], pb->mutable_date()->set_year);
+  CopyString(release[@"id"], pb->set_id);
+  CopyUInt32(release[@"medium_count"], pb->set_medium_count);
+  CopyString(release[@"title"], pb->set_title);
+  CopyUInt32(release[@"track_count"], pb->set_track_count);
+}
+
+void CopyReleaseGroup(NSDictionary *rg, track::ReleaseGroup *pb) {
+  CopyString(rg[@"type"], pb->set_type);
+  CopyString(rg[@"id"], pb->set_id);
+  CopyString(rg[@"title"], pb->set_title);
+  for (id artist in rg[@"artists"])
+    CopyArtist(artist, pb->add_artist());
+  for (id release in rg[@"releases"])
+    CopyRelease(release, pb->add_release());
+}
+
+void CopyRecording(NSDictionary *recording, track::Recording *pb) {
+  if (recording[@"duration"])
+    pb->set_duration([recording[@"duration"] unsignedLongLongValue]);
+  for (NSDictionary *rg in recording[@"releasegroups"]) {
+    CopyReleaseGroup(rg, pb->add_releasegroup());
+  }
+  if (recording[@"title"])
+    pb->set_title([recording[@"title"] UTF8String]);
+  if (recording[@"id"])
+    pb->set_id([recording[@"id"] UTF8String]);
+  for (id artist in recording[@"artists"])
+    CopyArtist(artist, pb->add_artist());
+  if (recording[@"sources"])
+    pb->set_sources([recording[@"sources"] unsignedIntValue]);
+}
+
+void CopyAcoustID(NSDictionary *acoustID, track::AcoustID *pb) {
+  if (acoustID[@"id"])
+    pb->set_id([acoustID[@"id"] UTF8String]);
+  if (acoustID[@"score"])
+    pb->set_score([acoustID[@"score"] doubleValue]);
+  for (NSDictionary *recording in acoustID[@"recordings"]) {
+    CopyRecording(recording, pb->add_recording());
+  }
+}
 
 static Class trackClass;
 
@@ -36,12 +113,13 @@ static NSString *ToUTF8(const char *src) {
     return @"?";
   }
   UnicodeString us(src, strlen(src), src_encoding);
-  string dst;
-  StringByteSink<string> sbs(&dst);
+  std::string dst;
+  StringByteSink<std::string> sbs(&dst);
   us.toUTF8(sbs);
   return [NSString stringWithUTF8String:dst.c_str()];
 }
 
+NSString * const kAcoustID = @"acoustID";
 NSString * const kAlbum = @"album";
 NSString * const kArtist = @"artist";
 NSString * const kCreatedAt = @"createdAt";
@@ -50,6 +128,7 @@ NSString * const kDuration = @"duration";
 NSString * const kIsCoverArtChecked = @"isCoverArtChecked";
 NSString * const kGenre = @"genre";
 NSString * const kID = @"id";
+NSString * const kIsAcoustIDChecked = @"isAcoustIDChecked";
 NSString * const kIsAudio = @"isAudio";
 NSString * const kIsVideo = @"isVideo";
 NSString * const kLastPlayedAt = @"lastPlayedAt";
@@ -97,7 +176,8 @@ static NSArray *ignoreExtensions = nil;
                    @".zip", @".rar", @".jpeg", @".part", @".ini", @".", @".log", @".db",
                    @".cue", @".gif", @".png"] retain];
 
-  allTrackKeys = [[NSArray arrayWithObjects:
+  allTrackKeys = @[
+    kAcoustID,
     kAlbum,
     kArtist,
     kCoverArtID,
@@ -105,6 +185,7 @@ static NSArray *ignoreExtensions = nil;
     kDuration,
     kGenre,
     kID,
+    kIsAcoustIDChecked,
     kIsAudio,
     kIsCoverArtChecked,
     kIsVideo,
@@ -114,16 +195,17 @@ static NSArray *ignoreExtensions = nil;
     kTitle,
     kTrackNumber,
     kUpdatedAt,
-    kYear,
-    nil] retain];
-  tagKeyToTrackKey = [[NSDictionary dictionaryWithObjectsAndKeys:
-    kArtist, @"artist",
-    kAlbum, @"album",
-    kYear, @"year",
-    kTitle, @"title",
-    kYear, @"date",
-    kGenre, @"genre",
-    kTrackNumber, @"track", nil] retain];
+    kYear];
+  [allTrackKeys retain];
+  tagKeyToTrackKey = @{
+    @"artist": kArtist,
+    @"album": kAlbum,
+    @"year": kYear,
+    @"title": kTitle,
+    @"date": kYear,
+    @"genre": kGenre};
+  [tagKeyToTrackKey retain];
+
 }
 
 - (NSString *)description {
@@ -318,7 +400,7 @@ done:
   return ret; \
 } \
 \
-- (void) OBJCSETTER :(NSString *)value { \
+- (void)OBJCSETTER:(NSString *)value { \
   if (value.length == 0) \
     value = nil; \
   if (!value) { \
@@ -328,7 +410,6 @@ done:
     message_->set_##PROTOFIELD(buf); \
   } \
 }
-
 
 #define DefineCProperty(TYPE, PROTO, OCGET, OCSET) \
 - (TYPE)OCGET { \
@@ -341,7 +422,6 @@ done:
 
 #define DefineUInt64Property(PROTO, OCGET, OCSET) DefineCProperty(UInt64, PROTO, OCGET, OCSET)
 #define DefineBoolProperty(PROTO, OCGET, OCSET) DefineCProperty(BOOL, PROTO, OCGET, OCSET)
-
 
 DefineStringProperty(album, album, setAlbum)
 DefineStringProperty(artist, artist, setArtist)
@@ -356,8 +436,26 @@ DefineUInt64Property(id, id, setId)
 DefineBoolProperty(isaudio, isAudio, setIsAudio)
 DefineBoolProperty(isvideo, isVideo, setIsVideo)
 DefineBoolProperty(iscoverartchecked, isCoverArtChecked, setIsCoverArtChecked)
+DefineBoolProperty(isacoustidchecked, isAcoustIDChecked, setIsAcoustIDChecked)
 DefineUInt64Property(createdat, createdAt, setCreatedAt)
 DefineUInt64Property(duration, duration, setDuration)
 
+- (void)refreshAcoustID {
+  DEBUG(@"checking acoustic id for: %@", self.path);
+  NSDictionary *acoustID = nil;
+  int st = ChromaprintGetAcoustID(nil, self.path, &acoustID, nil);
+  if (st) {
+    ERROR(@"got acoustid status: %d", st);
+  } else {
+    DEBUG(@"Got acoust ID: %@", acoustID);
+  }
+  if (acoustID) {
+    CopyAcoustID(acoustID, message_->mutable_acoustid());
+  }
+}
+
+- (NSDictionary *)acoustID {
+  return @{};
+}
 
 @end

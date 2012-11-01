@@ -167,6 +167,7 @@ static void OnFileEvent(
   dispatch_queue_t indexQueue_;
   dispatch_queue_t pruneQueue_;
   dispatch_queue_t coverArtQueue_;
+  dispatch_queue_t acoustIDQueue_;
   int numCoverArtQueries_;
   FSEventStreamRef fsEventStreamRef_;
   NSMutableSet *pendingCoverArtTracks_;
@@ -179,6 +180,7 @@ static void OnFileEvent(
     indexQueue_ = dispatch_queue_create("shotwell.index", NULL);
     pruneQueue_ = dispatch_queue_create("shotwell.prune", NULL);
     coverArtQueue_ = dispatch_queue_create("shotwell.cover-art", NULL);
+    acoustIDQueue_ = dispatch_queue_create("shotwell.acoustid", NULL);
 
     pathIndex_ = [[PathIndex alloc] initWithPath:[dbPath stringByAppendingPathComponent:@"paths"]];
     trackTable_ = [[TrackTable alloc] initWithPath:[dbPath stringByAppendingPathComponent:@"tracks"]];
@@ -286,6 +288,7 @@ static void OnFileEvent(
   dispatch_release(coverArtQueue_);
   dispatch_release(indexQueue_);
   dispatch_release(pruneQueue_);
+  dispatch_release(acoustIDQueue_);
   if (fsEventStreamRef_) {
     FSEventStreamStop(fsEventStreamRef_);
     FSEventStreamInvalidate(fsEventStreamRef_);
@@ -511,5 +514,16 @@ static void OnFileEvent(
   NSString *path = t.path;
   return path ? [NSURL fileURLWithPath:path] : nil;
 }
+
+- (void)checkAcoustIDs {
+  dispatch_async(acoustIDQueue_, ^{
+    [self each:^(Track *t) {
+      if (!t.isAcoustIDChecked) {
+        [t refreshAcoustID];
+      }
+    }];
+  });
+}
+
 @end
 

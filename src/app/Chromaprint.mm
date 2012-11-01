@@ -1,4 +1,6 @@
 #include "app/Chromaprint.h"
+#include "app/Log.h"
+#include "app/Util.h"
 
 #include <stdio.h>
 extern "C" {
@@ -6,6 +8,9 @@ extern "C" {
 #include <libavformat/avformat.h>
 #include <chromaprint.h>
 }
+
+uint64_t lastLookupAt = 0;
+const uint64_t kMinLookupInterval = 400000;
 
 size_t kBufferSize = AVCODEC_MAX_AUDIO_FRAME_SIZE * 2;
 size_t kMaxLength = 60;
@@ -22,9 +27,6 @@ int ChromaprintFingerprint(NSString *path, NSString **fingerprint, int *duration
   AVCodec *codec = NULL;
   AVStream *stream = NULL;
   AVPacket packet, packetTemp;
-#ifdef HAVE_AV_AUDIO_CONVERT
-  AVAudioConvert *convert_ctx = NULL;
-#endif
   int16_t *buffer;
   AVFrame *frame = avcodec_alloc_frame();
   avcodec_get_frame_defaults(frame);
@@ -150,13 +152,33 @@ done:
   return ok;
 }
 
-NSDictionary *AcousticIDLookup(NSString *apiKey, NSString *fingerprint, int duration) {
+NSDictionary *AcoustIDLookup(NSString *apiKey, NSString *fingerprint, int duration, NSArray *fields) {
   id result = nil;
+  uint64_t lastLookupAge = Now() - lastLookupAt;
+  if (kMinLookupInterval > lastLookupAge) {
+    uint64_t sleepAmt = kMinLookupInterval - lastLookupAge;
+    DEBUG(@"sleeping for %llu", sleepAmt);
+    usleep(sleepAmt);
+  }
+
+  lastLookupAt = Now();
+  if (!fields) {
+    fields = @[
+      @"recordings",
+      @"releases",
+      @"releasegroups",
+      @"sources",
+      @"tracks",
+      @"puids",
+      @"usermeta"];
+  }
   NSHTTPURLResponse *response = nil;
   NSError *error = nil;
-  if (!apiKey) apiKey = kChromaprintAPIKey;
+  if (!apiKey)
+    apiKey = kChromaprintAPIKey;
 
-  NSString *s = [NSString stringWithFormat:@"http://api.acoustid.org/v2/lookup?duration=%d&fingerprint=%@&client=%@", duration, fingerprint, apiKey];
+  NSString *meta = fields ? [fields componentsJoinedByString:@"+"] : @"";
+  NSString *s = [NSString stringWithFormat:@"http://api.acoustid.org/v2/lookup?meta=%@&duration=%d&fingerprint=%@&client=%@", meta, duration, fingerprint, apiKey];
   NSURL *url = [NSURL URLWithString:s];
   NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:1.0];
   NSData *body = [NSURLConnection sendSynchronousRequest:req returningResponse:&response error:&error];
@@ -169,25 +191,30 @@ NSDictionary *AcousticIDLookup(NSString *apiKey, NSString *fingerprint, int dura
   return result;
 }
 
-int ChromaprintGetAcousticID(NSString *apiKey, NSString *path, NSString **acousticID, double *score) {
-    int st = 0;
+int ChromaprintGetAcoustID(NSString *apiKey, NSString *path, NSDictionary **acoustID, NSArray *fields) {
+    int st = -2000;
     int duration = 0;
     NSString *key = nil;
     st = ChromaprintFingerprint(path, &key, &duration);
     if (st)
       return st;
-    NSDictionary *response = AcousticIDLookup(@"bCv9x45K", key, duration);
+    NSDictionary *response = AcoustIDLookup(apiKey, key, duration, fields);
     if (!response) {
       return -1000;
     }
+    DEBUG(@"response: %@", response);
+
     if ([response[@"status"] isEqualToString:@"ok"]) {
       NSArray *results = response[@"results"];
       for (NSDictionary *i in results) {
-        *score = [i[@"score"] doubleValue];
-        *acousticID = i[@"id"];
+        *acoustID = i;
+        st = 0;
         break;
       }
+    } else {
+      DEBUG(@"received unexpected error response: %@", response);
+      st = -400;
     }
-    return 0;
+    return st;
 }
 

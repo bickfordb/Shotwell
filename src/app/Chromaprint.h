@@ -4,5 +4,5 @@
 
 extern NSString *kChromaprintAPIKey;
 int ChromaprintFingerprint(NSString *url, NSString **fingerprint, int *duration);
-NSDictionary *AcousticIDLookup(NSString *apiKey, NSString *fingerprint, int duration);
-int ChromaprintGetAcousticID(NSString *apiKey, NSString *path, NSString **acousticID, double *score);
+NSDictionary *AcoustIDLookup(NSString *apiKey, NSString *fingerprint, int duration, NSArray *fields);
+int ChromaprintGetAcoustID(NSString *apiKey, NSString *path, NSDictionary **acoustID, NSArray *fields);
