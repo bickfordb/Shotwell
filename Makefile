@@ -31,6 +31,7 @@ CXXFLAGS += -ggdb
 CXXFLAGS += -O0
 LDFLAGS += -L$(VENDOR_BUILD)/lib
 LDFLAGS += -lcurl
+LDFLAGS += -lchromaprint
 LDFLAGS += -lleveldb
 LDFLAGS += -ljansson
 LDFLAGS += -levent
@@ -51,6 +52,7 @@ LDFLAGS += -lcrypto
 LDFLAGS += -lswscale
 LDFLAGS += -lsnappy
 LDFLAGS += -lz
+LDFLAGS += -framework Accelerate
 LDFLAGS += -framework AppKit
 LDFLAGS += -framework AudioToolbox
 LDFLAGS += -framework AudioUnit
@@ -222,4 +224,22 @@ dist: dist/$(DMG)
 
 clean-application-support:
 	rm -rf ~/Library/Application\ Support/Shotwell
+
+build/chromaprint: build/objs/app/Chromaprint.o build/objs/Chroma.o
+	$(call create_parent_dir)
+	$(CXX) $+ $(LDFLAGS) -o $@
+
+$(BUILD)/chromaprint-commands:
+	echo break malloc_error_break >$@
+	echo break objc_exception_throw >>$@
+	echo handle SIGPIPE nostop noprint pass >>$@
+	echo 'set args "$(HOME)/Music/rsynced/Beach House - Bloom (2012) - V0/01 - Myth.mp3"' >>$@
+	echo run >>$@
+
+chromaprint: build/chromaprint $(BUILD)/chromaprint-commands
+	#$(GDB) -f -x $(BUILD)/chromaprint-commands build/chromaprint
+	build/chromaprint ~/Music/rsynced/Beach\ House\ -\ Bloom\ \(2012\)\ -\ V0/01\ -\ Myth.mp3
+
+
+
 

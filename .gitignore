@@ -8,4 +8,5 @@ build
 cscope.out
 src/app/pb/Messages.pb.cc
 src/app/pb/Messages.pb.h
+vendor/chromaprint-0.7
 

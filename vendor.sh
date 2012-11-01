@@ -109,11 +109,17 @@ then
   scratch
   tar xzvf ${VENDOR}/chromaprint-0.7.tar.gz
   pushd chromaprint-0.7
-  cmake -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF .
+  LD_LIBRARY_PATH=${INSTALL_PREFIX}/lib:/usr/lib cmake \
+    -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} \
+    -DBUILD_STATIC_LIBS=ON \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DBUILD_EXAMPLES=ON \
+    -DEXTRA_LIBS="-framework Accelerate -lbz2 -lz -framework Cocoa -framework CoreServices -framework VideoDecodeAcceleration -framework QuartzCore -framework Quartz -L/usr/lib -L/usr/local/lib" \
+    . 
   make 
   make install
   popd
-  stamp chromaprint
+  stamp chromaprint0.7
 fi
 
 if ! is_stamped protobuf
