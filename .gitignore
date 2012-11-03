@@ -6,7 +6,7 @@
 dist
 build
 cscope.out
-src/app/pb/Messages.pb.cc
-src/app/pb/Messages.pb.h
+src/app/pb/Track.pb.cc
+src/app/pb/Track.pb.h
 vendor/chromaprint-0.7
 

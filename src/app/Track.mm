@@ -26,11 +26,11 @@ extern "C" {
 }
 
 #define CopyString(src, sel) { \
-  if (src) { sel([((NSString *)src[key]) UTF8String]); } \
+  if (src && [src isKindOfClass:[NSString class]]) { sel([((NSString *)src) UTF8String]); } \
 }
 
 #define CopyUInt32(src, sel) { \
-  if (src) { sel([((NSString *)src[key]) UnsignedIntValue]); } \
+  if (src && [src isKindOfClass:[NSNumber class]]) { sel([((NSNumber *)src) unsignedIntValue]); } \
 }
 
 void CopyArtist(NSDictionary *artist, track::Artist *pb) {
@@ -39,7 +39,7 @@ void CopyArtist(NSDictionary *artist, track::Artist *pb) {
 }
 
 void CopyTrackInfo(NSDictionary *trackInfo, track::TrackInfo *pb) {
-  for (id artist in trackINfo[@"artists"]) {
+  for (id artist in trackInfo[@"artists"]) {
     CopyArtist(artist, pb->add_artist());
   }
   CopyUInt32(trackInfo[@"position"], pb->set_position);
@@ -49,9 +49,9 @@ void CopyTrackInfo(NSDictionary *trackInfo, track::TrackInfo *pb) {
 void CopyMedium(NSDictionary *medium, track::Medium *pb) {
   CopyString(medium[@"format"], pb->set_format);
   CopyUInt32(medium[@"position"], pb->set_position);
-  CopyUInt32(medium[@"track_count"], pb->set_track_count);
+  CopyUInt32(medium[@"track_count"], pb->set_trackcount);
   for (id track in medium[@"tracks"])
-    CopyTrackInfo(track, medium->add_track_info());
+    CopyTrackInfo(track, pb->add_trackinfo());
 }
 
 void CopyRelease(NSDictionary *release, track::Release *pb) {
@@ -62,9 +62,12 @@ void CopyRelease(NSDictionary *release, track::Release *pb) {
   CopyUInt32(release[@"date"][@"month"], pb->mutable_date()->set_month);
   CopyUInt32(release[@"date"][@"year"], pb->mutable_date()->set_year);
   CopyString(release[@"id"], pb->set_id);
-  CopyUInt32(release[@"medium_count"], pb->set_medium_count);
+  CopyUInt32(release[@"medium_count"], pb->set_mediumcount);
+  for (id i in release[@"mediums"]) {
+    CopyMedium(i, pb->add_medium());
+  }
   CopyString(release[@"title"], pb->set_title);
-  CopyUInt32(release[@"track_count"], pb->set_track_count);
+  CopyUInt32(release[@"track_count"], pb->set_trackcount);
 }
 
 void CopyReleaseGroup(NSDictionary *rg, track::ReleaseGroup *pb) {
@@ -78,29 +81,22 @@ void CopyReleaseGroup(NSDictionary *rg, track::ReleaseGroup *pb) {
 }
 
 void CopyRecording(NSDictionary *recording, track::Recording *pb) {
-  if (recording[@"duration"])
-    pb->set_duration([recording[@"duration"] unsignedLongLongValue]);
-  for (NSDictionary *rg in recording[@"releasegroups"]) {
-    CopyReleaseGroup(rg, pb->add_releasegroup());
-  }
-  if (recording[@"title"])
-    pb->set_title([recording[@"title"] UTF8String]);
-  if (recording[@"id"])
-    pb->set_id([recording[@"id"] UTF8String]);
+  CopyUInt32(recording[@"duration"], pb->set_duration);
+  for (id i in recording[@"releasegroups"])
+    CopyReleaseGroup(i, pb->add_releasegroup());
+  CopyString(recording[@"title"], pb->set_title);
+  CopyString(recording[@"id"], pb->set_id);
   for (id artist in recording[@"artists"])
     CopyArtist(artist, pb->add_artist());
-  if (recording[@"sources"])
-    pb->set_sources([recording[@"sources"] unsignedIntValue]);
+  CopyUInt32(recording[@"sources"], pb->set_sources);
 }
 
 void CopyAcoustID(NSDictionary *acoustID, track::AcoustID *pb) {
-  if (acoustID[@"id"])
-    pb->set_id([acoustID[@"id"] UTF8String]);
+  CopyString(acoustID[@"id"], pb->set_id);
   if (acoustID[@"score"])
     pb->set_score([acoustID[@"score"] doubleValue]);
-  for (NSDictionary *recording in acoustID[@"recordings"]) {
-    CopyRecording(recording, pb->add_recording());
-  }
+  for (id i in acoustID[@"recordings"])
+    CopyRecording(i, pb->add_recording());
 }
 
 static Class trackClass;
@@ -441,6 +437,9 @@ DefineUInt64Property(createdat, createdAt, setCreatedAt)
 DefineUInt64Property(duration, duration, setDuration)
 
 - (void)refreshAcoustID {
+  if (true) {
+    return;
+  }
   DEBUG(@"checking acoustic id for: %@", self.path);
   NSDictionary *acoustID = nil;
   int st = ChromaprintGetAcoustID(nil, self.path, &acoustID, nil);
@@ -451,7 +450,10 @@ DefineUInt64Property(duration, duration, setDuration)
   }
   if (acoustID) {
     CopyAcoustID(acoustID, message_->mutable_acoustid());
+    std::string msg = message_->DebugString();
+    INFO(@"after parsing: %s", msg.c_str());
   }
+
 }
 
 - (NSDictionary *)acoustID {

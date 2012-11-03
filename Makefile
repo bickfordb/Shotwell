@@ -99,6 +99,7 @@ program: $(RESOURCES_DIR)/en.lproj/MainMenu.nib
 $(BUILD)/pb: src/app/pb/Track.proto
 	cd src/app/pb && \
 		$(PROTOC) --cpp_out=. Track.proto
+	$(call create_parent_dir)
 	touch $@
 
 $(BUILD)/deps/%.d: src/%.mm $(BUILD)/pb $(VENDOR)
@@ -108,7 +109,6 @@ $(BUILD)/deps/%.d: src/%.mm $(BUILD)/pb $(VENDOR)
 %/.dir:
 	$(create_parent_dir)
 	touch $@
-
 
 # This will force the .d files to build.
 -include $(DEPS)
