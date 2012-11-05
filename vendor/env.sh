@@ -1,6 +1,5 @@
-export BUILDROOT=$PROJECTROOT/vendor/build
+export BUILDROOT=$VENDOR/build
 export SCRATCH=${BUILDROOT}/scratch
-export VENDOR=$PROJECTROOT/vendor
 export INSTALL_PREFIX=${BUILDROOT}
 export STAMP=${BUILDROOT}/stamp
 export CFLAGS="-ggdb -O3 ${CFLAGS}"

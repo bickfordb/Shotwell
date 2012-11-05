@@ -5,7 +5,7 @@
 
 set -e
 x=$(dirname -- ${0})
-export PROJECTROOT=$(cd $x; echo $PWD)
+export VENDOR=$(cd $x; echo $PWD)
 . ./env.sh
 
 function is_stamped { 
@@ -31,7 +31,6 @@ mkdir -p \
   ${INSTALL_PREFIX}/share \
   ${INSTALL_PREFIX}/sbin
 
-
 if ! is_stamped libav 
 then
     scratch
@@ -42,6 +41,17 @@ then
     make install
     stamp libav
 fi  
+
+if ! is_stamped snappy
+then
+  echo building snappy
+  tar xzvf ${VENDOR}/snappy-1.0.5.tar.gz
+  cd snappy-1.0.5
+  ./configure --prefix=${INSTALL_PREFIX} --enable-static
+  make
+  make install
+  stamp snappy
+fi
 
 if ! is_stamped leveldb
 then
@@ -147,6 +157,4 @@ then
   popd
   stamp curl
 fi
-
-stamp vendor
 

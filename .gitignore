@@ -9,4 +9,9 @@ cscope.out
 src/app/pb/Track.pb.cc
 src/app/pb/Track.pb.h
 vendor/chromaprint-0.7
+Makefile
+CMakeCache.txt
+CMakeFiles
+TODO
+
 

@@ -1,6 +1,5 @@
 //
 //  main.m
-//  MicroTone
 //
 //  Created by Brandon Bickford on 11/10/11.
 //  Copyright 2011 __MyCompanyName__. All rights reserved.
