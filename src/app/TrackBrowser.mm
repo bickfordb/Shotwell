@@ -1,6 +1,7 @@
 #import "app/AppDelegate.h"
 #import "app/Enum.h"
 #import "app/Log.h"
+#import "app/MicroSecondsToDate.h"
 #import "app/NSNumberTimeFormat.h"
 #import "app/Pthread.h"
 #import "app/Search.h"
@@ -172,7 +173,6 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
       options:nil];
     durationColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kDuration ascending:YES comparator:DefaultComparison];
 
-
     NSTableColumn *yearColumn = [[[NSTableColumn alloc] initWithIdentifier:kYear] autorelease];
     [yearColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.year"
       options:nil];
@@ -181,6 +181,15 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
     NSTableColumn *pathColumn = [[[NSTableColumn alloc] initWithIdentifier:kPath] autorelease];
     [pathColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.path" options:nil];
     pathColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kPath ascending:YES comparator:StandardComparison];
+
+    NSTableColumn *createdAtColumn = [[[NSTableColumn alloc] initWithIdentifier:kCreatedAt] autorelease];
+    [createdAtColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.createdAt"
+      options:@{NSValueTransformerBindingOption: [[MicroSecondsToDate alloc] init]}];
+    createdAtColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kCreatedAt ascending:YES comparator:DefaultComparison];
+
+    NSTableColumn *updatedAtColumn = [[[NSTableColumn alloc] initWithIdentifier:kUpdatedAt] autorelease];
+    [updatedAtColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.updatedAt" options:@{NSValueTransformerBindingOption: [[MicroSecondsToDate alloc] init]}];
+    updatedAtColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kUpdatedAt ascending:YES comparator:DefaultComparison];
 
     self.tableView.sortDescriptors = [NSArray arrayWithObjects:artistColumn.sortDescriptorPrototype, albumColumn.sortDescriptorPrototype, trackNumberColumn.sortDescriptorPrototype, titleColumn.sortDescriptorPrototype, pathColumn.sortDescriptorPrototype, nil];
 
@@ -197,33 +206,20 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
     [yearColumn setWidth:50];
     [durationColumn setWidth:50];
     [pathColumn setWidth:1000];
+    [updatedAtColumn setWidth:200];
+    [createdAtColumn setWidth:200];
 
     [[statusColumn headerCell] setStringValue:@""];
     [[artistColumn headerCell] setStringValue:@"Artist"];
-    [[artistColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
     [[albumColumn headerCell] setStringValue:@"Album"];
-    [[albumColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
     [[titleColumn headerCell] setStringValue:@"Title"];
-    [[titleColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
     [[yearColumn headerCell] setStringValue:@"Year"];
-    [[yearColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
     [[genreColumn headerCell] setStringValue:@"Genre"];
-    [[genreColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
     [[durationColumn headerCell] setStringValue:@"Duration"];
-    [[durationColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
     [[trackNumberColumn headerCell] setStringValue:@"#"];
-    [[trackNumberColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
     [[pathColumn headerCell] setStringValue:@"URL"];
-    [[pathColumn headerCell] setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
-
-    [[artistColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
-    [[albumColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
-    [[titleColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
-    [[genreColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
-    [[durationColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
-    [[yearColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
-    [[pathColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
-    [[trackNumberColumn dataCell] setFont:[NSFont systemFontOfSize:kTrackFontSize]];
+    [[createdAtColumn headerCell] setStringValue:@"Created"];
+    [[updatedAtColumn headerCell] setStringValue:@"Updated"];
 
     [self.tableView addTableColumn:statusColumn];
     [self.tableView addTableColumn:trackNumberColumn];
@@ -234,6 +230,18 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
     [self.tableView addTableColumn:durationColumn];
     [self.tableView addTableColumn:genreColumn];
     [self.tableView addTableColumn:pathColumn];
+    [self.tableView addTableColumn:createdAtColumn];
+    [self.tableView addTableColumn:updatedAtColumn];
+
+    for (NSTableColumn *column in self.tableView.tableColumns) {
+      NSCell *dataCell = [column dataCell];
+      NSCell *headerCell = [column headerCell];
+      [headerCell setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
+      if ([dataCell isKindOfClass:[NSTextFieldCell class]]) {
+        [dataCell setFont:[NSFont systemFontOfSize:kTrackFontSize]];
+      }
+    }
+
     // embed the table view in the scroll view, and add the scroll view
     // to our window.
 
