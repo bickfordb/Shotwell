@@ -78,6 +78,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -iquote ${PROJECT_SOURCE_DIR}/src")
 # Resources
 file(GLOB appResources
   src/assets/*.png
+  src/assets/*.icns
   src/assets/*.pdf
   src/assets/Plugins/Marquee/*.js
   src/assets/Plugins/Marquee/*.html
