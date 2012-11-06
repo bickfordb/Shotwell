@@ -14,7 +14,7 @@ uint64_t TimeSpecToUSec(struct timespec t) {
 uint64_t Now() {
   struct timeval t;
   gettimeofday(&t, NULL);
-  int64_t ret = t.tv_usec;
+  uint64_t ret = t.tv_usec;
   ret += t.tv_sec * kUSPerS;
   return ret;
 }

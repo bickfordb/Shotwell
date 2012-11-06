@@ -2,6 +2,7 @@
 #import "app/Enum.h"
 #import "app/Log.h"
 #import "app/MicroSecondsToDate.h"
+#import "app/MicroSecondsToHMS.h"
 #import "app/NSNumberTimeFormat.h"
 #import "app/Pthread.h"
 #import "app/Search.h"
@@ -142,105 +143,112 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
     [tableMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"c"];
     [tableMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:@""];
     self.tableView.menu = tableMenu;
-
-    NSTableColumn *statusColumn = [[[NSTableColumn alloc] initWithIdentifier:kStatus] autorelease];
-    NSTableColumn *artistColumn = [[[NSTableColumn alloc] initWithIdentifier:kArtist] autorelease];
-    [artistColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.artist" options:nil];
-    artistColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kArtist ascending:YES comparator:StandardComparison];
-    NSTableColumn *albumColumn = [[[NSTableColumn alloc] initWithIdentifier:kAlbum] autorelease];
-    [albumColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.album"
-      options:nil];
-    albumColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kAlbum ascending:YES comparator:StandardComparison];
-
-    NSTableColumn *titleColumn = [[[NSTableColumn alloc] initWithIdentifier:kTitle] autorelease];
-    [titleColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.title"
-      options:nil];
-    titleColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kTitle ascending:YES comparator:StandardComparison];
-
-    NSTableColumn *trackNumberColumn = [[[NSTableColumn alloc] initWithIdentifier:kTrackNumber] autorelease];
-    [trackNumberColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.trackNumber"
-      options:nil];
-    trackNumberColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kTrackNumber ascending:YES comparator:StandardComparison];
-
-    NSTableColumn *genreColumn = [[[NSTableColumn alloc] initWithIdentifier:kGenre] autorelease];
-    [genreColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.genre"
-      options:nil];
-    genreColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kGenre ascending:YES comparator:StandardComparison];
-
-
-    NSTableColumn *durationColumn = [[[NSTableColumn alloc] initWithIdentifier:kDuration] autorelease];
-    [durationColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.duration.formatSeconds"
-      options:nil];
-    durationColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kDuration ascending:YES comparator:DefaultComparison];
-
-    NSTableColumn *yearColumn = [[[NSTableColumn alloc] initWithIdentifier:kYear] autorelease];
-    [yearColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.year"
-      options:nil];
-    yearColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kYear ascending:YES comparator:StandardComparison];
-
-    NSTableColumn *pathColumn = [[[NSTableColumn alloc] initWithIdentifier:kPath] autorelease];
-    [pathColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.path" options:nil];
-    pathColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kPath ascending:YES comparator:StandardComparison];
-
-    NSTableColumn *createdAtColumn = [[[NSTableColumn alloc] initWithIdentifier:kCreatedAt] autorelease];
-    [createdAtColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.createdAt"
-      options:@{NSValueTransformerBindingOption: [[MicroSecondsToDate alloc] init]}];
-    createdAtColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kCreatedAt ascending:YES comparator:DefaultComparison];
-
-    NSTableColumn *updatedAtColumn = [[[NSTableColumn alloc] initWithIdentifier:kUpdatedAt] autorelease];
-    [updatedAtColumn bind:@"value" toObject:self.tracks withKeyPath:@"arrangedObjects.updatedAt" options:@{NSValueTransformerBindingOption: [[MicroSecondsToDate alloc] init]}];
-    updatedAtColumn.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:kUpdatedAt ascending:YES comparator:DefaultComparison];
-
-    self.tableView.sortDescriptors = [NSArray arrayWithObjects:artistColumn.sortDescriptorPrototype, albumColumn.sortDescriptorPrototype, trackNumberColumn.sortDescriptorPrototype, titleColumn.sortDescriptorPrototype, pathColumn.sortDescriptorPrototype, nil];
-
     self.emptyImage = [[[NSImage alloc] initWithSize:NSMakeSize(22, 22)] autorelease];
     self.playImage = [NSImage imageNamed:@"dot"];
-    [statusColumn setDataCell:[[[NSImageCell alloc] initImageCell:emptyImage_] autorelease]];
-    [statusColumn setWidth:30];
-    [statusColumn setMaxWidth:30];
-    [artistColumn setWidth:180];
-    [albumColumn setWidth:180];
-    [titleColumn setWidth:252];
-    [trackNumberColumn setWidth:50];
-    [genreColumn setWidth:150];
-    [yearColumn setWidth:50];
-    [durationColumn setWidth:50];
-    [pathColumn setWidth:1000];
-    [updatedAtColumn setWidth:200];
-    [createdAtColumn setWidth:200];
 
-    [[statusColumn headerCell] setStringValue:@""];
-    [[artistColumn headerCell] setStringValue:@"Artist"];
-    [[albumColumn headerCell] setStringValue:@"Album"];
-    [[titleColumn headerCell] setStringValue:@"Title"];
-    [[yearColumn headerCell] setStringValue:@"Year"];
-    [[genreColumn headerCell] setStringValue:@"Genre"];
-    [[durationColumn headerCell] setStringValue:@"Duration"];
-    [[trackNumberColumn headerCell] setStringValue:@"#"];
-    [[pathColumn headerCell] setStringValue:@"URL"];
-    [[createdAtColumn headerCell] setStringValue:@"Created"];
-    [[updatedAtColumn headerCell] setStringValue:@"Updated"];
+    NSMutableDictionary *cols = [NSMutableDictionary dictionary];
+    NSArray *colSpecs = @[
+      @{@"identifier": kStatus,
+        @"dataCell": [[[NSImageCell alloc] initImageCell:emptyImage_] autorelease],
+        @"width": @30,
+        @"title": @"",
+        @"maxWidth": @30},
+      @{@"identifier": kTrackNumber,
+        @"title": @"#",
+        @"width": @50,
+        @"comparator": StandardComparison,
+        @"key": kTrackNumber},
+      @{@"identifier": kTitle,
+        @"title": @"Title",
+        @"width": @250,
+        @"comparator": StandardComparison,
+        @"key": kTitle},
+      @{@"identifier": kArtist,
+        @"title": @"Artist",
+        @"width": @180,
+        @"comparator": StandardComparison,
+        @"key": kArtist},
+      @{@"identifier": kAlbum,
+        @"title": @"Album",
+        @"width": @180,
+        @"comparator": StandardComparison,
+        @"key": kAlbum},
+      @{@"identifier": kGenre,
+        @"title": @"Genre",
+        @"width": @150,
+        @"comparator": StandardComparison,
+        @"key": kGenre},
+      @{@"identifier": kDuration,
+        @"title": @"Duration",
+        @"width": @50,
+        @"bindingOptions": @{
+          NSValueTransformerBindingOption: [[[MicroSecondsToHMS alloc] init] autorelease]},
+        @"key": kDuration},
+      @{@"identifier": kYear,
+        @"title": @"Year",
+        @"width": @50,
+        @"keyPath": @"arrangedObjects.year",
+        @"comparator": StandardComparison,
+        @"key": kYear},
+      @{@"identifier": kPath,
+        @"title": @"Path",
+        @"width": @1000,
+        @"key": kPath,
+        @"comparator": StandardComparison,
+        @"key": kPath},
+      @{@"identifier": kCreatedAt,
+        @"title": @"Created",
+        @"width": @150,
+        @"bindingOptions": @{NSValueTransformerBindingOption: [[[MicroSecondsToDate alloc] init] autorelease]},
+        @"key": kCreatedAt},
+      @{@"identifier": kUpdatedAt,
+        @"title": @"Updated",
+        @"width": @150,
+        @"bindingOptions": @{NSValueTransformerBindingOption: [[[MicroSecondsToDate alloc] init] autorelease]},
+        @"key": kUpdatedAt}];
 
-    [self.tableView addTableColumn:statusColumn];
-    [self.tableView addTableColumn:trackNumberColumn];
-    [self.tableView addTableColumn:titleColumn];
-    [self.tableView addTableColumn:artistColumn];
-    [self.tableView addTableColumn:albumColumn];
-    [self.tableView addTableColumn:yearColumn];
-    [self.tableView addTableColumn:durationColumn];
-    [self.tableView addTableColumn:genreColumn];
-    [self.tableView addTableColumn:pathColumn];
-    [self.tableView addTableColumn:createdAtColumn];
-    [self.tableView addTableColumn:updatedAtColumn];
-
-    for (NSTableColumn *column in self.tableView.tableColumns) {
-      NSCell *dataCell = [column dataCell];
-      NSCell *headerCell = [column headerCell];
+    for (NSDictionary *colSpec in colSpecs) {
+      NSTableColumn *col = [[[NSTableColumn alloc] initWithIdentifier:colSpec[@"identifier"]] autorelease];
+      if (colSpec[@"width"])
+        [col setWidth:[colSpec[@"width"] intValue]];
+      if (colSpec[@"maxWidth"])
+        [col setWidth:[colSpec[@"maxWidth"] intValue]];
+      if (colSpec[@"dataCell"])
+        [col setDataCell:colSpec[@"dataCell"]];
+      if (colSpec[@"title"])
+        [[col headerCell] setStringValue:colSpec[@"title"]];
+      NSString *keyPath = colSpec[@"keyPath"];
+      NSString *key = colSpec[@"key"];
+      if (!keyPath && key) {
+        keyPath = [NSString stringWithFormat:@"arrangedObjects.%@", key];
+      }
+      NSDictionary *bindingOptions = colSpec[@"bindingOptions"];
+      if (keyPath) {
+        [col bind:@"value" toObject:self.tracks withKeyPath:keyPath options:bindingOptions];
+      }
+      NSComparator comparator = colSpec[@"comparator"];
+      if (!comparator) comparator = DefaultComparison;
+      if (key) {
+        col.sortDescriptorPrototype = [NSSortDescriptor sortDescriptorWithKey:key ascending:YES comparator:comparator];
+      }
+      NSCell *dataCell = [col dataCell];
+      NSCell *headerCell = [col headerCell];
       [headerCell setFont:[NSFont boldSystemFontOfSize:kTrackFontSize]];
       if ([dataCell isKindOfClass:[NSTextFieldCell class]]) {
         [dataCell setFont:[NSFont systemFontOfSize:kTrackFontSize]];
       }
+      [self.tableView addTableColumn:col];
+      cols[colSpec[@"identifier"]] = col;
     }
+
+    NSMutableArray *sortDescriptors = [NSMutableArray array];
+    for (id key in @[kArtist, kAlbum, kTrackNumber, kTitle, kPath]) {
+      id sd = [cols[key] sortDescriptorPrototype];
+      if (sd) {
+        [sortDescriptors addObject:sd];
+      }
+    }
+    self.tableView.sortDescriptors = sortDescriptors;
 
     // embed the table view in the scroll view, and add the scroll view
     // to our window.

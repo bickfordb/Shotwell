@@ -73,7 +73,7 @@ set(appSources src/app/pb/Track.pb.cc ${appSources})
 file(GLOB testSources src/test/*.mm src/test/*.cc)
 
 # Make local includes work
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -iquote ${PROJECT_SOURCE_DIR}/src")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -iquote ${PROJECT_SOURCE_DIR}/src")
 
 # Resources
 file(GLOB appResources
