@@ -261,6 +261,7 @@ static NSString *AppSupportPath() {
   [self.mainWindowController.trackBrowser reload];
   if (self.track.library == self.localLibrary) {
     self.track.lastPlayedAt = Now();
+    self.track.updatedAt = Now();
     [self.localLibrary save:self.track];
   }
   if (self.track) {
