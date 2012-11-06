@@ -345,6 +345,8 @@ static void OnFileEvent(
     t = [[[Track alloc] init] autorelease];
     t.path = filename;
     t.library = self;
+    t.createdAt = Now();
+    t.updatedAt = Now();
     [t readTag];
     if (!t.title || !t.title.length) {
       t.title = filename.lastPathComponent.stringByDeletingPathExtension;

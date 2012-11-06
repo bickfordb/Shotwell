@@ -205,7 +205,12 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
         @"title": @"Updated",
         @"width": @150,
         @"bindingOptions": @{NSValueTransformerBindingOption: [[[MicroSecondsToDate alloc] init] autorelease]},
-        @"key": kUpdatedAt}];
+        @"key": kUpdatedAt},
+        @{@"identifier": kLastPlayedAt,
+        @"title": @"Last Played",
+        @"width": @150,
+        @"bindingOptions": @{NSValueTransformerBindingOption: [[[MicroSecondsToDate alloc] init] autorelease]},
+        @"key": kLastPlayedAt}];
 
     for (NSDictionary *colSpec in colSpecs) {
       NSTableColumn *col = [[[NSTableColumn alloc] initWithIdentifier:colSpec[@"identifier"]] autorelease];

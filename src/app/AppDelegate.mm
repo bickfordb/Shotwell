@@ -259,6 +259,10 @@ static NSString *AppSupportPath() {
   self.audioSink.volume = self.mainWindowController.volumeControl.level;
   [self.mainWindowController.trackBrowser seekTo:index];
   [self.mainWindowController.trackBrowser reload];
+  if (self.track.library == self.localLibrary) {
+    self.track.lastPlayedAt = Now();
+    [self.localLibrary save:self.track];
+  }
   if (self.track) {
     @synchronized(self.plugins) {
       for (Plugin *p in self.plugins) {

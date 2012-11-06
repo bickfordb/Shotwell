@@ -376,8 +376,6 @@ done:
   self = [super init];
   if (self) {
     message_ = new track::Track();
-    message_->set_updatedat(Now());
-    message_->set_createdat(Now());
   }
   return self;
 }
@@ -434,6 +432,8 @@ DefineBoolProperty(isvideo, isVideo, setIsVideo)
 DefineBoolProperty(iscoverartchecked, isCoverArtChecked, setIsCoverArtChecked)
 DefineBoolProperty(isacoustidchecked, isAcoustIDChecked, setIsAcoustIDChecked)
 DefineUInt64Property(createdat, createdAt, setCreatedAt)
+DefineUInt64Property(lastplayedat, lastPlayedAt, setLastPlayedAt)
+DefineUInt64Property(updatedat, updatedAt, setUpdatedAt)
 DefineUInt64Property(duration, duration, setDuration)
 
 - (void)refreshAcoustID {
