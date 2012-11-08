@@ -177,14 +177,19 @@ static void OnFileEvent(
 - (id)initWithDBPath:(NSString *)dbPath {
   self = [super init];
   if (self) {
+    pathIndex_ = [[PathIndex alloc] initWithPath:[dbPath stringByAppendingPathComponent:@"paths"]];
+    trackTable_ = [[TrackTable alloc] initWithPath:[dbPath stringByAppendingPathComponent:@"tracks"]];
+    coverArtTable_ = [[CoverArtTable alloc] initWithPath:[dbPath stringByAppendingPathComponent:@"cover-art"]];
+    if (!pathIndex_ || !trackTable_ || !coverArtTable_) {
+      [self release];
+      return nil;
+    }
+
     indexQueue_ = dispatch_queue_create("shotwell.index", NULL);
     pruneQueue_ = dispatch_queue_create("shotwell.prune", NULL);
     coverArtQueue_ = dispatch_queue_create("shotwell.cover-art", NULL);
     acoustIDQueue_ = dispatch_queue_create("shotwell.acoustid", NULL);
 
-    pathIndex_ = [[PathIndex alloc] initWithPath:[dbPath stringByAppendingPathComponent:@"paths"]];
-    trackTable_ = [[TrackTable alloc] initWithPath:[dbPath stringByAppendingPathComponent:@"tracks"]];
-    coverArtTable_ = [[CoverArtTable alloc] initWithPath:[dbPath stringByAppendingPathComponent:@"cover-art"]];
     pendingCoverArtTracks_ = [[NSMutableSet set] retain];
     fsEventStreamRef_ = nil;
     [self monitorPaths];
@@ -285,10 +290,14 @@ static void OnFileEvent(
 }
 
 - (void)dealloc {
-  dispatch_release(coverArtQueue_);
-  dispatch_release(indexQueue_);
-  dispatch_release(pruneQueue_);
-  dispatch_release(acoustIDQueue_);
+  if (coverArtQueue_)
+    dispatch_release(coverArtQueue_);
+  if (indexQueue_)
+    dispatch_release(indexQueue_);
+  if (pruneQueue_)
+    dispatch_release(pruneQueue_);
+  if (acoustIDQueue_)
+    dispatch_release(acoustIDQueue_);
   if (fsEventStreamRef_) {
     FSEventStreamStop(fsEventStreamRef_);
     FSEventStreamInvalidate(fsEventStreamRef_);

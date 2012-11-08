@@ -148,6 +148,12 @@ static NSString *AppSupportPath() {
   [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
+- (void)die:(NSString *)message {
+  NSAlert *alert = [NSAlert alertWithMessageText:@"An error occurred" defaultButton:nil alternateButton:nil otherButton:nil informativeTextWithFormat:@"Need to exit: %@", message];
+  [alert runModal];
+  [[NSApplication sharedApplication] terminate:self];
+}
+
 - (void)applicationDidFinishLaunching:(NSNotification *)n {
   __block AppDelegate *weakSelf = self;
   self.audioSink = [[[CoreAudioSink alloc] init] autorelease];
@@ -158,6 +164,10 @@ static NSString *AppSupportPath() {
   self.audioOutputs = [NSMutableArray array];
   self.libraries = [NSMutableArray array];
   self.localLibrary = [[[LocalLibrary alloc] initWithDBPath:[AppSupportPath() stringByAppendingPathComponent:@"db"]] autorelease];
+  if (!self.localLibrary) {
+    [self die:@"Unable to open local library."];
+
+  }
   self.library = self.localLibrary;
   self.track = nil;
 
