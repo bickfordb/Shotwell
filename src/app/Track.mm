@@ -25,6 +25,11 @@ extern "C" {
 #include <libavfilter/avfilter.h>
 }
 
+NSString * const kTrackStarted = @"TrackStarted";
+NSString * const kTrackEnded = @"TrackEnded";
+NSString * const kTrackAdded = @"TrackAdded";
+NSString * const kTrackDeleted = @"TrackDeleted";
+
 #define CopyString(src, sel) { \
   if (src && [src isKindOfClass:[NSString class]]) { sel([((NSString *)src) UTF8String]); } \
 }
@@ -136,7 +141,8 @@ NSString * const kURL = @"url";
 NSString * const kUpdatedAt = @"updatedAt";
 NSString * const kYear = @"year";
 
-NSArray *allTrackKeys = nil;
+
+static NSArray *allTrackKeys = nil;
 static NSDictionary *tagKeyToTrackKey;
 static NSArray *mediaExtensions = nil;
 static NSArray *ignoreExtensions = nil;

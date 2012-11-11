@@ -47,10 +47,8 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize artists = artists_;
 @synthesize audioOutputPopUpButton = audioOutputPopUpButton_;
 @synthesize contentView = contentView_;
-@synthesize horizontalSplit = horizontalSplit_;
 @synthesize libraryServiceBrowser = libraryServiceBrowser_;
 @synthesize loop = loop_;
-@synthesize navSplit = navSplit_;
 @synthesize navTable = navTable_;
 @synthesize playbackControls = playbackControls_;
 @synthesize playImage = playImage_;
@@ -61,7 +59,6 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize statusBarText = statusBarText_;
 @synthesize stopImage = stopImage_;
 @synthesize trackBrowser = trackBrowser_;
-@synthesize verticalSplit = verticalSplit_;
 @synthesize volumeControl = volumeControl_;
 @synthesize albumBrowser = albumBrowser_;
 @synthesize artistBrowser = artistBrowser_;
@@ -81,11 +78,8 @@ static NSString *GetWindowTitle(Track *t) {
     [self setupWindow];
     [self setupStatusBarText];
     [self setupBusyIndicator];
-//    [self setupLibrarySelect];
-//
     __block MainWindowController *weakSelf = self;
     [loop_ every:kPollMovieInterval with:^{
-      //id <AudioSource> movie = SharedAppDelegate().audioSource;
       id <AudioSink> sink = SharedAppDelegate().audioSink;
       NSImage *playImage = nil;
       if (sink) {
@@ -219,7 +213,6 @@ static NSString *GetWindowTitle(Track *t) {
   [audioOutputPopUpButton_ release];
   [contentView_ release];
   [content_ release];
-  [horizontalSplit_ release];
   [loop_ release];
   [playImage_ release];
   [playbackControls_ release];
@@ -288,7 +281,7 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)setupNav {
-  self.navTable = [[[NavTable alloc] initWithFrame:CGRectMake(0, 0, 148, self.navSplit.frame.size.height)] autorelease];
+  self.navTable = [[[NavTable alloc] initWithFrame:CGRectMake(0, 0, 148, navSplit_.frame.size.height)] autorelease];
   NavNode *root = self.navTable.rootNode;
   NavNode *library = NodeCreate();
   NodeSet(library, kNodeTitle, @"Library");
@@ -334,7 +327,7 @@ static NSString *GetWindowTitle(Track *t) {
 
   [self.navTable reload];
   [self.navTable.outlineView expandItem:library];
-  [self.navSplit addSubview:self.navTable];
+  [navSplit_ addSubview:self.navTable];
 }
 
 - (void)setupWindow {
@@ -349,49 +342,40 @@ static NSString *GetWindowTitle(Track *t) {
   splitRect.origin.y += kBottomEdgeMargin;
   splitRect.size.height -= kBottomEdgeMargin;
 
-  self.navSplit = [[[SplitView alloc] initWithFrame:splitRect] autorelease];
-  [self.navSplit setDividerStyle:NSSplitViewDividerStyleThin];
-  self.navSplit.autoresizesSubviews = YES;
-  self.navSplit.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-  self.navSplit.vertical = YES;
-  self.navSplit.focusRingType = NSFocusRingTypeNone;
-  self.navSplit.dividerColor = [NSColor grayColor];
-  self.navSplit.dividerThickness = 1.0;
-  [self.window.contentView addSubview:self.navSplit];
+  navSplit_ = [[[SplitView alloc] initWithFrame:splitRect] autorelease];
+  [navSplit_ setDividerStyle:NSSplitViewDividerStyleThin];
+  navSplit_.autoresizesSubviews = YES;
+  navSplit_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+  navSplit_.vertical = YES;
+  navSplit_.focusRingType = NSFocusRingTypeNone;
+  navSplit_.dividerColor = [NSColor grayColor];
+  navSplit_.dividerThickness = 1.0;
+  [self.window.contentView addSubview:navSplit_];
 
   [self setupNav];
 
-  self.horizontalSplit = [[[SplitView alloc] initWithFrame:splitRect] autorelease];
-  [self.horizontalSplit setDividerStyle:NSSplitViewDividerStyleThin];
-  self.horizontalSplit.autoresizesSubviews = YES;
-  self.horizontalSplit.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-  self.horizontalSplit.vertical = NO;
-  self.horizontalSplit.focusRingType = NSFocusRingTypeNone;
-  self.horizontalSplit.dividerColor = [NSColor grayColor];
-  self.horizontalSplit.dividerThickness = 1.0;
-  [self.navSplit addSubview:self.horizontalSplit];
 
   self.contentView = [[[NSView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)] autorelease];
   self.contentView.autoresizesSubviews = YES;
   self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
   self.contentView.focusRingType = NSFocusRingTypeNone;
 
-  self.verticalSplit = [[[SplitView alloc] initWithFrame:splitRect] autorelease];
-  [self.verticalSplit setDividerStyle:NSSplitViewDividerStyleThin];
-  self.verticalSplit.autoresizesSubviews = YES;
-  self.verticalSplit.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-  self.verticalSplit.focusRingType = NSFocusRingTypeNone;
-  self.verticalSplit.vertical = YES;
-  self.verticalSplit.dividerColor = [NSColor grayColor];
-  self.verticalSplit.dividerThickness = 1.0;
-  [self.verticalSplit addSubview:self.contentView];
-  [self.horizontalSplit addSubview:self.verticalSplit];
-  [self.horizontalSplit adjustSubviews];
+  verticalSplit_ = [[SplitView alloc] initWithFrame:splitRect];
+  [verticalSplit_ setDividerStyle:NSSplitViewDividerStyleThin];
+  verticalSplit_.autoresizesSubviews = YES;
+  verticalSplit_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+  verticalSplit_.focusRingType = NSFocusRingTypeNone;
+  verticalSplit_.vertical = NO;
+  verticalSplit_.dividerColor = [NSColor grayColor];
+  verticalSplit_.dividerThickness = 1.0;
+  [verticalSplit_ addSubview:self.contentView];
+  [navSplit_ addSubview:verticalSplit_];
   NSToolbar *toolbar = [[[NSToolbar alloc] initWithIdentifier:@"main"] autorelease];
   toolbar.delegate = self;
   toolbar. displayMode = NSToolbarDisplayModeIconOnly;
   self.window.toolbar = toolbar;
-
+  trackDetailView_ = [[TrackDetailView alloc] initWithFrame:CGRectMake(0, 0, 175, 175)];
+  //[verticalSplit_ addSubview:trackDetailView_];
 }
 
 - (void)setupStatusBarText {
@@ -506,10 +490,13 @@ static NSString *GetWindowTitle(Track *t) {
 - (void)trackStarted:(Track *)track {
   self.window.title = GetWindowTitle(track);
   [self.content reload];
+  [trackDetailView_ removeFromSuperview];
+  [verticalSplit_ addSubview:trackDetailView_];
 }
 
 - (void)trackEnded:(Track *)track {
   self.window.title = kDefaultWindowTitle;
+  [trackDetailView_ removeFromSuperview];
   [self.content reload];
 }
 

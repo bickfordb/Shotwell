@@ -20,3 +20,4 @@ uint64_t TimeSpecToUSec(struct timespec t);
 uint64_t ModifiedAt(NSString *path);
 NSString *StringToNSString(const std::string *s);
 void MakeDirectories(NSString *path);
+void RunOnMain(void (^block)(void));

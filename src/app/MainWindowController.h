@@ -8,6 +8,7 @@
 #import "app/TableViewController.h"
 #import "app/Track.h"
 #import "app/TrackBrowser.h"
+#import "app/TrackDetailView.h"
 #import "app/VolumeControl.h"
 #import "app/WindowController.h"
 
@@ -37,12 +38,12 @@ typedef enum {
   ProgressControl *progressControl_;
   ServicePopUpButton *audioOutputPopUpButton_;
   ServiceBrowser *libraryServiceBrowser_;
-  SplitView *horizontalSplit_;
   SplitView *verticalSplit_;
   SplitView *navSplit_;
   TrackBrowser *trackBrowser_;
   ViewController *content_;
   VolumeControl *volumeControl_;
+  TrackDetailView *trackDetailView_;
   bool isBusy_;
 }
 
@@ -75,9 +76,6 @@ typedef enum {
 @property (retain) ProgressControl *progressControl;
 @property (retain) ServicePopUpButton *audioOutputPopUpButton;
 @property (retain) ServiceBrowser *libraryServiceBrowser;
-@property (retain) SplitView *horizontalSplit;
-@property (retain) SplitView *navSplit;
-@property (retain) SplitView *verticalSplit;
 @property (retain) TrackBrowser *trackBrowser;
 @property (retain) ViewController *content;
 @property (retain) VolumeControl *volumeControl;

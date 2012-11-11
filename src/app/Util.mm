@@ -58,3 +58,7 @@ void MakeDirectories(NSString *path) {
   mkdir(path.UTF8String, 0755);
 }
 
+void RunOnMain(void (^block)(void)) {
+  dispatch_async(dispatch_get_main_queue(), [block copy]);
+}
+

@@ -80,12 +80,12 @@ file(GLOB appResources
   src/assets/*.png
   src/assets/*.icns
   src/assets/*.pdf
-  src/assets/Plugins/Marquee/*.js
-  src/assets/Plugins/Marquee/*.html
-  src/assets/Plugins/Marquee/*.css
-  src/assets/Plugins/Marquee/bootstrap-2.0.2/css/*
-  src/assets/Plugins/Marquee/bootstrap-2.0.2/img/*
-  src/assets/Plugins/Marquee/bootstrap-2.0.2/js/*)
+  src/assets/TrackDetailView/*.html
+  src/assets/TrackDetailView/*.css
+  src/assets/TrackDetailView/*.js
+  src/assets/TrackDetailView/*.png
+  src/assets/TrackDetailView/bootstrap-2.0.2/css/*.css
+  src/assets/TrackDetailView/bootstrap-2.0.2/js/*.js)
 
 foreach(f ${appResources})
   string(REPLACE "${PROJECT_SOURCE_DIR}/src/assets" "" dst ${f})

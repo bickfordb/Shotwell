@@ -122,34 +122,34 @@
 }
 
 - (void)hide {
-  NSSplitView *split = (NSSplitView *)[content_ superview];
-  [content_ removeFromSuperview];
-  [split adjustSubviews];
+//  NSSplitView *split = (NSSplitView *)[content_ superview];
+//  [content_ removeFromSuperview];
+//  [split adjustSubviews];
 }
 
 - (void)showSize:(int)size isVertical:(BOOL)isVertical {
-  [self hide];
-  NSSplitView *split;
-  AppDelegate *delegate = (AppDelegate *)[[NSApplication sharedApplication] delegate];
-  if (isVertical)
-    split = delegate.mainWindowController.verticalSplit;
-  else
-    split = delegate.mainWindowController.horizontalSplit;
-  CGRect frame = NSZeroRect;
-  CGRect firstFrame = [[split.subviews objectAtIndex:0] frame];
-  if (isVertical) {
-    frame.size.height = split.frame.size.height;
-    frame.size.width = size;
-    firstFrame.size.width -= size;
-    frame.size.height = firstFrame.size.height;
-  } else {
-    frame.size.height = size;
-    frame.size.width = firstFrame.size.width;
-    firstFrame.size.height -= size;
-  }
-  content_.frame = frame;
-  [[split.subviews objectAtIndex:0] setFrame:firstFrame];
-  [split addSubview:content_];
+//  [self hide];
+//  NSSplitView *split;
+//  AppDelegate *delegate = (AppDelegate *)[[NSApplication sharedApplication] delegate];
+//  if (isVertical)
+//    split = delegate.mainWindowController.verticalSplit;
+//  else
+//    split = delegate.mainWindowController.horizontalSplit;
+//  CGRect frame = NSZeroRect;
+//  CGRect firstFrame = [[split.subviews objectAtIndex:0] frame];
+//  if (isVertical) {
+//    frame.size.height = split.frame.size.height;
+//    frame.size.width = size;
+//    firstFrame.size.width -= size;
+//    frame.size.height = firstFrame.size.height;
+//  } else {
+//    frame.size.height = size;
+//    frame.size.width = firstFrame.size.width;
+//    firstFrame.size.height -= size;
+//  }
+//  content_.frame = frame;
+//  [[split.subviews objectAtIndex:0] setFrame:firstFrame];
+//  [split addSubview:content_];
 }
 
 - (void)log:(NSString *)something {

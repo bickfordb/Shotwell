@@ -24,7 +24,10 @@ extern NSString * const kUpdatedAt;
 extern NSString * const kYear;
 extern NSString * const kAcoustID;
 extern NSString * const kIsAcoustIDChecked;
-extern NSArray *allTrackKeys;
+extern NSString * const kTrackStarted;
+extern NSString * const kTrackEnded;
+extern NSString * const kTrackAdded;
+extern NSString * const kTrackDeleted;
 
 @class Library;
 @interface Track : NSObject {

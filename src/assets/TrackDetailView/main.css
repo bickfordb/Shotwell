@@ -27,16 +27,13 @@ div.info-field, div.track-field {
 }
 
 div.track-field {  
-  text-align: center;
   margin-top: 3px;
   margin-bottom: 3px; 
   font-style: normal;
   font-size: 9pt;
-  text-align: center;
 }
 
 div.info-field {  
-  text-align: center;
   margin-top: 3px;
   margin-bottom: 3px; 
   font-style: normal;
@@ -61,8 +58,15 @@ div.track-field:hover {
   cursor: pointer;
 }
 
+div.cover-art-container {
+  /*width: 100px;*/
+  display: inline;
+  float: left;
+}
+
 img.cover-art {
   margin: 0;
-  padding: 0;
+  padding: 5px;
+  width: 100px;
 }
 

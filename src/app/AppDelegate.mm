@@ -211,7 +211,6 @@ static NSString *AppSupportPath() {
     WebPlugin *webPlugin = [[[WebPlugin alloc] initWithURL:u] autorelease];
     [plugins_ addObject:webPlugin];
   }
-
 }
 
 - (Library *)library {
@@ -255,14 +254,19 @@ static NSString *AppSupportPath() {
 
 - (void)playTrackAtIndex:(int)index {
   if (track_) {
-    @synchronized (plugins_) {
-      for (Plugin *p in plugins_) {
-        [p trackEnded:track_];
-      }
-    }
     [self.mainWindowController trackEnded:track_];
+    [[NSNotificationCenter defaultCenter]
+      postNotificationName:kTrackEnded
+      object:self
+      userInfo:@{@"track": self.track}];
   }
   self.track = [self.mainWindowController.trackBrowser.tracks get:index];
+
+  [[NSNotificationCenter defaultCenter]
+    postNotificationName:kTrackStarted
+    object:self
+    userInfo:@{@"track": self.track}];
+
   [self.mainWindowController trackStarted:track_];
   self.audioSink.audioSource = [[[LibAVSource alloc] initWithURL:self.track.url] autorelease];
   self.audioSink.isPaused = NO;

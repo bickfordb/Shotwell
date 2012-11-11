@@ -4,48 +4,34 @@ playing = null;
 
 function onTrackStarted(track) {
   window.playing = track;
-  renderPlaying(); 
+  renderPlaying();
 }
 
-function onTrackEnded(track) { 
+function onTrackEnded(track) {
   plugin.hide();
 }
 
-function onTrackSaved(track) { 
+function onTrackSaved(track) {
   if (playing && playing.id() == track.id()) {
     window.playing = track;
     renderPlaying();
   }
 }
 
-function renderPlaying() { 
-  if (playing) {
-    if (plugin.hidden()) {
-      plugin.showSize_isVertical_(kSize, true); 
-    }
-  } else { 
-    plugin.hide();
-    return;
-  }
+function renderPlaying() {
   $("div.artist").html(playing.artist() || "");
   $("div.album").html(playing.album() || "");
   $("div.title").html(playing.title() || "");
   $("div.year").html(playing.year() || "");
   $("div.genre").html(playing.genre() || "");
   $("div.url").html(playing.url().absoluteString() || "");
-  var url = playing.coverArtURL();
-  if (url) {
-    $("img.cover-art").show().attr("src", url.absoluteString());
-    $("div.cover-art-container").show();
-  } else {
-    $("div.cover-art-container").hide();
-  }
-  updateSize();
+  var coverArtURL = playing.coverArtURL();
+  var blankCoverArtURL = "./blank.png";
+  $("img.cover-art").attr("src", coverArtURL && coverArtURL.length() > 0 ?  coverArtURL : blankCoverArtURL);
   $("div.artist-info").html("");
-  runSearch();
 }
 
-function runSearch() { 
+function runSearch() {
   query = "+artist:\"" + playing.artist() + "\" +release:\"" + playing.album() + "\"";
   $.ajax({
       url: "http://musicbrainz.org/ws/2/release",
@@ -54,7 +40,7 @@ function runSearch() {
         if (!doc)
           return;
         var releases = doc.getElementsByTagName("release");
-        if (!releases || !releases.length) 
+        if (!releases || !releases.length)
           return;
         var release = releases[0];
         var artists = release.getElementsByTagName("artist");
@@ -106,7 +92,7 @@ function onURLClick() {
   var url = $(this).attr("url");
   if (url)
     plugin.openBrowser_(url);
-  return false;  
+  return false;
 }
 
 function updateSize() {
@@ -114,7 +100,8 @@ function updateSize() {
   var h = window.innerHeight;
   var imgWidth = 0;
   var imgHeight = 0;
-  if (playing && playing.coverArtURL() && playing.coverArtURL().absoluteString()) { 
+
+  if (playing && playing.coverArtURL() && playing.coverArtURL().absoluteString()) {
     imgWidth = Math.min(w, h);
     imgHeight = Math.min(w, h);
   }
@@ -122,12 +109,9 @@ function updateSize() {
   $("img.cover-art").height(imgHeight);
   $("div.track-info-container").height(h);
   $("div.track-info-container").width(w);
-
 }
 
-function search(s) { 
-  if (s)
-    plugin.controller().search_(s + "");
+function search(s) {
 }
 
 $(function() {
@@ -136,6 +120,5 @@ $(function() {
     search($(el).text());
     return false;
   });
-  $(window).resize(updateSize);
 })
 
