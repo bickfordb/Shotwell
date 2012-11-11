@@ -16,7 +16,6 @@
 #import "app/RemoteLibrary.h"
 #import "app/Signals.h"
 #import "app/Util.h"
-#import "app/WebPlugin.h"
 #import "app/TableView.h"
 
 static NSString *AppSupportPath() {
@@ -32,15 +31,12 @@ static NSString *AppSupportPath() {
 
 @implementation AppDelegate
 @synthesize audioSink = audioSink_;
-@synthesize audioOutputs = audioOutputs_;
 @synthesize daemon = daemon_;
 @synthesize daemonBrowser = daemonBrowser_;
-@synthesize libraries = libraries_;
 @synthesize localLibrary = localLibrary_;
+@synthesize library = library_;
 @synthesize mainWindowController = mainWindowController_;
-@synthesize plugins = plugins_;
 @synthesize preferencesWindowController = preferencesWindowController_;
-@synthesize selectedAudioOutput = selectedAudioOutput_;
 @synthesize track = track_;
 
 - (void)dealloc {
@@ -49,12 +45,9 @@ static NSString *AppSupportPath() {
   [daemon_ release];
   [daemonBrowser_ release];
   [library_ release];
-  [libraries_ release];
   [localLibrary_ release];
   [mainWindowController_ release];
-  [plugins_ release];
   [preferencesWindowController_ release];
-  [selectedAudioOutput_ release];
   [track_ release];
   [super dealloc];
 }
@@ -161,8 +154,6 @@ static NSString *AppSupportPath() {
     [weakSelf playNextTrack];
   };
   [self parseDefaults];
-  self.audioOutputs = [NSMutableArray array];
-  self.libraries = [NSMutableArray array];
   self.localLibrary = [[[LocalLibrary alloc] initWithDBPath:[AppSupportPath() stringByAppendingPathComponent:@"db"]] autorelease];
   if (!self.localLibrary) {
     [self die:@"Unable to open local library."];
@@ -176,7 +167,6 @@ static NSString *AppSupportPath() {
   self.preferencesWindowController = [[[PreferencesWindowController alloc] initWithLocalLibrary:self.localLibrary] autorelease];
   self.mainWindowController = [[[MainWindowController alloc] init] autorelease];
 
-  [self setupPlugins];
   [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
   [self.localLibrary checkITunesImport];
   [self.localLibrary checkAutomaticPaths];
@@ -200,58 +190,6 @@ static NSString *AppSupportPath() {
   [self.daemonBrowser searchForServicesOfType:kDaemonServiceType inDomain:@"local."];
 }
 
-- (void)setupPlugins {
-  self.plugins = [NSMutableArray array];
-  NSString *resourceDir = [NSBundle mainBundle].resourcePath;
-  NSString *pluginsDir = [resourceDir stringByAppendingPathComponent:@"Plugins"];
-  NSArray *pluginDirs = GetSubDirectories([NSArray arrayWithObjects:pluginsDir, nil]);
-  for (NSString *p in pluginDirs) {
-    p = [p stringByAppendingPathComponent:@"index.html"];
-    NSURL *u = [NSURL fileURLWithPath:p];
-    WebPlugin *webPlugin = [[[WebPlugin alloc] initWithURL:u] autorelease];
-    [plugins_ addObject:webPlugin];
-  }
-}
-
-- (Library *)library {
-  return library_;
-}
-
-- (void)setLibrary:(Library *)library {
-  @synchronized(self) {
-    Library *last = library_;
-    if (last) {
-      [[NSNotificationCenter defaultCenter] removeObserver:self name:kLibraryTrackChanged object:last];
-    }
-    library_ = [library retain];
-    [last release];
-  }
-  if (library) {
-    [[NSNotificationCenter defaultCenter]
-      addObserver:self
-      selector:@selector(onTrackChange:)
-      name:kLibraryTrackChanged
-      object:library];
-  }
-};
-
-- (void)onTrackChange:(NSNotification *)notification {
-  NSDictionary *userInfo = notification.userInfo;
-  NSString *change = [userInfo valueForKey:@"change"];
-  Track *t = [userInfo valueForKey:@"track"];
-  @synchronized (plugins_) {
-    for (Plugin *p in plugins_) {
-      if (change == kLibraryTrackAdded) {
-        [p trackAdded:t];
-      } else if (change == kLibraryTrackSaved) {
-        [p trackSaved:t];
-      } else if (change == kLibraryTrackDeleted) {
-        [p trackDeleted:t];
-      }
-    }
-  }
-}
-
 - (void)playTrackAtIndex:(int)index {
   if (track_) {
     [self.mainWindowController trackEnded:track_];
@@ -261,11 +199,6 @@ static NSString *AppSupportPath() {
       userInfo:@{@"track": self.track}];
   }
   self.track = [self.mainWindowController.trackBrowser.tracks get:index];
-
-  [[NSNotificationCenter defaultCenter]
-    postNotificationName:kTrackStarted
-    object:self
-    userInfo:@{@"track": self.track}];
 
   [self.mainWindowController trackStarted:track_];
   self.audioSink.audioSource = [[[LibAVSource alloc] initWithURL:self.track.url] autorelease];
@@ -278,12 +211,11 @@ static NSString *AppSupportPath() {
     self.track.updatedAt = Now();
     [self.localLibrary save:self.track];
   }
-  if (self.track) {
-    @synchronized(self.plugins) {
-      for (Plugin *p in self.plugins) {
-        [p trackStarted:track_];
-      }
-    }
+  if (track_) {
+    [[NSNotificationCenter defaultCenter]
+      postNotificationName:kTrackStarted
+      object:self
+      userInfo:@{@"track": track_}];
   }
 }
 
