@@ -346,16 +346,17 @@ CoverBrowserTracksToString CoverBrowserArtistSubtitle = ^(NSSet *tracks)  {
     if (change == kLibraryTrackDeleted) {
       [self removeTrack:t];
     } else if (change == kLibraryTrackAdded) {
-      [self addTracks:[NSArray arrayWithObjects:t, nil]];
+      [self addTracks:@[t]];
     } else if (change == kLibraryTrackSaved) {
       [self removeTrack:t];
-      [self addTracks:[NSArray arrayWithObjects:t, nil]];
+      [self addTracks:@[t]];
     }
   }
 }
 
 - (void)search:(NSString *)term after:(On0)after {
   after = [after copy];
+  self.lastSearch = term;
   ForkWith(^{
     NSPredicate *predicate = ParseSearchQuery(term);
     NSPredicate *predicate0 = predicate ? [NSPredicate predicateWithBlock:Block_copy(^(id item, NSDictionary *opts) {

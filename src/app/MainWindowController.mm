@@ -244,36 +244,36 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)selectBrowser:(MainWindowControllerBrowser)idx {
-  Library *library = SharedAppDelegate().library;
-  INFO(@"library: %@", library);
-  if (idx == MainWindowControllerAlbumBrowser) {
-    if (!self.albumBrowser || self.albumBrowser.library != library) {
-      self.albumBrowser = [[[CoverBrowser alloc] initWithLibrary:library
-        toKey:CoverBrowserGroupByFolder
-        toTitle:CoverBrowserFolderTitle
-        toSubtitle:CoverBrowserFolderSubtitle
-        toPredicate:CoverBrowserSearchByFolder] autorelease];
+  ForkToMainWith(^{
+    Library *library = SharedAppDelegate().library;
+    INFO(@"library: %@", library);
+    if (idx == MainWindowControllerAlbumBrowser) {
+      if (!self.albumBrowser || self.albumBrowser.library != library) {
+        self.albumBrowser = [[[CoverBrowser alloc] initWithLibrary:library
+          toKey:CoverBrowserGroupByFolder
+          toTitle:CoverBrowserFolderTitle
+          toSubtitle:CoverBrowserFolderSubtitle
+          toPredicate:CoverBrowserSearchByFolder] autorelease];
+      }
+      self.content = self.albumBrowser;
+    } else if (idx == MainWindowControllerArtistBrowser) {
+      if (!self.artistBrowser || self.artistBrowser.library != library) {
+        self.artistBrowser = [[[CoverBrowser alloc] initWithLibrary:library
+          toKey:CoverBrowserGroupByArtist
+          toTitle:CoverBrowserArtistTitle
+          toSubtitle:CoverBrowserArtistSubtitle
+          toPredicate:CoverBrowserSearchByArtist] autorelease];
+      }
+      self.content = self.artistBrowser;
+    } else {
+      if (!self.trackBrowser || self.trackBrowser.library != library) {
+        self.trackBrowser = [[[TrackBrowser alloc] initWithLibrary:library] autorelease];
+      }
+      self.content = self.trackBrowser;
     }
-    self.content = self.albumBrowser;
-  } else if (idx == MainWindowControllerArtistBrowser) {
-    if (!self.artistBrowser || self.artistBrowser.library != library) {
-      self.artistBrowser = [[[CoverBrowser alloc] initWithLibrary:library
-        toKey:CoverBrowserGroupByArtist
-        toTitle:CoverBrowserArtistTitle
-        toSubtitle:CoverBrowserArtistSubtitle
-        toPredicate:CoverBrowserSearchByArtist] autorelease];
-    }
-    self.content = self.artistBrowser;
-  } else {
-    if (!self.trackBrowser || self.trackBrowser.library != library) {
-      self.trackBrowser = [[[TrackBrowser alloc] initWithLibrary:library] autorelease];
-    }
-    self.content = self.trackBrowser;
-  }
-  NSString *term = self.searchField.stringValue;
-  if (term) {
-    [self.content search:term after:nil];
-  }
+    NSString *last = self.content.lastSearch;
+    self.searchField.stringValue = last ? last : @"";
+  });
 }
 
 - (void)onSearch:(id)sender {

@@ -4,9 +4,11 @@
 
 @synthesize view = view_;
 @synthesize isBusy = isBusy_;
+@synthesize lastSearch = lastSearch_;
 
 - (void)dealloc {
   [view_ release];
+  [lastSearch_ release];
   [super dealloc];
 }
 
@@ -15,6 +17,7 @@
   if (self) {
     self.view = [[[NSView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)] autorelease];
     self.view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    self.lastSearch = @"";
   }
   return self;
 }

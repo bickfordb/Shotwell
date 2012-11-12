@@ -105,6 +105,7 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
 
 
 - (void)search:(NSString *)term after:(On0)after {
+  self.lastSearch = term;
   after = [after copy];
   ForkToMainWith(^{
     @synchronized(tracks_) {
