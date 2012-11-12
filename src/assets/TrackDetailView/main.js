@@ -95,22 +95,6 @@ function onURLClick() {
   return false;
 }
 
-function updateSize() {
-  var w = window.innerWidth;
-  var h = window.innerHeight;
-  var imgWidth = 0;
-  var imgHeight = 0;
-
-  if (playing && playing.coverArtURL() && playing.coverArtURL().absoluteString()) {
-    imgWidth = Math.min(w, h);
-    imgHeight = Math.min(w, h);
-  }
-  $("img.cover-art").width(imgWidth);
-  $("img.cover-art").height(imgHeight);
-  $("div.track-info-container").height(h);
-  $("div.track-info-container").width(w);
-}
-
 function search(s) {
 }
 

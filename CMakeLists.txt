@@ -84,6 +84,7 @@ file(GLOB appResources
   src/assets/TrackDetailView/*.css
   src/assets/TrackDetailView/*.js
   src/assets/TrackDetailView/*.png
+  src/assets/TrackDetailView/*.jpg
   src/assets/TrackDetailView/bootstrap-2.0.2/css/*.css
   src/assets/TrackDetailView/bootstrap-2.0.2/js/*.js)
 
