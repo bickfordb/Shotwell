@@ -141,11 +141,44 @@ NSString * const kURL = @"url";
 NSString * const kUpdatedAt = @"updatedAt";
 NSString * const kYear = @"year";
 
+static NSArray *allTrackKeys = @[
+    kAcoustID,
+    kAlbum,
+    kArtist,
+    kCoverArtID,
+    kCreatedAt,
+    kDuration,
+    kGenre,
+    kID,
+    kIsAcoustIDChecked,
+    kIsAudio,
+    kIsCoverArtChecked,
+    kIsVideo,
+    kLastPlayedAt,
+    kPath,
+    kPublisher,
+    kTitle,
+    kTrackNumber,
+    kUpdatedAt,
+    kYear];
 
-static NSArray *allTrackKeys = nil;
-static NSDictionary *tagKeyToTrackKey;
-static NSArray *mediaExtensions = nil;
-static NSArray *ignoreExtensions = nil;
+static NSDictionary *tagKeyToTrackKey = @{
+    @"artist": kArtist,
+    @"album": kAlbum,
+    @"year": kYear,
+    @"title": kTitle,
+    @"date": kYear,
+    @"track": kTrackNumber,
+    @"genre": kGenre};
+
+/*
+ignoreExtensions: Skip indexing the following extensions to save time since they never have useful info/can be large
+*/
+
+static NSArray *ignoreExtensions = @[@".jpg", @".nfo", @".sfv", @".torrent",
+               @".m3u", @".diz", @".rtf", @".ds_store", @".txt", @".m3u8", @".htm", @".url",
+               @".html", @".atom", @".rss", @".crdownload", @".dmg", @".zip", @".rar",
+               @".jpeg", @".part", @".ini", @".", @".log", @".db", @".cue", @".gif", @".png"];
 
 @implementation Track {
 }
@@ -172,42 +205,7 @@ static NSArray *ignoreExtensions = nil;
   avfilter_register_all();
   av_register_all();
   avformat_network_init();
-  mediaExtensions = [@[@".mp3", @".ogg", @".m4a", @".aac", @".avi", @".mp4", @".fla", @".flc", @".mov", @".m4a", @".mkv", @".mpg"] retain];
-  ignoreExtensions = [@[@".jpg", @".nfo", @".sfv", @".torrent", @".m3u", @".diz", @".rtf", @".ds_store", @".txt", @".m3u8",
-                   @".htm", @".url", @".html", @".atom", @".rss", @".crdownload", @".dmg",
-                   @".zip", @".rar", @".jpeg", @".part", @".ini", @".", @".log", @".db",
-                   @".cue", @".gif", @".png"] retain];
-
-  allTrackKeys = @[
-    kAcoustID,
-    kAlbum,
-    kArtist,
-    kCoverArtID,
-    kCreatedAt,
-    kDuration,
-    kGenre,
-    kID,
-    kIsAcoustIDChecked,
-    kIsAudio,
-    kIsCoverArtChecked,
-    kIsVideo,
-    kLastPlayedAt,
-    kPath,
-    kPublisher,
-    kTitle,
-    kTrackNumber,
-    kUpdatedAt,
-    kYear];
-  [allTrackKeys retain];
-  tagKeyToTrackKey = @{
-    @"artist": kArtist,
-    @"album": kAlbum,
-    @"year": kYear,
-    @"title": kTitle,
-    @"date": kYear,
-    @"genre": kGenre};
-  [tagKeyToTrackKey retain];
-
+  ;
 }
 
 - (NSString *)description {
@@ -301,6 +299,7 @@ static NSArray *ignoreExtensions = nil;
 
   while((tag = av_dict_get(c->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
     NSString *tagKey = [NSString stringWithUTF8String:tag->key];
+    INFO(@"metadata key: %@", tagKey);
     NSString *trackKey = [tagKeyToTrackKey objectForKey:tagKey];
     if (trackKey) {
       NSString *value = ToUTF8(tag->value);
@@ -459,7 +458,6 @@ DefineUInt64Property(duration, duration, setDuration)
     std::string msg = message_->DebugString();
     INFO(@"after parsing: %s", msg.c_str());
   }
-
 }
 
 - (NSDictionary *)acoustID {

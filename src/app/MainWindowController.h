@@ -8,13 +8,13 @@
 #import "app/TableViewController.h"
 #import "app/Track.h"
 #import "app/TrackBrowser.h"
-#import "app/TrackDetailView.h"
 #import "app/VolumeControl.h"
 #import "app/WindowController.h"
 
 typedef enum {
   MainWindowControllerAlbumBrowser,
   MainWindowControllerArtistBrowser,
+  MainWindowControllerCondensedBrowser,
   MainWindowControllerTrackBrowser,
   MainWindowControllerYearBrowser
 } MainWindowControllerBrowser;
@@ -43,7 +43,6 @@ typedef enum {
   TrackBrowser *trackBrowser_;
   ViewController *content_;
   VolumeControl *volumeControl_;
-  TrackDetailView *trackDetailView_;
   bool isBusy_;
 }
 
@@ -63,7 +62,6 @@ typedef enum {
 @property (retain) NSSegmentedControl *playbackControls;
 @property (retain) CoverBrowser *albumBrowser;
 @property (retain) CoverBrowser *artistBrowser;
-@property (retain) NavTable *navTable;
 @property (retain) NSImage *playImage;
 @property (retain) NSProgressIndicator *progressIndicator;
 @property (retain) NSImage *startImage;

@@ -45,13 +45,5 @@ pthread_t ForkWith(ClosedBlock block) {
 };
 
 void ForkToMainWith(ClosedBlock block) {
-  NSThread *mainThread = [NSThread mainThread];
-  if (mainThread == [NSThread currentThread]) {
-    block();
-  } else {
-    // NB intentionally not autoreleased
-    PThreadClosed *c = [[PThreadClosed alloc] init];
-    c.code = block;
-    [c performSelectorOnMainThread:@selector(fire) withObject:nil waitUntilDone:NO];
-  }
+  dispatch_async(dispatch_get_main_queue(), [block copy]);
 }

@@ -29,7 +29,8 @@ static NSString *AppSupportPath() {
   return path;
 }
 
-@implementation AppDelegate
+@implementation AppDelegate {
+}
 @synthesize audioSink = audioSink_;
 @synthesize daemon = daemon_;
 @synthesize daemonBrowser = daemonBrowser_;
@@ -165,19 +166,16 @@ static NSString *AppSupportPath() {
   [self setupSharing];
   [self.localLibrary prune];
   self.preferencesWindowController = [[[PreferencesWindowController alloc] initWithLocalLibrary:self.localLibrary] autorelease];
-  self.mainWindowController = [[[MainWindowController alloc] init] autorelease];
+  self.mainWindowController = [[[MainWindowController alloc] init]
+  autorelease];
+
 
   [[NSApplication sharedApplication] activateIgnoringOtherApps:YES];
   [self.localLibrary checkITunesImport];
   [self.localLibrary checkAutomaticPaths];
-  [self.localLibrary checkCoverArt];
-  [self.localLibrary checkAcoustIDs];
+  //[self.localLibrary checkCoverArt];
+  //[self.localLibrary checkAcoustIDs];
   [self setupMenu];
-  [self.localLibrary each:^(Track *t) {
-    if (!t.url) {
-      ERROR(@"%@ is missing a URL", t);
-    }
-  }];
 }
 
 - (void)setupSharing {
@@ -199,7 +197,6 @@ static NSString *AppSupportPath() {
       userInfo:@{@"track": self.track}];
   }
   self.track = [self.mainWindowController.trackBrowser.tracks get:index];
-
   [self.mainWindowController trackStarted:track_];
   self.audioSink.audioSource = [[[LibAVSource alloc] initWithURL:self.track.url] autorelease];
   self.audioSink.isPaused = NO;

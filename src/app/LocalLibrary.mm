@@ -271,6 +271,7 @@ static void OnFileEvent(
   }
   NSArray *paths = self.pathsToAutomaticallyScan;
   FSEventStreamContext context = {0, self, NULL, NULL, NULL};
+  INFO(@"paths to automatically scan: %@", paths);
 
   if (paths.count) {
     fsEventStreamRef_ = FSEventStreamCreate(
