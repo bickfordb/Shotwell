@@ -1,6 +1,5 @@
 #import "app/AppDelegate.h"
 #import "app/AudioSource.h"
-#import "app/CondensedView.h"
 #import "app/CoreAudioSink.h"
 #import "app/Log.h"
 #import "app/MainWindowController.h"
@@ -214,7 +213,7 @@ static NSString *GetWindowTitle(Track *t) {
       }
       self.content = self.artistBrowser;
     } else if (idx == MainWindowControllerCondensedBrowser) {
-      self.content = [[[CondensedView alloc] init] autorelease];
+      //self.content = [[[CondensedView alloc] init] autorelease];
     } else {
       if (!self.trackBrowser || self.trackBrowser.library != library) {
         self.trackBrowser = [[[TrackBrowser alloc] initWithLibrary:library] autorelease];
