@@ -1,4 +1,5 @@
 #import "app/AppDelegate.h"
+#import "app/ArtistBrowser.h"
 #import "app/AudioSource.h"
 #import "app/CoreAudioSink.h"
 #import "app/Log.h"
@@ -9,6 +10,7 @@
 
 static NSString * const kArtistIconName = @"NSEveryone";
 static NSString * const kAlbumIconName = @"album-icon";
+static NSString * const kBrowserControl = @"BrowserControl";
 static NSString * const kTrackIconName = @"NSActionTemplate";
 static NSString * const kRemoteLibraryIconName = @"NSNetwork";
 static NSString * const kNetworkIconName = @"NSNetwork";
@@ -43,14 +45,17 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 @implementation MainWindowController
+@synthesize albumBrowser = albumBrowser_;
 @synthesize albums = albums_;
+@synthesize artistBrowser = artistBrowser_;
 @synthesize artists = artists_;
 @synthesize audioOutputPopUpButton = audioOutputPopUpButton_;
+@synthesize browserControl = browserControl_;
 @synthesize contentView = contentView_;
 @synthesize libraryServiceBrowser = libraryServiceBrowser_;
 @synthesize loop = loop_;
-@synthesize playbackControls = playbackControls_;
 @synthesize playImage = playImage_;
+@synthesize playbackControls = playbackControls_;
 @synthesize progressControl = progressControl_;
 @synthesize progressIndicator = progressIndicator_;
 @synthesize searchField = searchField_;
@@ -59,8 +64,6 @@ static NSString *GetWindowTitle(Track *t) {
 @synthesize stopImage = stopImage_;
 @synthesize trackBrowser = trackBrowser_;
 @synthesize volumeControl = volumeControl_;
-@synthesize albumBrowser = albumBrowser_;
-@synthesize artistBrowser = artistBrowser_;
 
 - (id)init {
   self = [super init];
@@ -107,7 +110,7 @@ static NSString *GetWindowTitle(Track *t) {
         [self.progressIndicator stopAnimation:self];
       }
     }];
-    [self setupAudioSelect];
+    //[self setupAudioSelect];
     [self.loop every:kPollStatsInterval with:^{
       [weakSelf pollStats];
     }];
@@ -128,7 +131,6 @@ static NSString *GetWindowTitle(Track *t) {
 }
 
 - (void)addRemoteLibraryService:(NSNetService *)svc {
-  NSLog(@"noticed remote library service: %@", svc);
 }
 
 - (void)setContent:(ViewController *)vc {
@@ -157,6 +159,7 @@ static NSString *GetWindowTitle(Track *t) {
   [albums_ release];
   [artists_ release];
   [audioOutputPopUpButton_ release];
+  [browserControl_ release];
   [contentView_ release];
   [content_ release];
   [loop_ release];
@@ -194,35 +197,50 @@ static NSString *GetWindowTitle(Track *t) {
     Library *library = SharedAppDelegate().library;
     INFO(@"library: %@", library);
     if (idx == MainWindowControllerAlbumBrowser) {
-      if (!self.albumBrowser || self.albumBrowser.library != library) {
-        self.albumBrowser = [[[CoverBrowser alloc]
-                               initWithLibrary:library
-                                         toKey:CoverBrowserGroupByFolder
-                                       toTitle:CoverBrowserFolderTitle
-                                    toSubtitle:CoverBrowserFolderSubtitle
-                                   toPredicate:CoverBrowserSearchByFolder] autorelease];
-      }
-      self.content = self.albumBrowser;
+      self.navContent = nil;
     } else if (idx == MainWindowControllerArtistBrowser) {
-      if (!self.artistBrowser || self.artistBrowser.library != library) {
-        self.artistBrowser = [[[CoverBrowser alloc] initWithLibrary:library
-                                                              toKey:CoverBrowserGroupByArtist
-                                                            toTitle:CoverBrowserArtistTitle
-                                                         toSubtitle:CoverBrowserArtistSubtitle
-          toPredicate:CoverBrowserSearchByArtist] autorelease];
-      }
-      self.content = self.artistBrowser;
-    } else if (idx == MainWindowControllerCondensedBrowser) {
-      //self.content = [[[CondensedView alloc] init] autorelease];
-    } else {
+      ArtistBrowser *b = [[[ArtistBrowser alloc] init] autorelease];
+      b.library = self.trackBrowser.library;
+      b.onArtistsSelected = ^(NSArray *artists) {
+        NSString *query = nil;
+        for (NSString *a in artists) {
+          query = [NSString stringWithFormat:@"artist:\"%@\"", a];
+        }
+        INFO(@"query: %@", query);
+        [self.content search:query after:nil];
+      };
+      self.navContent = b;
+    } else if (idx == MainWindowControllerTrackBrowser) {
       if (!self.trackBrowser || self.trackBrowser.library != library) {
         self.trackBrowser = [[[TrackBrowser alloc] initWithLibrary:library] autorelease];
       }
       self.content = self.trackBrowser;
+      self.navContent = nil;
     }
-    NSString *last = self.content.lastSearch;
-    self.searchField.stringValue = last ? last : @"";
-  });
+ });
+}
+
+- (NSView *)navContent {
+  return navContent_;
+}
+
+- (void)setNavContent:(NSView *)view {
+  if (navContent_) {
+    [navContent_ removeFromSuperview];
+  }
+  @synchronized(self) {
+    NSView *t = navContent_;
+    navContent_ = [view retain];
+    [t release];
+  }
+  if (navContent_) {
+    navContent_.frame = CGRectMake(0, 0, 150, 150);
+    if (navSplit_.subviews.count > 0)
+      [navSplit_ addSubview:view positioned:NSWindowBelow relativeTo:navSplit_.subviews[0]];
+    else
+      [navSplit_ addSubview:navContent_];
+    [navSplit_ adjustSubviews];
+  }
 }
 
 - (void)onSearch:(id)sender {
@@ -319,7 +337,7 @@ static NSString *GetWindowTitle(Track *t) {
   NSToolbarItem *item = [[[NSToolbarItem alloc] initWithItemIdentifier:itemIdentifier] autorelease];
   NSView *view = nil;
   if (itemIdentifier == kPlayButton) {
-      self.playbackControls = [[[NSSegmentedControl alloc] initWithFrame:CGRectMake(0, 0, 130, 22)] autorelease];
+      self.playbackControls = [[[NSSegmentedControl alloc] initWithFrame:CGRectMake(0, 0, 130, 25)] autorelease];
       self.playbackControls.segmentCount = 3;
       [[self.playbackControls cell] setTrackingMode:NSSegmentSwitchTrackingMomentary];
       self.playbackControls.segmentStyle = NSSegmentStyleTexturedRounded;
@@ -333,6 +351,46 @@ static NSString *GetWindowTitle(Track *t) {
       view = self.playbackControls;
       self.playbackControls.action = @selector(playbackControlsClicked:);
       self.playbackControls.target = SharedAppDelegate();
+  } else if (itemIdentifier == kBrowserControl) {
+      self.browserControl = [[[NSPopUpButton alloc] initWithFrame:CGRectMake(0, 0, 25, 25) pullsDown:NO] autorelease];
+      NSPopUpButtonCell *cell = [self.browserControl cell];
+      self.browserControl.preferredEdge = NSMinYEdge;
+      self.browserControl.bezelStyle = NSTexturedSquareBezelStyle;
+      self.browserControl.buttonType = NSPushOnPushOffButton;
+      self.browserControl.state = NSOffState;
+      self.browserControl.bordered = NO;
+      cell.usesItemFromMenu = YES;
+      cell.imagePosition = NSImageOnly;
+      [cell setArrowPosition:NSPopUpNoArrow];
+      cell.type = NSImageCellType;
+      [cell setImageScaling:NSImageScaleProportionallyUpOrDown];
+      [self.browserControl addItemWithTitle:@""];
+      [self.browserControl addItemWithTitle:@""];
+      [self.browserControl addItemWithTitle:@""];
+      NSSize iconSize = NSMakeSize(14, 14);
+
+      // Clear icon
+      NSImage *noneImage = [NSImage imageNamed:@"NSListViewTemplate"];
+      noneImage.size = iconSize;
+      [self.browserControl itemAtIndex:0].image = noneImage;
+      [self.browserControl itemAtIndex:0].target = self;
+      [self.browserControl itemAtIndex:0].action = @selector(noneFilterSelected:);
+
+      // Artist icon
+      NSImage *artistImage = [NSImage imageNamed:@"NSUser"];
+      artistImage.size = iconSize;
+      [self.browserControl itemAtIndex:1].image = artistImage;
+      [self.browserControl itemAtIndex:1].target = self;
+      [self.browserControl itemAtIndex:1].action = @selector(artistFilterSelected:);
+
+      // Album icon
+      NSImage *albumImage = [NSImage imageNamed:@"album-icon"];
+      albumImage.size = iconSize;
+      [self.browserControl itemAtIndex:2].image = albumImage;
+      [self.browserControl itemAtIndex:2].target = self;
+      [self.browserControl itemAtIndex:2].action = @selector(albumFilterSelected:);
+
+      view = self.browserControl;
   } else if (itemIdentifier == kProgressControl) {
     if (!self.progressControl) {
       self.progressControl = [[[ProgressControl alloc]
@@ -364,18 +422,36 @@ static NSString *GetWindowTitle(Track *t) {
 
 }
 
+- (void)noneFilterSelected:(id)sender {
+  self.browserControl.state = NSOffState;
+  self.browserControl.bordered = NO;
+  [self selectBrowser:MainWindowControllerTrackBrowser];
+}
+
+- (void)artistFilterSelected:(id)sender {
+  self.browserControl.state = NSOnState;
+  self.browserControl.bordered = YES;
+  [self selectBrowser:MainWindowControllerArtistBrowser];
+}
+
+- (void)albumFilterSelected:(id)sender {
+  self.browserControl.state = NSOnState;
+  self.browserControl.bordered = YES;
+  [self selectBrowser:MainWindowControllerAlbumBrowser];
+}
 
 - (NSArray *)toolbarAllowedItemIdentifiers:(NSToolbar *)toolbar {
   return [self toolbarDefaultItemIdentifiers:toolbar];
 }
 
 - (NSArray *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar {
-  return [NSArray arrayWithObjects:kPlayButton, kVolumeControl, kProgressControl, kSearchControl, nil];
+  return [NSArray arrayWithObjects:kPlayButton, kBrowserControl, kVolumeControl, kProgressControl, kSearchControl, nil];
 }
 
 - (NSArray *)toolbarSelectableItemIdentifiers:(NSToolbar *)toolbar {
   return [NSArray array];
 }
+
 - (void)toolbarWillAddItem:(NSNotification *)notification {
 }
 

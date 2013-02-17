@@ -57,7 +57,6 @@ static AVPacket flushPacket;
     [self release];
     return nil;
   }
-  NSLog(@"url: %@", url);
   if (self) {
     url_ = [url retain];
     // Don't retain:

@@ -370,7 +370,7 @@ static void OnFileEvent(
       }
       [self checkCoverArtForTrack:t.id];
     } else {
-      DEBUG(@"missing audio, skipping: %@", t);
+      //DEBUG(@"missing audio, skipping: %@", t);
     }
   } else {
     if (t.createdAt < lastModified) {
@@ -480,6 +480,11 @@ static void OnFileEvent(
 - (void)setPathsToAutomaticallyScan:(NSArray *)paths {
   NSUserDefaults *d = [NSUserDefaults standardUserDefaults];
   paths = [paths sortedArrayUsingSelector:@selector(compare:)];
+  NSArray *oldPaths = [[NSUserDefaults standardUserDefaults] arrayForKey:kPathsToScan];
+  if (oldPaths && paths && [oldPaths isEqualToArray:paths]) {
+    return;
+  }
+  INFO(@"set paths to automatically scan: %@", paths);
   [d setObject:paths forKey:kPathsToScan];
   [d synchronize];
   [[NSNotificationCenter defaultCenter]

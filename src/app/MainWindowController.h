@@ -26,6 +26,7 @@ typedef enum {
   NSSegmentedControl *playbackControls_;
   NSImage *playImage_;
   NSProgressIndicator *progressIndicator_;
+  NSPopUpButton *browserControl_;
   NSImage *startImage_;
   NSImage *stopImage_;
   NSSearchField *searchField_;
@@ -43,6 +44,7 @@ typedef enum {
   TrackBrowser *trackBrowser_;
   ViewController *content_;
   VolumeControl *volumeControl_;
+  NSView *navContent_;
   bool isBusy_;
 }
 
@@ -62,6 +64,7 @@ typedef enum {
 @property (retain) NSSegmentedControl *playbackControls;
 @property (retain) CoverBrowser *albumBrowser;
 @property (retain) CoverBrowser *artistBrowser;
+@property (retain) NSPopUpButton *browserControl;
 @property (retain) NSImage *playImage;
 @property (retain) NSProgressIndicator *progressIndicator;
 @property (retain) NSImage *startImage;

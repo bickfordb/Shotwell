@@ -223,4 +223,22 @@
 - (void)removeObject:(id)something {
   [self remove:something];
 }
+
+- (NSInteger)numberOfRowsInTableView:(NSTableView *)aTableView {
+  return [self count];
+}
+
+- (id)tableView:(NSTableView *)aTableView objectValueForTableColumn:(NSTableColumn *)aTableColumn row:(NSInteger)rowIndex {
+  id o = [self objectInArrangedObjectsAtIndex:rowIndex];
+  NSString *identifier = aTableColumn.identifier;
+  if (o && identifier) {
+    return [o valueForKey:identifier];
+  } else if (o) {
+    return o;
+  } else {
+    return nil;
+  }
+}
+
+
 @end

@@ -82,6 +82,7 @@ static int64_t kReloadInterval = 500000;
   return self;
 }
 
+
 - (void)doubleAction:(id)sender {
   if (onDoubleAction_ && tableView_.clickedRow >= 0) {
     onDoubleAction_(tableView_.clickedRow);

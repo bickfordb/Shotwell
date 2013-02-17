@@ -218,7 +218,7 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
       if (colSpec[@"width"])
         [col setWidth:[colSpec[@"width"] intValue]];
       if (colSpec[@"maxWidth"])
-        [col setWidth:[colSpec[@"maxWidth"] intValue]];
+        [col setMaxWidth:[colSpec[@"maxWidth"] intValue]];
       if (colSpec[@"dataCell"])
         [col setDataCell:colSpec[@"dataCell"]];
       if (colSpec[@"title"])

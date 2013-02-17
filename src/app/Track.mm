@@ -243,7 +243,7 @@ static NSArray *ignoreExtensions = @[@".jpg", @".nfo", @".sfv", @".torrent",
 - (int)readTag {
   int ret = 0;
   NSString *path = self.path;
-  DEBUG(@"reading tag: %@", path);
+  //DEBUG(@"reading tag: %@", path);
   AVFormatContext *c = NULL;
   struct stat st;
   AVDictionaryEntry *tag = NULL;
@@ -313,7 +313,7 @@ done:
     avformat_close_input(&c);
   if (c)
     avformat_free_context(c);
-  DEBUG(@"read tag result: %d", (int)ret);
+  //DEBUG(@"read tag result: %d", (int)ret);
   return ret;
 }
 

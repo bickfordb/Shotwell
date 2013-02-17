@@ -4,7 +4,7 @@
 
 // A sorted thread safe sequence similar to NSArrayController, but without all the bindings oddness
 // more of a sorted set, really
-@interface SortedSeq : NSObject <EnumSeq> /*<NSFastEnumeration> */ {
+@interface SortedSeq : NSObject <EnumSeq, NSTableViewDataSource> /*<NSFastEnumeration> */ {
   NSPredicate *predicate_;
   NSComparator comparator_;
   SkipList *filteredItems_;
