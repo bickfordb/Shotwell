@@ -158,18 +158,3 @@ then
   stamp curl
 fi
 
-if ! is_stamped libjson
-then
-  echo building libjson
-  scratch
-  tar xzvf ${VENDOR}/libjson.tar.gz
-  pushd libjson
-  cc -c -o libjson.o -Wall -Os -fPIC json.c
-  ar rc libjson.a libjson.o
-  cp libjson.a ${INSTALL_PREFIX}/lib
-  cp json.h ${INSTALL_PREFIX}/include
-  popd
-  stamp libjson
-fi
-
-
