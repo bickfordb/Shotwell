@@ -62,34 +62,31 @@ set(vendorLibs
   ${vendorLib}/libleveldb.a
   ${vendorLib}/libevent.a
   ${vendorLib}/libevent_pthreads.a
-  ${vendorLib}/libprotobuf.a
   ${vendorLib}/libicuuc.a
   ${vendorLib}/libicudata.a
   ${vendorLib}/libsnappy.a
+  ${vendorLib}/libjansson.a
   ${vendorLib}/libswscale.a)
 
-file(GLOB appSources src/app/*.mm src/app/pb/Track.pb.cc)
-set(appSources src/app/pb/Track.pb.cc ${appSources})
-file(GLOB testSources src/test/*.mm src/test/*.cc)
+file(GLOB sources src/*.mm)
+foreach (f ${sources})
+  if ($"${f}" MATCHES ".*main[.]m|test[.]mm.*")
+    list(APPEND mainSources "${f}")
+  elseif("${f}" MATCHES ".*(Test|test).*")
+    list(APPEND testSources "${f}")
+  else()
+    list(APPEND appSources "${f}")
+  endif()
+endforeach(f)
 
 # Make local includes work
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -iquote ${PROJECT_SOURCE_DIR}/src")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg -ggdb -iquote ${PROJECT_SOURCE_DIR}/src")
 
 # Resources
-file(GLOB appResources
-  src/assets/*.png
-  src/assets/*.icns
-  src/assets/*.pdf
-  src/assets/TrackDetailView/*.html
-  src/assets/TrackDetailView/*.css
-  src/assets/TrackDetailView/*.js
-  src/assets/TrackDetailView/*.png
-  src/assets/TrackDetailView/*.jpg
-  src/assets/TrackDetailView/bootstrap-2.0.2/css/*.css
-  src/assets/TrackDetailView/bootstrap-2.0.2/js/*.js)
+file(GLOB appResources assets/*.png assets/*.icns assets/*.pdf)
 
 foreach(f ${appResources})
-  string(REPLACE "${PROJECT_SOURCE_DIR}/src/assets" "" dst ${f})
+  string(REPLACE "${PROJECT_SOURCE_DIR}/assets" "" dst ${f})
   string(REGEX REPLACE "/[^/]+$" "" dst ${dst})
   set_source_files_properties(${f} PROPERTIES MACOSX_PACKAGE_LOCATION Resources/${dst})
 endforeach(f)
@@ -97,7 +94,7 @@ endforeach(f)
 # nib setup
 set(nib ${EXECUTABLE_OUTPUT_PATH}/MainMenu.nib)
 set(appResources ${appResources} ${nib})
-set(xib ${PROJECT_SOURCE_DIR}/src/assets/en.lproj/MainMenu.xib)
+set(xib ${PROJECT_SOURCE_DIR}/assets/en.lproj/MainMenu.xib)
 add_custom_command(
   OUTPUT ${nib}
   DEPENDS ${xib}
@@ -114,18 +111,6 @@ add_executable(${appName} MACOSX_BUNDLE src/main.m ${appResources} ${appSources}
 target_link_libraries(${appName} ${vendorLibs} ${systemLibs})
 include_directories(${vendorPrefix}/include)
 
-# Generate the protocol buffers:
-set(ProtoC ${vendorPrefix}/bin/protoc)
-add_custom_command(
-  OUTPUT ${PROJECT_SOURCE_DIR}/src/app/pb/Track.pb.h ${PROJECT_SOURCE_DIR}/src/app/pb/Track.pb.cc
-  WORKING_DIRECTORY src/app/pb
-  COMMAND ${ProtoC} --cpp_out=. Track.proto
-  DEPENDS buildVendorLibraries ${PROJECT_SOURCE_DIR}/src/app/pb/Track.proto)
-
-set_source_files_properties(
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/app/pb/Track.pb.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/app/pb/Track.pb.h"
-  PROPERTIES GENERATED TRUE)
 
 # Make sure that the vendor library step is complete before building the application
 add_dependencies(${appName} BuildVendorLibraries)
@@ -136,4 +121,22 @@ add_custom_target(
   DEPENDS src/debug.gdb ${appName}
   COMMAND gdb -f -x src/debug.gdb ${EXECUTABLE_OUTPUT_PATH}/${appName}.app/Contents/MacOS/${appName})
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -iquote ${PROJECT_SOURCE_DIR}/vendor/build/share/gtest-1.6.0")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -iquote ${PROJECT_SOURCE_DIR}/vendor/build/include")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wfatal-errors")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
+
+
+# vendor/build/share/gtest-1.6.0/src/gtest_main.cc
+add_executable(testit
+  src/test.mm
+  vendor/build/share/gtest-1.6.0/src/gtest-all.cc
+  ${appSources}
+  ${testSources})
+target_link_libraries(testit ${vendorLibs} ${systemLibs})
+
+add_custom_target(
+  test
+  DEPENDS testit
+  COMMAND ${EXECUTABLE_OUTPUT_PATH}/testit)
 
