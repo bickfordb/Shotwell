@@ -3,29 +3,28 @@
 #import "CoreAudioSink.h"
 #import "Log.h"
 #import "MainWindowController.h"
-#import "NSNetServiceAddress.h"
-#import "PThread.h"
-#import "RemoteLibrary.h"
+#import "PlaybackControls.h"
+#import "Player.h"
+#import "PreferencesWindowController.h"
+#import "Util.h"
 
 static NSString * const kArtistIconName = @"NSEveryone";
 static NSString * const kAlbumIconName = @"album-icon";
-static NSString * const kBrowserControl = @"BrowserControl";
 static NSString * const kTrackIconName = @"NSActionTemplate";
 static NSString * const kRemoteLibraryIconName = @"NSNetwork";
 static NSString * const kNetworkIconName = @"NSNetwork";
 static NSString * const kLocalLibraryIconName = @"NSComputer";
-static NSString * const kNextButton = @"NextButton";
 static NSString * const kPlayButton = @"PlayButton";
-static NSString * const kPreviousButton = @"PreviousButton";
 static NSString * const kProgressControl = @"ProgressControl";
 static CGRect kStartupFrame = {{50, 200}, {1300, 650}};
-static int64_t kPollMovieInterval = 100000;
-static int64_t kPollProgressInterval = 500000;
+static const double kPollMovieInterval = 0.1;
+static const int64_t kPollProgressInterval = 500000;
 static NSString * const kDefaultWindowTitle = @"Shotwell";
 static NSString * const kSearchControl = @"SearchControl";
 static const int kBottomEdgeMargin = 25;
 static NSString * const kVolumeControl = @"VolumeControl";
-static const int64_t kPollStatsInterval = 5 * 1000000;
+static const double kPollStatsInterval = 5.0;
+static MainWindowController *mainWindowController = nil;
 
 static NSString *GetWindowTitle(NSMutableDictionary *t) {
   NSString *title = t[kTrackTitle];
@@ -42,81 +41,137 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
     return kDefaultWindowTitle;
 }
 
-@implementation MainWindowController
-@synthesize audioOutputPopUpButton = audioOutputPopUpButton_;
-@synthesize browserControl = browserControl_;
-@synthesize contentView = contentView_;
-@synthesize libraryServiceBrowser = libraryServiceBrowser_;
-@synthesize loop = loop_;
-@synthesize playImage = playImage_;
-@synthesize playbackControls = playbackControls_;
-@synthesize progressControl = progressControl_;
-@synthesize progressIndicator = progressIndicator_;
-@synthesize searchField = searchField_;
-@synthesize startImage = startImage_;
-@synthesize statusBarText = statusBarText_;
-@synthesize stopImage = stopImage_;
-@synthesize trackBrowser = trackBrowser_;
-@synthesize volumeControl = volumeControl_;
+@implementation MainWindowController {
+  PlaybackControls *playbackControls_;
+  NSProgressIndicator *progressIndicator_;
+  NSPopUpButton *browserControl_;
+  NSSearchField *searchField_;
+  NSSet *albums_;
+  NSSet *artists_;
+  Library *library_;
+  NavTable *navTable_;
+  NSTextField *statusBarText_;
+  NSView *contentView_;
+  ProgressControl *progressControl_;
+  ServicePopUpButton *audioOutputPopUpButton_;
+  ServiceBrowser *libraryServiceBrowser_;
+  SplitView *verticalSplit_;
+  SplitView *navSplit_;
+  TrackBrowser *trackBrowser_;
+  ViewController *content_;
+  VolumeControl *volumeControl_;
+  NSView *navContent_;
+  bool isBusy_;
+  dispatch_source_t pollStatsTimer_;
+  dispatch_source_t pollPlayerTimer_;
+}
 
+- (void)setupMenu {
+  NSMenu *mainMenu = [[NSApplication sharedApplication] mainMenu];
+  NSMenuItem *editMenuItem = [mainMenu itemWithTitle:@"Edit"];
+  NSMenuItem *formatMenuItem = [mainMenu itemWithTitle:@"Format"];
+  NSMenuItem *viewMenuItem = [mainMenu itemWithTitle:@"View"];
+  NSMenuItem *fileMenuItem = [mainMenu itemWithTitle:@"File"];
+  [mainMenu removeItem:formatMenuItem];
+  [mainMenu removeItem:viewMenuItem];
+  NSMenu *fileMenu = [fileMenuItem submenu];
+  [fileMenu removeAllItems];
+  // Edit Menu:
+  NSMenu *editMenu = [editMenuItem submenu];
+  [editMenu removeAllItems];
+  NSMenuItem *i = nil;
+  i = [editMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
+  i.target = self;
+  i = [editMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
+  i.target = self;
+  i = [editMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
+  i.target = self;
+  i = [editMenu addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
+  i.target = self;
+  i = [editMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:[NSString stringWithFormat:@"%C", (unsigned short)NSBackspaceCharacter]];
+  i.target = self;
+  [i setKeyEquivalentModifierMask:0];
+  i = [editMenu addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
+  i.target = self;
+  i = [editMenu addItemWithTitle:@"Select None" action:@selector(deselectAll:) keyEquivalent:@"A"];
+  i.target = self;
+
+  // File Menu
+  i = [fileMenu addItemWithTitle:@"Add to Library" action:@selector(addToLibrary:) keyEquivalent:@"o"];
+  i.target = self;
+
+  i = [mainMenu itemAtIndex:0];
+  i = [i.submenu
+    insertItemWithTitle:@"Preferences" action:@selector(makeKeyAndOrderFront:)
+    keyEquivalent:@","
+    atIndex:1];
+  i.target = [PreferencesWindowController shared].window;
+
+  // Playback Menu
+
+  NSMenuItem *playbackItem = [mainMenu insertItemWithTitle:@"Playback" action:nil keyEquivalent:@"" atIndex:3];
+  playbackItem.submenu = [[[NSMenu alloc] initWithTitle:@"Playback"] autorelease];
+  NSMenu *playbackMenu = playbackItem.submenu;
+
+  NSMenuItem *playItem = [playbackMenu addItemWithTitle:@"Play" action:@selector(playClicked:) keyEquivalent:@" "];
+  [playItem setKeyEquivalentModifierMask:0];
+  NSString *leftArrow = [NSString stringWithFormat:@"%C", (unsigned short)0xF702];
+  NSString *rightArrow = [NSString stringWithFormat:@"%C", (unsigned short)0xF703];
+  [playbackMenu addItemWithTitle:@"Previous" action:@selector(previousClicked:) keyEquivalent:leftArrow];
+  [playbackMenu addItemWithTitle:@"Next" action:@selector(nextClicked:) keyEquivalent:rightArrow];
+
+}
+
+- (void)addToLibrary:(id)sender {
+  // Create the File Open Dialog class.
+  NSOpenPanel *openPanel = [NSOpenPanel openPanel];
+  [openPanel setCanChooseFiles:YES];
+  [openPanel setCanChooseDirectories:YES];
+  [openPanel setAllowsMultipleSelection:YES];
+
+  NSMutableArray *paths = [NSMutableArray array];
+  if ([openPanel runModal] == NSOKButton) {
+    for (NSURL *p in [openPanel URLs]) {
+      [paths addObject:p.path];
+    }
+  }
+  [[LocalLibrary shared] scan:paths];
+}
 - (id)init {
   self = [super init];
   if (self) {
-    self.loop = [Loop loop];
-    self.startImage = [NSImage imageNamed:@"start"];
-    self.stopImage = [NSImage imageNamed:@"stop"];
-    self.searchField = [[[NSSearchField alloc] initWithFrame:CGRectMake(0, 0, 300, 22)] autorelease];
-    self.searchField.font = [NSFont systemFontOfSize:12.0];
-    self.searchField.autoresizingMask = NSViewMinXMargin;
-    self.searchField.target = self;
-    self.searchField.action = @selector(onSearch:);
-    [self.searchField setRecentsAutosaveName:@"recentSearches"];
+    searchField_ = [[NSSearchField alloc] initWithFrame:CGRectMake(0, 0, 300, 22)];
+    searchField_.font = [NSFont systemFontOfSize:12.0];
+    searchField_.autoresizingMask = NSViewMinXMargin;
+    searchField_.target = trackBrowser_;
+    searchField_.action = @selector(onSearch:);
+    [searchField_ setRecentsAutosaveName:@"recentSearches"];
     [self setupWindow];
     [self setupStatusBarText];
     [self setupBusyIndicator];
     __block MainWindowController *weakSelf = self;
-    [loop_ every:kPollMovieInterval with:^{
-      id <AudioSink> sink = SharedAppDelegate().audioSink;
-      NSImage *playImage = nil;
-      if (sink) {
-        if (!sink.isSeeking) {
-          weakSelf.progressControl.isEnabled = true;
-          weakSelf.progressControl.duration = sink.duration;
-          weakSelf.progressControl.elapsed = sink.elapsed;
-        }
-        playImage = sink.audioSource.state == kPlayingAudioSourceState ? stopImage_ : startImage_;
-        weakSelf.volumeControl.level = SharedAppDelegate().audioSink.volume;
-      } else {
-        weakSelf.progressControl.duration = 0;
-        weakSelf.progressControl.elapsed = 0;
-        weakSelf.progressControl.isEnabled = false;
-        playImage = startImage_;
-      }
-      [self.playbackControls setImage:playImage forSegment:1];
-    }];
+    pollPlayerTimer_ = CreateDispatchTimer(kPollMovieInterval, dispatch_get_main_queue(), ^{
+
+    });
     isBusy_ = false;
+    /*
     [loop_ every:kPollProgressInterval with:^{
       if (weakSelf.content.isBusy && !isBusy_) {
-        [self.progressIndicator startAnimation:self];
+        [progressIndicator_ startAnimation:self];
         isBusy_ = true;
       } else if (!weakSelf.content.isBusy && isBusy_) {
         isBusy_ = false;
-        [self.progressIndicator stopAnimation:self];
+        [progressIndicator_ stopAnimation:self];
       }
     }];
-    //[self setupAudioSelect];
-    [self.loop every:kPollStatsInterval with:^{
+    */
+    pollStatsTimer_ = CreateDispatchTimer(kPollStatsInterval, dispatch_get_main_queue(), ^{
       [weakSelf pollStats];
-    }];
-    self.libraryServiceBrowser = [[[ServiceBrowser alloc]
-      initWithType:kDaemonServiceType
-      onAdded:^(NSNetService *svc) {
-        [weakSelf addRemoteLibraryService:svc];
-      }
-      onRemoved:^(NSNetService *svc) {
-        [self removeRemoteLibraryService:svc];
-      }] autorelease];
-    [self selectBrowser:MainWindowControllerTrackBrowser];
+    });
+    trackBrowser_ = [[TrackBrowser alloc] init];
+    [self setContent:trackBrowser_];
+
+
   }
   return self;
 }
@@ -129,15 +184,15 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
 
 - (void)setContent:(ViewController *)vc {
   @synchronized(self) {
-    CGRect f = self.contentView.frame;
+    CGRect f = contentView_.frame;
     f.origin.x = 0;
     f.origin.y = 0;
-    for (NSView *view in self.contentView.subviews) {
+    for (NSView *view in contentView_.subviews) {
       [view removeFromSuperview];
     }
     self.content.nextResponder = nil;
     vc.view.frame = f;
-    [self.contentView addSubview:vc.view];
+    [contentView_ addSubview:vc.view];
     vc.view.nextResponder = vc;
     vc.nextResponder = contentView_;
     [content_ autorelease];
@@ -150,20 +205,19 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
 }
 
 - (void)dealloc {
+  dispatch_release(pollStatsTimer_);
+  dispatch_release(pollPlayerTimer_);
   [albums_ release];
   [artists_ release];
   [audioOutputPopUpButton_ release];
   [browserControl_ release];
   [contentView_ release];
   [content_ release];
-  [loop_ release];
-  [playImage_ release];
   [playbackControls_ release];
   [progressControl_ release];
   [searchField_ release];
-  [startImage_ release];
   [statusBarText_ release];
-  [stopImage_ release];
+  [trackBrowser_ release];
   [verticalSplit_ release];
   [volumeControl_ release];
   [super dealloc];
@@ -171,56 +225,19 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
 
 - (void)search:(NSString *)term after:(On0)after {
   after = [after copy];
-  if (![self.searchField.stringValue isEqual:term])
-    self.searchField.stringValue = term;
+  if (![searchField_.stringValue isEqual:term])
+    searchField_.stringValue = term;
   [self.content search:term after:after];
 }
 
 - (void)setupBusyIndicator {
   CGSize sz = ((NSView *)self.window.contentView).frame.size;
   CGRect rect = CGRectMake(sz.width - 5 - 18, 2, 18, 18);
-  self.progressIndicator = [[[NSProgressIndicator alloc] initWithFrame:rect] autorelease];
-  self.progressIndicator.style = NSProgressIndicatorSpinningStyle;
-  self.progressIndicator.autoresizingMask = NSViewMaxYMargin | NSViewMinXMargin;
-  self.progressIndicator.displayedWhenStopped = NO;
-  [self.window.contentView addSubview:self.progressIndicator];
-}
-
-- (void)selectBrowser:(MainWindowControllerBrowser)idx {
-  ForkToMainWith(^{
-    if (!self.trackBrowser) {
-      self.trackBrowser = [[[TrackBrowser alloc] initWithLibrary:SharedAppDelegate().library] autorelease];
-      self.content = self.trackBrowser;
-      self.navContent = nil;
-    }
- });
-}
-
-- (NSView *)navContent {
-  return navContent_;
-}
-
-- (void)setNavContent:(NSView *)view {
-  if (navContent_) {
-    [navContent_ removeFromSuperview];
-  }
-  @synchronized(self) {
-    NSView *t = navContent_;
-    navContent_ = [view retain];
-    [t release];
-  }
-  if (navContent_) {
-    navContent_.frame = CGRectMake(0, 0, 150, 150);
-    if (navSplit_.subviews.count > 0)
-      [navSplit_ addSubview:view positioned:NSWindowBelow relativeTo:navSplit_.subviews[0]];
-    else
-      [navSplit_ addSubview:navContent_];
-    [navSplit_ adjustSubviews];
-  }
-}
-
-- (void)onSearch:(id)sender {
-  [[NSApp delegate] search:[sender stringValue] after:nil];
+  progressIndicator_ = [[NSProgressIndicator alloc] initWithFrame:rect];
+  progressIndicator_.style = NSProgressIndicatorSpinningStyle;
+  progressIndicator_.autoresizingMask = NSViewMaxYMargin | NSViewMinXMargin;
+  progressIndicator_.displayedWhenStopped = NO;
+  [self.window.contentView addSubview:progressIndicator_];
 }
 
 - (void)setupWindow {
@@ -235,7 +252,7 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
   splitRect.origin.y += kBottomEdgeMargin;
   splitRect.size.height -= kBottomEdgeMargin;
 
-  navSplit_ = [[[SplitView alloc] initWithFrame:splitRect] autorelease];
+  navSplit_ = [[SplitView alloc] initWithFrame:splitRect];
   [navSplit_ setDividerStyle:NSSplitViewDividerStyleThin];
   navSplit_.autoresizesSubviews = YES;
   navSplit_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
@@ -246,10 +263,10 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
   [self.window.contentView addSubview:navSplit_];
 
 
-  self.contentView = [[[NSView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)] autorelease];
-  self.contentView.autoresizesSubviews = YES;
-  self.contentView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-  self.contentView.focusRingType = NSFocusRingTypeNone;
+  contentView_ = [[NSView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  contentView_.autoresizesSubviews = YES;
+  contentView_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+  contentView_.focusRingType = NSFocusRingTypeNone;
 
   verticalSplit_ = [[SplitView alloc] initWithFrame:splitRect];
   [verticalSplit_ setDividerStyle:NSSplitViewDividerStyleThin];
@@ -259,7 +276,7 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
   verticalSplit_.vertical = NO;
   verticalSplit_.dividerColor = [NSColor grayColor];
   verticalSplit_.dividerThickness = 1.0;
-  [verticalSplit_ addSubview:self.contentView];
+  [verticalSplit_ addSubview:contentView_];
   [navSplit_ addSubview:verticalSplit_];
   NSToolbar *toolbar = [[[NSToolbar alloc] initWithIdentifier:@"main"] autorelease];
   toolbar.delegate = self;
@@ -272,22 +289,22 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
   int w = 300;
   int x = (windowWidth / 2.0) - (300.0 / 2.0) + 5.0;
 
-  self.statusBarText = [[[NSTextField alloc] initWithFrame:CGRectMake(x, 2, w, 18)] autorelease];
-  self.statusBarText.stringValue = @"";
-  self.statusBarText.editable = NO;
-  self.statusBarText.selectable = NO;
-  self.statusBarText.bordered = NO;
-  self.statusBarText.bezeled = NO;
-  self.statusBarText.backgroundColor = [NSColor clearColor];
-  self.statusBarText.autoresizingMask = NSViewWidthSizable | NSViewMaxYMargin;
-  self.statusBarText.alignment = NSCenterTextAlignment;
+  statusBarText_ = [[NSTextField alloc] initWithFrame:CGRectMake(x, 2, w, 18)];
+  statusBarText_.stringValue = @"";
+  statusBarText_.editable = NO;
+  statusBarText_.selectable = NO;
+  statusBarText_.bordered = NO;
+  statusBarText_.bezeled = NO;
+  statusBarText_.backgroundColor = [NSColor clearColor];
+  statusBarText_.autoresizingMask = NSViewWidthSizable | NSViewMaxYMargin;
+  statusBarText_.alignment = NSCenterTextAlignment;
 
-  NSTextFieldCell *cell = (NSTextFieldCell *)[self.statusBarText cell];
+  NSTextFieldCell *cell = (NSTextFieldCell *)[statusBarText_ cell];
   cell.font = [NSFont systemFontOfSize:11.0];
   cell.font = [NSFont systemFontOfSize:11.0];
   [cell setControlSize:NSSmallControlSize];
   [cell setBackgroundStyle:NSBackgroundStyleRaised];
-  [[self.window contentView] addSubview:self.statusBarText];
+  [[self.window contentView] addSubview:statusBarText_];
 }
 
 - (void)setupAudioSelect {
@@ -295,100 +312,56 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
   int x = ((NSView *)[self.window contentView]).bounds.size.width;
   x -= w + 10;
   x -= 32;
-  self.audioOutputPopUpButton = [[[ServicePopUpButton alloc] initWithFrame:CGRectMake(x, 2, w, 18)] autorelease];
-  self.audioOutputPopUpButton.onService = ^(id v) {
+  audioOutputPopUpButton_ = [[ServicePopUpButton alloc] initWithFrame:CGRectMake(x, 2, w, 18)];
+  audioOutputPopUpButton_.onService = ^(id v) {
     NSDictionary *item = (NSDictionary *)v;
     INFO(@"set output to: %@", item);
-    [SharedAppDelegate().audioSink setOutputDeviceID:item[@"id"]];
+    [[Player shared] setOutputDevice:item[@"id"]];
   };
-  self.audioOutputPopUpButton.autoresizingMask = NSViewMinXMargin | NSViewMaxYMargin;
-  NSButtonCell *buttonCell = (NSButtonCell *)[self.audioOutputPopUpButton cell];
+  audioOutputPopUpButton_.autoresizingMask = NSViewMinXMargin | NSViewMaxYMargin;
+  NSButtonCell *buttonCell = (NSButtonCell *)[audioOutputPopUpButton_ cell];
   [buttonCell setFont:[NSFont systemFontOfSize:11.0]];
   [buttonCell setControlSize:NSSmallControlSize];
 
-  [[self.window contentView] addSubview:self.audioOutputPopUpButton];
+  [[self.window contentView] addSubview:audioOutputPopUpButton_];
 }
 
 - (NSToolbarItem *)toolbar:(NSToolbar *)toolbar itemForItemIdentifier:(NSString *)itemIdentifier willBeInsertedIntoToolbar:(BOOL)flag {
   NSToolbarItem *item = [[[NSToolbarItem alloc] initWithItemIdentifier:itemIdentifier] autorelease];
   NSView *view = nil;
   if (itemIdentifier == kPlayButton) {
-      self.playbackControls = [[[NSSegmentedControl alloc] initWithFrame:CGRectMake(0, 0, 130, 25)] autorelease];
-      self.playbackControls.segmentCount = 3;
-      [[self.playbackControls cell] setTrackingMode:NSSegmentSwitchTrackingMomentary];
-      self.playbackControls.segmentStyle = NSSegmentStyleTexturedRounded;
-      [self.playbackControls setImage:[NSImage imageNamed:@"left"] forSegment:0];
-      [self.playbackControls setImageScaling:NSImageScaleProportionallyUpOrDown forSegment:0];
-      [self.playbackControls setImage:self.startImage forSegment:1];
-      [self.playbackControls setImageScaling:NSImageScaleProportionallyUpOrDown forSegment:1];
-      [self.playbackControls setImage:[NSImage imageNamed:@"right"] forSegment:2];
-      [self.playbackControls setImageScaling:NSImageScaleProportionallyUpOrDown forSegment:2];
-      [self.playbackControls sizeToFit];
-      view = self.playbackControls;
-      self.playbackControls.action = @selector(playbackControlsClicked:);
-      self.playbackControls.target = SharedAppDelegate();
-  } else if (itemIdentifier == kBrowserControl) {
-      self.browserControl = [[[NSPopUpButton alloc] initWithFrame:CGRectMake(0, 0, 25, 25) pullsDown:NO] autorelease];
-      NSPopUpButtonCell *cell = [self.browserControl cell];
-      self.browserControl.preferredEdge = NSMinYEdge;
-      self.browserControl.bezelStyle = NSTexturedSquareBezelStyle;
-      self.browserControl.buttonType = NSPushOnPushOffButton;
-      self.browserControl.state = NSOffState;
-      self.browserControl.bordered = NO;
-      cell.usesItemFromMenu = YES;
-      cell.imagePosition = NSImageOnly;
-      [cell setArrowPosition:NSPopUpNoArrow];
-      cell.type = NSImageCellType;
-      [cell setImageScaling:NSImageScaleProportionallyUpOrDown];
-      [self.browserControl addItemWithTitle:@""];
-      [self.browserControl addItemWithTitle:@""];
-      [self.browserControl addItemWithTitle:@""];
-      NSSize iconSize = NSMakeSize(14, 14);
-
-      // Clear icon
-      NSImage *noneImage = [NSImage imageNamed:@"NSListViewTemplate"];
-      noneImage.size = iconSize;
-      [self.browserControl itemAtIndex:0].image = noneImage;
-      [self.browserControl itemAtIndex:0].target = self;
-      [self.browserControl itemAtIndex:0].action = @selector(noneFilterSelected:);
-
-      // Artist icon
-      NSImage *artistImage = [NSImage imageNamed:@"NSUser"];
-      artistImage.size = iconSize;
-      [self.browserControl itemAtIndex:1].image = artistImage;
-      [self.browserControl itemAtIndex:1].target = self;
-      [self.browserControl itemAtIndex:1].action = @selector(artistFilterSelected:);
-
-      // Album icon
-      NSImage *albumImage = [NSImage imageNamed:@"album-icon"];
-      albumImage.size = iconSize;
-      [self.browserControl itemAtIndex:2].image = albumImage;
-      [self.browserControl itemAtIndex:2].target = self;
-      [self.browserControl itemAtIndex:2].action = @selector(albumFilterSelected:);
-
-      view = self.browserControl;
-  } else if (itemIdentifier == kProgressControl) {
-    if (!self.progressControl) {
-      self.progressControl = [[[ProgressControl alloc]
-        initWithFrame:CGRectMake(0, 0, 5 + 60 + 5 + 300 + 5 + + 60 + 5, 22)] autorelease];
-      self.progressControl.onElapsed = ^(int64_t amt) {
-        //[SharedAppDelegate().audioSink flush];
-        [SharedAppDelegate().audioSink seek:amt];
+      playbackControls_ = [[PlaybackControls alloc] initWithFrame:CGRectMake(0, 0, 130, 25)];
+      __block MainWindowController *weakSelf = self;
+      playbackControls_.onPrevious = ^{
+        [weakSelf->trackBrowser_ playPreviousTrack];
       };
+      playbackControls_.onPlay = ^{
+        Player *player = [Player shared];
+        if (!player.isDone) {
+          player.isPaused = !player.isPaused;
+        } else {
+          [weakSelf->trackBrowser_ playNextTrack];
+        }
+      };
+      playbackControls_.onNext = ^{
+        [weakSelf->trackBrowser_ playNextTrack];
+      };
+      view = playbackControls_;
+  } else if (itemIdentifier == kProgressControl) {
+    if (!progressControl_) {
+      progressControl_ = [[ProgressControl alloc]
+        initWithFrame:CGRectMake(0, 0, 5 + 60 + 5 + 300 + 5 + + 60 + 5, 22)];
     }
-    view = self.progressControl.view;
+    view = progressControl_.view;
     [item setMaxSize:NSMakeSize(1000, 22)];
     [item setMinSize:NSMakeSize(400, 22)];
   } else if (itemIdentifier == kVolumeControl) {
-    if (!self.volumeControl) {
-      self.volumeControl = [[[VolumeControl alloc] init] autorelease];
-      self.volumeControl.onVolume = ^(double amt) {
-        SharedAppDelegate().audioSink.volume = amt;
-      };
+    if (!volumeControl_) {
+      volumeControl_ = [[VolumeControl alloc] init];
     }
-    view = self.volumeControl.view;
+    view = volumeControl_.view;
   } else if (itemIdentifier == kSearchControl) {
-    view = self.searchField;
+    view = searchField_;
   }
   if (view) {
     item.view = view;
@@ -398,30 +371,12 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
 
 }
 
-- (void)noneFilterSelected:(id)sender {
-  self.browserControl.state = NSOffState;
-  self.browserControl.bordered = NO;
-  [self selectBrowser:MainWindowControllerTrackBrowser];
-}
-
-- (void)artistFilterSelected:(id)sender {
-  self.browserControl.state = NSOnState;
-  self.browserControl.bordered = YES;
-  [self selectBrowser:MainWindowControllerArtistBrowser];
-}
-
-- (void)albumFilterSelected:(id)sender {
-  self.browserControl.state = NSOnState;
-  self.browserControl.bordered = YES;
-  [self selectBrowser:MainWindowControllerAlbumBrowser];
-}
-
 - (NSArray *)toolbarAllowedItemIdentifiers:(NSToolbar *)toolbar {
   return [self toolbarDefaultItemIdentifiers:toolbar];
 }
 
 - (NSArray *)toolbarDefaultItemIdentifiers:(NSToolbar *)toolbar {
-  return [NSArray arrayWithObjects:kPlayButton, kBrowserControl, kVolumeControl, kProgressControl, kSearchControl, nil];
+  return [NSArray arrayWithObjects:kPlayButton, kVolumeControl, kProgressControl, kSearchControl, nil];
 }
 
 - (NSArray *)toolbarSelectableItemIdentifiers:(NSToolbar *)toolbar {
@@ -434,13 +389,8 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
 - (void)toolbarWillRemoveItem:(NSNotification *)notification {
 }
 
-- (void)trackStarted:(NSMutableDictionary *)track {
-  self.window.title = GetWindowTitle(track);
-  [self.content reload];
-}
-
-- (void)trackEnded:(NSMutableDictionary *)track {
-  self.window.title = kDefaultWindowTitle;
+- (void)onTrackChange:(NSNotification *)notification {
+  self.window.title = GetWindowTitle([Player shared].track);
 }
 
 - (void)pollStats {
@@ -452,7 +402,7 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
   for (id field in fields) {
     stats[field] = [NSMutableSet set];
   }
-  for (NSMutableDictionary *track in self.trackBrowser.tracks.array) {
+  for (NSMutableDictionary *track in trackBrowser_.tracks.array) {
     for (id field in fields) {
       NSString *val = track[field];
       if (!val || !val.length) continue;
@@ -460,15 +410,33 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
     }
     i++;
   }
-  self.statusBarText.stringValue = [NSString stringWithFormat:@"%d Tracks, %d Artists, %d Albums", i, (int)[((NSSet *)stats[kTrackArtist]) count], (int)[((NSSet *)stats[kTrackAlbum]) count]];
+  statusBarText_.stringValue = [NSString stringWithFormat:@"%d Tracks, %d Artists, %d Albums", i, (int)[((NSSet *)stats[kTrackArtist]) count], (int)[((NSSet *)stats[kTrackAlbum]) count]];
 }
+
 
 + (MainWindowController *)shared {
   if (!mainWindowController)
     mainWindowController = [[MainWindowController alloc] init];
   return mainWindowController;
 }
+
+
+
+- (void)paste:(id)sender {
+  NSPasteboard *pboard = [NSPasteboard generalPasteboard];
+  NSArray *items = [pboard readObjectsForClasses:[NSArray arrayWithObjects:[NSURL class], nil]
+    options:nil];
+  NSMutableArray *paths = [NSMutableArray array];
+  for (NSURL *u in items) {
+    if (!u.isFileURL) {
+      continue;
+    }
+    [paths addObject:u.path];
+  }
+  if (paths.count > 0) {
+    [[LocalLibrary shared] scan:paths];
+  }
+}
 @end
 
-static MainWindowController *mainWindowController = nil;
 

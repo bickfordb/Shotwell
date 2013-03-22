@@ -111,7 +111,6 @@ add_executable(${appName} MACOSX_BUNDLE src/main.m ${appResources} ${appSources}
 target_link_libraries(${appName} ${vendorLibs} ${systemLibs})
 include_directories(${vendorPrefix}/include)
 
-
 # Make sure that the vendor library step is complete before building the application
 add_dependencies(${appName} BuildVendorLibraries)
 

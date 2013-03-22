@@ -1,21 +1,21 @@
 #import "AppDelegate.h"
 #import "Enum.h"
+#import "LocalLibrary.h"
 #import "Log.h"
+#import "MainWindowController.h"
 #import "MicroSecondsToDate.h"
 #import "MicroSecondsToHMS.h"
 #import "NSNumberTimeFormat.h"
-#import "Pthread.h"
+#import "Player.h"
 #import "Search.h"
 #import "Sort.h"
 #import "Track.h"
 #import "TrackBrowser.h"
+#import "Util.h"
 
 static NSString * const kStatus = @"status";
 static NSString * const kOnSortDescriptorsChanged = @"OnSortDescriptorsChanged";
 static double const kTrackFontSize = 11.0;
-
-
-
 
 @implementation TrackBrowser
 @synthesize emptyImage = emptyImage_;
@@ -117,10 +117,10 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   });
 }
 
-- (id)initWithLibrary:(Library *)library {
+- (id)init {
   self = [super init];
   if (self) {
-    self.library = library;
+    self.library = [LocalLibrary shared];
     self.tracks = [[[SortedSeq alloc] init] autorelease];
     self.scrollView.borderType = NSNoBorder;
     __block TrackBrowser *weakSelf = self;
@@ -128,7 +128,8 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
     self.playingFont = [NSFont boldSystemFontOfSize:kTrackFontSize];
     self.tableView.onKeyDown = ^(NSEvent *e) {
       if (e.keyCode == 49) {
-        [SharedAppDelegate() playClicked:nil];
+        /* handle play click here*/
+
         return false;
       }
       return true;
@@ -260,12 +261,12 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
     // to our window.
 
     self.onDoubleAction = ^(int row){
-      [SharedAppDelegate() playTrackAtIndex:row];
+      [self playTrackAtIndex:row];
     };
     self.onCellValue = ^id(int row, NSTableColumn *tableColumn) {
       NSMutableDictionary *t = [weakSelf.tracks get:row];
       NSString *ident = tableColumn.identifier;
-      bool isPlaying = [SharedAppDelegate().track isEqual:t];
+      bool isPlaying = [[Player shared].track isEqual:t];
       [[tableColumn dataCell] setFont:isPlaying ? playingFont_ : font_];
       if (ident == kStatus) {
         return isPlaying ? playImage_ : emptyImage_;
@@ -328,5 +329,33 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   [playImage_ release];
   [tracks_ release];
   [super dealloc];
+}
+
+- (void)playTrackAtIndex:(int)index {
+  [[Player shared] playTrack:[tracks_ get:index]];
+}
+
+/*
+ * Play the next track.
+ */
+- (void)playNextTrack {
+  IgnoreSigPIPE();
+  int found = -1;
+  id track = [[Player shared] track];
+  if (track) {
+    found = IndexOf(tracks_, track);
+  }
+  [self playTrackAtIndex:found + 1];
+}
+
+- (void)playPreviousTrack {
+  int found = 0;
+  id track = [[Player shared] track];
+  if (track) {
+    found = IndexOf(tracks_, track);
+  }
+  if (found > 0) {
+    [self playTrackAtIndex:found - 1];
+  }
 }
 @end

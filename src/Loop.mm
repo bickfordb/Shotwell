@@ -5,9 +5,7 @@
 #import "Loop.h"
 #import "Log.h"
 #import "Event.h"
-#import "Signals.h"
-#import "PThread.h"
-
+#import "Util.h"
 
 static const int kDispatchInterval = 10000; // .01 seconds
 static const int kCheckRunningInterval = 1000; // .001 seconds

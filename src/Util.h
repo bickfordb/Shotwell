@@ -1,9 +1,9 @@
-#include <stdint.h>
+#import <Cocoa/Cocoa.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <string>
+#include <dispatch/dispatch.h>
 
-#import <Cocoa/Cocoa.h>
 // vim: set filetype=objcpp
 
 /* The number of microseconds per second */
@@ -23,3 +23,24 @@ void MakeDirectories(NSString *path);
 void RunOnMain(void (^block)(void));
 bool Exists(NSString *path);
 NSString *AppSupportPath();
+NSString *LocalLibraryPath();
+
+#include <pthread.h>
+
+typedef void (^ClosedBlock)(void);
+
+pthread_t ForkWith(ClosedBlock block);
+void ForkToMainWith(ClosedBlock block);
+void IgnoreSigPIPE();
+typedef void (^On0)(void);
+typedef void (^On1)(id a);
+typedef void (^On2)(id a, id b);
+typedef void (^On3)(id a, id b, id c);
+typedef void (^On4)(id a, id b, id c, id d);
+typedef void (^On5)(id a, id b, id c, id d, id e);
+
+void Notify(NSString *name, id sender, NSDictionary *info);
+dispatch_source_t CreateDispatchTimer(double seconds, dispatch_queue_t queue, dispatch_block_t block);
+
+
+// vim: filetype=objcpp

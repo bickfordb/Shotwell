@@ -136,6 +136,7 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
   DEBUG(@"starting queue");
   CheckStatus(AudioQueueStart, queue_, NULL);
   while (numBuffers_ < (kCoreAudioSinkNumBuffers - 1)) {
+    INFO(@"prefilling buffers");
     AudioQueueBufferRef buf = NULL;
     if (CheckStatus(AudioQueueAllocateBuffer, queue_, 32768, &buf)) {
       return;
@@ -168,14 +169,19 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
 
 }
 
-- (bool)isPaused {
+- (BOOL)isPaused {
   return isPaused_;
 }
 
-- (void)setIsPaused:(bool)isPaused {
-  INFO(@"paused: %d", (int)isPaused);
+- (void)setIsPaused:(BOOL)isPaused {
   @synchronized(self) {
+    if (isPaused == isPaused_) {
+      return;
+    }
+    [self willChangeValueForKey:@"paused"];
+    isPaused_ = isPaused;
     if (!isPaused) {
+      INFO(@"unpausing");
       [self startQueue];
     } else {
       if (queue_) {
@@ -183,7 +189,7 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
         CheckStatus(AudioQueuePause, queue_);
       }
     }
-    isPaused_ = isPaused;
+    [self didChangeValueForKey:@"paused"];
   }
 }
 

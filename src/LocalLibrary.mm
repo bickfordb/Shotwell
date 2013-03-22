@@ -14,6 +14,7 @@
 #import "Log.h"
 #import "NSStringDigest.h"
 #import "NSURLAdditions.h"
+#import "Pthread.h"
 #import "UUID.h"
 #import "Table.h"
 #import "Track.h"
@@ -150,7 +151,6 @@ static void OnFileEvent(
 }
 
 - (void)scanPath:(NSString *)path {
-  [self noteAddedPath:path];
   char *paths[2];
   paths[0] = (char *)path.UTF8String;
   paths[1] = NULL;
@@ -179,10 +179,14 @@ static void OnFileEvent(
 }
 
 - (NSMutableDictionary *)index:(NSString *)path {
-  if (!path)
+  DEBUG(@"indexing %@", path);
+  if (!path) {
+    DEBUG(@"empty path");
     return nil;
+  }
   NSDate *lastModified = ModifiedAt(path);
   if (!lastModified) {
+    DEBUG(@"not modified");
     // Not Found
     return nil;
   }
@@ -196,9 +200,11 @@ static void OnFileEvent(
   } else if (createdAt && [createdAt compare:lastModified] < 0) {
     tag = TagRead(path, &error);
   } else {
+    DEBUG(@"no tag!");
     return nil;
   }
   if (error || !tag) {
+    DEBUG(@"error: %@, tag: %@", error, tag);
     return nil;
   }
   [track addEntriesFromDictionary:tag];
@@ -206,6 +212,7 @@ static void OnFileEvent(
   if (!title || !title.length) {
     track[kTrackTitle] = path.lastPathComponent.stringByDeletingPathExtension;
   }
+  DEBUG(@"adding track: %@", track);
   self[track[kTrackID]] = track;
   return track;
 }
@@ -245,10 +252,10 @@ static void OnFileEvent(
   }
 }
 
-+ (LocalLibrary *)sharedLocalLibrary {
++ (LocalLibrary *)shared {
   @synchronized(sharedLocalLibraryLock) {
     if (!localLibrary) {
-      localLibrary = [[LocalLibrary alloc] initWithDBPath:DefaultLocalLibraryPath()];
+      localLibrary = [[LocalLibrary alloc] initWithDBPath:LocalLibraryPath()];
     }
     return localLibrary;
   }
@@ -259,7 +266,11 @@ static void OnFileEvent(
 }
 
 - (void)each:(void (^)(NSMutableDictionary *))block {
-  [trackTable_ eachValue:block];
+  [trackTable_ eachValue:^(id item) {
+    NSMutableDictionary *i = (NSMutableDictionary *)item;
+    i[kTrackURL] = [NSURL fileURLWithPath:i[@"path"] isDirectory:NO];
+    block(i);
+  }];
 }
 
 - (void)scan:(NSArray *)paths {

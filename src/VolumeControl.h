@@ -1,17 +1,8 @@
 #import <Cocoa/Cocoa.h>
 #import "Slider.h"
 
-typedef void(^OnVolume)(double pct);
-
-@interface VolumeControl : NSObject {
-  NSView *view_;
-  Slider *slider_;
-  OnVolume onVolume_;
-}
-@property (copy) OnVolume onVolume;
-@property (retain) Slider *slider;
-@property (retain) NSView *view;
-@property double level;
+@interface VolumeControl : NSObject
+@property (readonly) NSView *view;
 @end
 
 // vim: filetype=objcpp

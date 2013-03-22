@@ -1,14 +1,21 @@
 #import "DaemonBrowser.h"
+#import "Daemon.h"
 
 static DaemonBrowser *daemonBrowser = nil;
 
 @implementation DaemonBrowser
 
+- (void)removeRemoteLibraryService:(NSNetService *)svc {
+}
+
+- (void)addRemoteLibraryService:(NSNetService *)svc {
+}
+
 - (id)init {
   self = [super init];
   if (self) {
-    [self.daemonBrowser setDelegate:self];
-    [self.daemonBrowser searchForServicesOfType:kDaemonServiceType inDomain:@"local."];
+    [self setDelegate:self];
+    [self searchForServicesOfType:kDaemonServiceType inDomain:@"local."];
   }
   return self;
 }

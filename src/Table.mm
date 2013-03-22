@@ -14,14 +14,14 @@ static NSData *Encode(id object) {
 static id Decode(const std::string *s) {
   NSError *error = nil;
   NSData *data = [[[NSData alloc] initWithBytesNoCopy:(void *)s->c_str() length:s->length() freeWhenDone:NO] autorelease];
-  id result = [NSPropertyListSerialization propertyListWithData:data options:0 format:NULL error:&error];
+  id result = [NSPropertyListSerialization propertyListWithData:data options:NSPropertyListMutableContainersAndLeaves format:NULL error:&error];
   return result;
 }
 
 static id DecodeSlice(const leveldb::Slice *s) {
   NSError *error = nil;
   NSData *data = [[[NSData alloc] initWithBytesNoCopy:(void *)s->data() length:s->size() freeWhenDone:NO] autorelease];
-  id result = [NSPropertyListSerialization propertyListWithData:data options:0 format:NULL error:&error];
+  id result = [NSPropertyListSerialization propertyListWithData:data options:NSPropertyListMutableContainersAndLeaves format:NULL error:&error];
   return result;
 }
 

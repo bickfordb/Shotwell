@@ -2,16 +2,26 @@
 #import "Log.h"
 #import "ProgressControl.h"
 #import "NSNumberTimeFormat.h"
+#import "Player.h"
+#import "Slider.h"
+#import "Util.h"
 
-@implementation ProgressControl
-@synthesize onElapsed = onElapsed_;
+@interface ProgressControl (Private)
+@property BOOL isEnabled;
+@end
+
+@implementation ProgressControl {
+  NSView *view_;
+  Slider *slider_;
+  int64_t duration_;
+  int64_t elapsed_;
+  NSTextField *elapsedTextField_;
+  NSTextField *durationTextField_;
+  BOOL isEnabled_;
+  NSTimer *timer_;
+}
+
 @synthesize view = view_;
-@synthesize slider = slider_;
-@synthesize elapsed = elapsed_;
-@synthesize isEnabled = isEnabled_;
-@synthesize duration = duration_;
-@synthesize elapsedTextField = elapsedTextField_;
-@synthesize durationTextField = durationTextField_;
 
 - (void)setDuration:(int64_t)duration {
   if (slider_.isMouseDown)
@@ -20,21 +30,21 @@
     duration = 0;
   if (duration_ != duration) {
     duration_ = duration;
-    self.durationTextField.stringValue = [[NSNumber numberWithLongLong:duration] formatSeconds];
+    durationTextField_.stringValue = [[NSNumber numberWithLongLong:duration] formatSeconds];
   }
 }
 
-- (bool)isEnabled {
+- (BOOL)isEnabled {
   return isEnabled_;
 }
 
-- (void)setIsEnabled:(bool)enabled {
+- (void)setIsEnabled:(BOOL)enabled {
   if (enabled == isEnabled_)
     return;
   isEnabled_ = enabled;
-  slider_.enabled = enabled ? YES : NO;
-  self.duration = 0;
-  self.elapsed = 0;
+  ForkToMainWith(^{ slider_.enabled = enabled ? YES : NO; });
+  duration_ = 0;
+  elapsed_ = 0;
 }
 
 - (int64_t)duration {
@@ -46,7 +56,7 @@
     elapsed = 0;
   if (slider_.isMouseDown)
     return;
-  self.elapsedTextField.stringValue = [[NSNumber numberWithLongLong:elapsed] formatSeconds];
+  elapsedTextField_.stringValue = [[NSNumber numberWithLongLong:elapsed] formatSeconds];
   slider_.doubleValue = elapsed / ((double)duration_);
 }
 
@@ -55,8 +65,8 @@
 }
 
 - (void)dealloc {
+  [timer_ invalidate];
   [view_ release];
-  [onElapsed_ release];
   [slider_ release];
   [elapsedTextField_ release];
   [durationTextField_ release];
@@ -69,55 +79,69 @@
     duration_ = 0;
     elapsed_ = 0;
     self.view = [[[NSView alloc] initWithFrame:CGRectMake(0, 0, 435, 22)] autorelease];
-    self.view.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-    self.view.autoresizesSubviews = YES;
-    self.slider = [[[Slider alloc] initWithFrame:CGRectMake(70, 0, 300, 22)] autorelease];
-    self.slider.minValue = 0.0;
-    self.slider.maxValue = 1.0;
-    self.slider.continuous = YES;
-    self.slider.doubleValue = 0.5;
-    self.slider.enabled = NO;
-    self.slider.target = self;
-    self.slider.autoresizingMask = NSViewWidthSizable;
-    self.slider.action = @selector(onSliderAction:);
+    view_.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    view_.autoresizesSubviews = YES;
+    slider_ = [[Slider alloc] initWithFrame:CGRectMake(70, 0, 300, 22)];
+    slider_.minValue = 0.0;
+    slider_.maxValue = 1.0;
+    slider_.continuous = YES;
+    slider_.doubleValue = 0.5;
+    slider_.enabled = NO;
+    slider_.target = self;
+    slider_.autoresizingMask = NSViewWidthSizable;
+    slider_.action = @selector(onSliderAction:);
 
-    self.elapsedTextField = [[[NSTextField alloc] initWithFrame:
-      CGRectMake(5, 3, 60, 15)] autorelease];
-    self.elapsedTextField.font = [NSFont systemFontOfSize:9.0];
-    self.elapsedTextField.stringValue = @"";
-    self.elapsedTextField.alignment = NSRightTextAlignment;
-    self.elapsedTextField.drawsBackground = NO;
-    self.elapsedTextField.bordered = NO;
-    self.elapsedTextField.editable = NO;
-    self.elapsedTextField.autoresizingMask = NSViewMaxXMargin;
-    self.elapsedTextField.stringValue = [[NSNumber numberWithLongLong:0] formatSeconds];
 
-    self.durationTextField = [[[NSTextField alloc] initWithFrame:
-      CGRectMake(5 + 60 + 5 + 300 + 5, 3, 60, 15)] autorelease];
-    self.durationTextField.font = [NSFont systemFontOfSize:9.0];
-    self.durationTextField.stringValue = @"";
-    self.durationTextField.alignment = NSLeftTextAlignment;
-    self.durationTextField.drawsBackground = NO;
-    self.durationTextField.bordered = NO;
-    self.durationTextField.editable = NO;
-    self.durationTextField.autoresizingMask = NSViewMinXMargin;
-    self.durationTextField.stringValue = [[NSNumber numberWithLongLong:0] formatSeconds];
+    elapsedTextField_ = [[NSTextField alloc] initWithFrame: CGRectMake(5, 3, 60, 15)];
+    elapsedTextField_.font = [NSFont systemFontOfSize:9.0];
+    elapsedTextField_.stringValue = @"";
+    elapsedTextField_.alignment = NSRightTextAlignment;
+    elapsedTextField_.drawsBackground = NO;
+    elapsedTextField_.bordered = NO;
+    elapsedTextField_.editable = NO;
+    elapsedTextField_.autoresizingMask = NSViewMaxXMargin;
+    elapsedTextField_.stringValue = [[NSNumber numberWithLongLong:0] formatSeconds];
 
-    [self.view addSubview:self.elapsedTextField];
-    [self.view addSubview:self.slider];
-    [self.view addSubview:self.durationTextField];
-    self.view.frame = frame;
+    durationTextField_ = [[NSTextField alloc] initWithFrame:
+      CGRectMake(5 + 60 + 5 + 300 + 5, 3, 60, 15)];
+    durationTextField_.font = [NSFont systemFontOfSize:9.0];
+    durationTextField_.stringValue = @"";
+    durationTextField_.alignment = NSLeftTextAlignment;
+    durationTextField_.drawsBackground = NO;
+    durationTextField_.bordered = NO;
+    durationTextField_.editable = NO;
+    durationTextField_.autoresizingMask = NSViewMinXMargin;
+    durationTextField_.stringValue = [[NSNumber numberWithLongLong:0] formatSeconds];
 
+    [view_ addSubview:elapsedTextField_];
+    [view_ addSubview:slider_];
+    [view_ addSubview:durationTextField_];
+    view_.frame = frame;
+    timer_ = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(onTimer:) userInfo:nil repeats:YES];
   }
   return self;
 }
 
+- (void)onTimer:(NSTimer *)timer {
+  __block ProgressControl *weakSelf = self;
+  ForkToMainWith(^{
+    Player *player = [Player shared];
+    if (!player.track) {
+      weakSelf.isEnabled = NO;
+    } else if (!player.isSeeking) {
+      weakSelf.isEnabled = NO;
+      weakSelf.duration = player.duration;
+      weakSelf.elapsed = player.elapsed;
+    }
+  });
+}
+
 - (void)onSliderAction:(id)slider {
-  double amt = self.slider.doubleValue;
+  double amt = slider_.doubleValue;
   if (slider_.isMouseDown) {
-    self.elapsedTextField.stringValue = [[NSNumber numberWithLongLong:amt * duration_] formatSeconds];
-  } else if (self.onElapsed) {
-    self.onElapsed(amt * duration_);
+    elapsedTextField_.stringValue = [[NSNumber numberWithLongLong:amt * duration_] formatSeconds];
+  } else {
+    [[Player shared] seek:amt * duration_];
   }
 }
 

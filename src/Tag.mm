@@ -53,15 +53,28 @@ static NSArray *ignoreExtensions = @[@".jpg", @".nfo", @".sfv", @".torrent",
 @end
 @implementation TagPrivates
 + (void)initialize {
-  av_log_set_level(AV_LOG_QUIET);
-  avcodec_register_all();
-  avfilter_register_all();
-  av_register_all();
-  avformat_network_init();
+
 }
 @end
 
+static bool tagInited = false;
+static NSString *initLock = @"";
+
+static void TagInit() {
+  @synchronized(initLock) {
+    if (tagInited)
+      return;
+    av_log_set_level(AV_LOG_QUIET);
+    avcodec_register_all();
+    avfilter_register_all();
+    av_register_all();
+    avformat_network_init();
+    tagInited = true;
+  }
+}
+
 NSMutableDictionary *TagRead(NSString *path, NSError **error) {
+  TagInit();
   NSMutableDictionary *track = [NSMutableDictionary dictionary];
   *error = nil;
   track[kTrackPath] = path;

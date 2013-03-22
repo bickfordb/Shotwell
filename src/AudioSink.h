@@ -1,11 +1,11 @@
 #import "AudioSource.h"
-#import "Types.h"
+#import "Util.h"
 
 
 @protocol AudioSink <NSObject>
 @property double volume;
 @property (retain, atomic) id <AudioSource> audioSource;
-@property bool isPaused;
+@property BOOL isPaused;
 @property BOOL isDone;
 @property (copy) On0 onDone;
 

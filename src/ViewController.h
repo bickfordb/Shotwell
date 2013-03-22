@@ -1,5 +1,5 @@
 #import <Cocoa/Cocoa.h>
-#import "Types.h"
+#import "Util.h"
 
 @class ViewController;
 typedef void (^ViewControllerEvent)(ViewController *v);

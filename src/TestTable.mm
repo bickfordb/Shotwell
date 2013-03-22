@@ -20,7 +20,7 @@ TEST(TableTestCase, TableTest) {
   }
 
   int *p = &n;
-  [t eachItem:^(id key, id val) {
+  [t each:^(id key, id val) {
     *p = *p - 1;
     EXPECT_TRUE(key != nil);
     EXPECT_TRUE(val != nil);

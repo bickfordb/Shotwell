@@ -11,7 +11,7 @@
 
 const int kDaemonDefaultPort = 6226;
 NSString * const kDaemonServiceType = @"_shotwell._tcp.";
-static Daemon *daemon;
+static Daemon *sharedDaemon;
 
 @interface Request : NSObject {
   struct evhttp_request *req_;
@@ -95,12 +95,10 @@ static void OnRequest(evhttp_request *r, void *ctx) {
 @synthesize netService = netService_;
 
 + (Daemon *)shared {
-  if (!daemon) {
-    daemon = [[Daemon alloc]
-      initWithHost:@"0.0.0.0"
-      port:kDaemonDefaultPort
-      library:self.localLibrary];
+  if (!sharedDaemon) {
+    sharedDaemon = [[Daemon alloc] initWithHost:@"0.0.0.0" port:kDaemonDefaultPort library:[LocalLibrary shared]];
   }
+  return sharedDaemon;
 }
 - (bool)handleHomeRequest:(Request *)r {
   if (![r.path isEqualToString:@"/"])

@@ -12,7 +12,6 @@
   Library *library_;
 }
 
-- (id)initWithLibrary:(Library *)library;
 
 @property (retain) SortedSeq *tracks;
 @property (retain) NSImage *emptyImage;
@@ -22,6 +21,8 @@
 @property (retain) Library *library;
 - (NSArray *)selectedTracks;
 - (NSArray *)cutSelectedTracks;
-
+- (void)playTrackAtIndex:(int)idx;
+- (void)playNextTrack;
+- (void)playPreviousTrack;
 @end
 // vim: filetype=objcpp

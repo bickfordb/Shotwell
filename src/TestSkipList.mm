@@ -1,7 +1,7 @@
 
-#import "app/Log.h"
-#import "app/SkipList.h"
-#import "test/gtest_mac.h"
+#import "Log.h"
+#import "SkipList.h"
+#import "gtest_mac.h"
 
 #define Long(x) [NSNumber numberWithLong:x]
 

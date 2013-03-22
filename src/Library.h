@@ -12,9 +12,8 @@ extern NSString * const kLibraryTrackDeleted;
 @interface Library : NSObject {
   NSDate *lastUpdatedAt_;
 }
-
-- (id)objectForKeyedSubscript:(id)someID;
-- (void)setObject:(id)o forKeyedSubscript:(id)k;
+- (id)objectForKeyedSubscript:(id)key;
+- (void)setObject:(id)o forKeyedSubscript:(id)key;
 - (int)count;
 - (void)each:(void (^)(NSMutableDictionary *))block;
 - (void)notifyTrack:(NSMutableDictionary *)t change:(NSString *)change;
