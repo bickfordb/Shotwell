@@ -1,6 +1,4 @@
 #import "AppDelegate.h"
-#import "AudioSource.h"
-#import "CoreAudioSink.h"
 #import "Log.h"
 #import "MainWindowController.h"
 #import "PlaybackControls.h"
@@ -419,8 +417,6 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
     mainWindowController = [[MainWindowController alloc] init];
   return mainWindowController;
 }
-
-
 
 - (void)paste:(id)sender {
   NSPasteboard *pboard = [NSPasteboard generalPasteboard];

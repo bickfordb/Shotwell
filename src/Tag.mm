@@ -64,7 +64,7 @@ static void TagInit() {
   @synchronized(initLock) {
     if (tagInited)
       return;
-    av_log_set_level(AV_LOG_QUIET);
+    //av_log_set_level(AV_LOG_QUIET);
     avcodec_register_all();
     avfilter_register_all();
     av_register_all();

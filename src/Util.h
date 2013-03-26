@@ -41,6 +41,7 @@ typedef void (^On5)(id a, id b, id c, id d, id e);
 
 void Notify(NSString *name, id sender, NSDictionary *info);
 dispatch_source_t CreateDispatchTimer(double seconds, dispatch_queue_t queue, dispatch_block_t block);
-
+NSError *CheckError(NSError **error, NSString *domain, int code);
+NSError *MkError(NSString *domain, int code);
 
 // vim: filetype=objcpp

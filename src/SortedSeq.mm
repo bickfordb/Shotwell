@@ -3,7 +3,13 @@
 #import "PThread.h"
 #import "Log.h"
 
-@implementation SortedSeq
+@implementation SortedSeq {
+  NSPredicate *predicate_;
+  NSComparator comparator_;
+  NSMutableArray *filteredItems_;
+  NSMutableArray *items_;
+  NSObject *ilock_;
+}
 
 - (NSPredicate *)predicate {
   @synchronized(ilock_) {
@@ -18,7 +24,7 @@
       NSUInteger i = indices.firstIndex;
       NSUInteger count = filteredItems_.count;
       while (i != NSNotFound && i < count) {
-        id o = [filteredItems_ at:i];
+        id o = filteredItems_[i];
         [ret addObject:o];
         i = [indices indexGreaterThanIndex:i];
       }
@@ -27,23 +33,6 @@
   return ret;
 }
 
-/*
-- (int)index:(id)needle {
-  @synchronized (ilock_) {
-    __block int i = 0;
-    __block int found = -1;
-    [filteredItems_ each:^(id left, id right, BOOL *stop) {
-      if ([((NSObject *)needle) isEqual:left]) {
-        *stop = YES;
-        found = i;
-      }
-      i++;
-    }];
-    return i == NSNotFound ? -1 : (int)i;
-  }
-  return -1;
-}*/
-
 - (void)each:(EnumBlock)block {
   @synchronized(ilock_) {
     [filteredItems_ each:block];
@@ -51,24 +40,24 @@
 }
 
 - (void)setPredicate:(NSPredicate *)predicate {
-  NSIndexSet *indices = nil;
+  NSIndexSet *indices;
   @synchronized(ilock_) {
-    if (predicate == predicate_)
-      return;
-    NSPredicate *t = predicate_;
-    predicate_ = [predicate retain];
-    SkipList *t0 = filteredItems_;
-    filteredItems_ = [[SkipList alloc] initWithComparator:comparator_];
-    [items_ eachItem:^(id key, id val, bool *stop) {
-      if (!predicate || [predicate evaluateWithObject:key]) {
-        [filteredItems_ set:key to:val];
-      }
-    }];
-    indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, filteredItems_.count)];
-    [t release];
-    [t0 release];
+     indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, items_.count)];
   }
   [self willChangeArrangedObjects:indices];
+  @synchronized(ilock_) {
+    if (predicate != predicate_) {
+      NSPredicate *t = predicate_;
+      predicate_ = [predicate retain];
+      [t release];
+      [filteredItems_ removeAllObjects];
+      for (id o in items_) {
+        if (!predicate_ || [predicate_ evaluateWithObject:o]) {
+          [filteredItems_ addObject:o];
+        }
+      }
+    }
+  }
   [self didChangeArrangedObjects:indices];
 }
 
@@ -80,26 +69,28 @@
 
 - (void)setComparator:(NSComparator)comparator {
   NSIndexSet *indices = nil;
-  [self willChangeValueForKey:@"comparator"];
   @synchronized(ilock_) {
-    indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, filteredItems_.count)];
+    [self willChangeValueForKey:@"comparator"];
+    indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, items_.count)];
+  }
+  @synchronized(ilock_) {
+    [self willChangeArrangedObjects:indices];
     [comparator_ release];
     comparator_ = [comparator copy];
-    if (comparator) {
-      items_.comparator = comparator;
-      filteredItems_.comparator = comparator;
+    if (comparator_) {
+      [items_ sortUsingComparator:comparator_];
+      [filteredItems_ sortUsingComparator:comparator_];
     }
   }
   [self didChangeValueForKey:@"comparator"];
-  [self willChangeArrangedObjects:indices];
   [self didChangeArrangedObjects:indices];
 }
 
 - (id)init {
   self = [super init];
   if (self) {
-    items_ = [[SkipList alloc] initWithComparator:nil];
-    filteredItems_ = [[SkipList alloc] initWithComparator:nil];
+    items_ = [[NSMutableArray array] retain];
+    filteredItems_ = [[NSMutableArray array] retain];
     ilock_ = [[NSObject alloc] init];
     self.predicate = nil;
     self.comparator = nil;
@@ -125,7 +116,7 @@
 - (id)get:(int)idx {
   @synchronized(ilock_) {
     if (idx >= 0 && idx < filteredItems_.count) {
-      return [filteredItems_ at:idx];
+      return filteredItems_[idx];
     } else {
       return nil;
     }
@@ -134,29 +125,30 @@
 
 - (NSArray *)array {
   @synchronized(ilock_) {
-    return filteredItems_.keys;
+    return [NSArray arrayWithArray:filteredItems_];
   }
 }
 
 - (void)add:(id)something {
   NSIndexSet *indices = nil;
+  [self willChangeArrangedObjects:indices];
   @synchronized(ilock_) {
     indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, filteredItems_.count)];
     if (comparator_) {
-      [items_ set:something to:something];
-      if (!predicate_ || [predicate_ evaluateWithObject:something])
-        [filteredItems_ set:something to:something];
+      [items_ insert:something withComparator:comparator_];
+      if (!predicate_ || [predicate_ evaluateWithObject:something]) {
+        [filteredItems_ insert:something withComparator:comparator_];
+      }
     }
   }
-  [self willChangeArrangedObjects:indices];
   [self didChangeArrangedObjects:indices];
 }
 
 - (void)clear {
   NSIndexSet *indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, 0)];
   @synchronized(ilock_) {
-    [items_ clear];
-    [filteredItems_ clear];
+    [items_ removeAllObjects];
+    [filteredItems_ removeAllObjects];
   }
   [self willChangeArrangedObjects:indices];
   [self didChangeArrangedObjects:indices];
@@ -180,18 +172,11 @@
   });
 }
 
-/*
-- (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state objects:(id *)stackbuf count:(NSUInteger)len {
-  @synchronized(ilock_) {
-    return [filteredItems_ countByEnumeratingWithState:state objects:stackbuf count:len];
-  }
-}*/
-
 - (void)remove:(id)something {
   NSIndexSet *indices = nil;
   @synchronized(ilock_) {
-    [filteredItems_ delete:something];
-    [items_ delete:something];
+    [filteredItems_ removeObject:something];
+    [items_ removeObject:something];
     indices = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, filteredItems_.count)];
   }
   [self willChangeArrangedObjects:indices];
@@ -200,7 +185,7 @@
 
 - (NSArray *)all {
   @synchronized(ilock_) {
-    return items_.keys;
+    return [NSArray arrayWithArray:items_];
   }
 }
 

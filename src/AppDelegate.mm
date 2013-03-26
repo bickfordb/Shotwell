@@ -4,9 +4,6 @@
 #include <sys/utsname.h>
 
 #import "AppDelegate.h"
-#import "AudioSink.h"
-#import "AudioSource.h"
-#import "CoreAudioSink.h"
 #import "Daemon.h"
 #import "DaemonBrowser.h"
 #import "LibAVSource.h"
@@ -14,8 +11,6 @@
 #import "LocalLibrary.h"
 #import "Log.h"
 #import "MainWindowController.h"
-#import "NSNetServiceAddress.h"
-#import "NSNumberTimeFormat.h"
 #import "NSStringDigest.h"
 #import "PreferencesWindowController.h"
 #import "Util.h"

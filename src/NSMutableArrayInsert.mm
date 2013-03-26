@@ -1,29 +1,35 @@
 #import "NSMutableArrayInsert.h"
 
-static NSUInteger Insert(NSMutableArray *a, id obj, NSComparator comparator, NSUInteger start, NSUInteger end) {
-  if (start == end)
-    return start;
-  NSUInteger mid = start + ((end - start) / 2);
-  id midObj = [a objectAtIndex:mid];
-  NSComparisonResult cmp = comparator(obj, midObj);
-  if (cmp == NSOrderedAscending) {
-    return Insert(a, obj, comparator, start, mid);
-  } else if (cmp == NSOrderedSame) {
-    return mid;
+@implementation NSMutableArray (Insert)
+
+- (void)insert:(id)needle comparator:(NSComparator)cmp firstIndex:(NSUInteger)firstIndex lastIndex:(NSUInteger)lastIndex {
+  NSUInteger midIndex = firstIndex + ((lastIndex - firstIndex) / 2);
+  id target = self[midIndex];
+  NSComparisonResult compare = cmp(needle, target);
+  if (compare == NSOrderedAscending) {
+    if (firstIndex == lastIndex) {
+      [self insertObject:needle atIndex:lastIndex];
+    } else {
+      [self insert:needle comparator:cmp firstIndex:firstIndex lastIndex:midIndex];
+    }
+  } else if (compare == NSOrderedSame) {
+    [self insertObject:needle atIndex:firstIndex];
   } else {
-    return Insert(a, obj, comparator, mid + 1, end);
+    if (firstIndex == lastIndex) {
+      [self insertObject:needle atIndex:firstIndex + 1];
+    } else {
+      [self insert:needle comparator:cmp firstIndex:midIndex + 1 lastIndex:lastIndex];
+    }
   }
 }
 
-@implementation NSMutableArray (Insert)
-
-- (void)insert:(id)obj sortedWithComparator:(NSComparator)c {
-  if (self.count == 0 || !c) {
+- (void)insert:(id)obj withComparator:(NSComparator)cmp {
+  if (self.count == 0) {
     [self addObject:obj];
-    return;
+  } else {
+    NSUInteger lastIndex = self.count - 1;
+    [self insert:obj comparator:cmp firstIndex:0 lastIndex:lastIndex];
   }
-  NSUInteger idx = Insert(self, obj, c, 0, self.count - 1);
-  [self insertObject:obj atIndex:idx];
 }
 
 @end

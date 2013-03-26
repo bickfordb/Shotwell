@@ -1,4 +1,3 @@
-#import "AudioSink.h"
 #import "CoreAudioSink.h"
 #import "LibAVSource.h"
 #import "Library.h"
@@ -9,8 +8,8 @@
 
 static Player *sharedPlayer = nil;
 @implementation Player {
-  id<AudioSink> audioSink_;
-  id<AudioSource> audioSource_;
+  CoreAudioSink *audioSink_;
+  LibAVSource *audioSource_;
   NSMutableDictionary *track_;
 }
 
@@ -25,10 +24,14 @@ static Player *sharedPlayer = nil;
 }
 
 - (void)playTrack:(NSMutableDictionary *)track {
-  DEBUG(@"play track: %@", track);
-  audioSink_.isPaused = NO;
-  audioSink_.audioSource = [[[LibAVSource alloc] initWithURL:self.track[kTrackURL]] autorelease];
+  assert(track);
   self.track = track;
+  NSURL *url = track[kTrackURL];
+  assert(url != nil);
+  ERROR(@"url: %@", url);
+  ERROR(@"play track: %@", track);
+  audioSink_.audioSource = [[[LibAVSource alloc] initWithURL:url] autorelease];
+  audioSink_.isPaused = NO;
   self.track[kTrackLastPlayedAt] = [NSDate date];
   id trackID = self.track[kTrackID];
   Library *library = self.track[kTrackLibrary];

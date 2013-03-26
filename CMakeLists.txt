@@ -125,7 +125,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -iquote ${PROJECT_SOURCE_DIR}/vendor/bui
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wfatal-errors")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
 
-
 # vendor/build/share/gtest-1.6.0/src/gtest_main.cc
 add_executable(testit
   src/test.mm
@@ -137,5 +136,10 @@ target_link_libraries(testit ${vendorLibs} ${systemLibs})
 add_custom_target(
   test
   DEPENDS testit
-  COMMAND ${EXECUTABLE_OUTPUT_PATH}/testit)
+  COMMAND ${EXECUTABLE_OUTPUT_PATH}/testit --gtest_catch_exceptions=0)
+
+add_custom_target(
+  gdbtest
+  DEPENDS testit src/debugtestit.gdb
+  COMMAND gdb -f -x src/debugtestit.gdb  ${EXECUTABLE_OUTPUT_PATH}/testit)
 

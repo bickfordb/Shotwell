@@ -267,9 +267,11 @@ static void OnFileEvent(
 
 - (void)each:(void (^)(NSMutableDictionary *))block {
   [trackTable_ eachValue:^(id item) {
-    NSMutableDictionary *i = (NSMutableDictionary *)item;
-    i[kTrackURL] = [NSURL fileURLWithPath:i[@"path"] isDirectory:NO];
-    block(i);
+    NSMutableDictionary *d = [NSMutableDictionary dictionaryWithDictionary:item];
+    if (d[@"path"]) {
+      d[kTrackURL] = [NSURL fileURLWithPath:d[@"path"]];
+    }
+    block(d);
   }];
 }
 

@@ -9,36 +9,42 @@
 const int kCoreAudioSinkNumBuffers = 3;
 
 @interface CoreAudioSink (Private)
-- (void)fillBuffer:(AudioQueueBufferRef)buffer;
-- (void)startQueue;
 - (BOOL)isRunning;
 - (void)onBuffer:(AudioQueueBufferRef)buffer;
 @end
 
-OSStatus _CheckStatus(int line, const char *file, const char *fname, const char *args, OSStatus status) {
-  if (status) {
-    LogMessage(file, line, ErrorLogLevel, @"%s() failed with status: %d", fname, args, (int)status);
+OSStatus _CheckStatus(int line, const char *file, const char *fname, OSStatus status) {
+  if (status != 0) {
+    LogMessage(file ? file : "?", line, ErrorLogLevel, [NSString stringWithFormat:@"%s() failed with status: %@", fname ? fname : "?", @(status)]);
   }
   return status;
 }
 
-#define CheckStatus(F, ...) _CheckStatus(__LINE__, __FILE__, #F, #__VA_ARGS__, F(__VA_ARGS__))
+#define CheckStatus(F, ...) _CheckStatus(__LINE__, __FILE__, #F, F(__VA_ARGS__))
 
 static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBufferRef buffer) {
   CoreAudioSink *sink = (CoreAudioSink *)inUserData;
   [sink onBuffer:buffer];
 }
 
-@implementation CoreAudioSink
-//@synthesize audioSource = audioSource_;
+@implementation CoreAudioSink {
+  LibAVSource *audioSource_;
+  On0 onDone_;
+  AudioQueueRef queue_;
+  int numBuffers_;
+  BOOL isPaused_;
+  BOOL isDone_;
+  NSString *outputIdentifier_;
+}
+
 @synthesize onDone = onDone_;
 @synthesize isDone = isDone_;
 
-- (id <AudioSource>)audioSource {
+- (LibAVSource *)audioSource {
   return audioSource_;
 }
 
-- (void)setAudioSource:(id <AudioSource>)audioSource {
+- (void)setAudioSource:(LibAVSource *)audioSource {
   [self willChangeValueForKey:@"audioSource"];
   @synchronized (self) {
     [audioSource retain];
@@ -53,10 +59,14 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
 }
 
 - (void)onBuffer:(AudioQueueBufferRef)buffer {
-  [self fillBuffer:buffer];
+  NSError *err = [self fillBuffer:buffer];
+  if (err) {
+    NSLog(@"error filling buffer: %@", err);
+  }
   if (buffer->mAudioDataByteSize > 0) {
     CheckStatus(AudioQueueEnqueueBuffer, queue_, buffer, 0, NULL);
   } else {
+    INFO(@"freeing empty buffer");
     // Free the buffer since we're done with it.
     CheckStatus(AudioQueueFreeBuffer, queue_, buffer);
     numBuffers_--;
@@ -77,21 +87,25 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
   format.mSampleRate = 44100;
   format.mBitsPerChannel = 16;
   format.mFormatFlags |= kLinearPCMFormatFlagIsSignedInteger;
-
   format.mFramesPerPacket = 1;
   format.mBytesPerFrame = format.mBitsPerChannel * format.mChannelsPerFrame / 8;
   format.mBytesPerPacket = format.mBytesPerFrame * format.mFramesPerPacket;
   return format;
 }
 
-- (void)fillBuffer:(AudioQueueBufferRef)buffer {
+- (NSError *)fillBuffer:(AudioQueueBufferRef)buffer {
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-  id <AudioSource> src = self.audioSource;
+  LibAVSource *src = audioSource_;
   [src retain];
-  buffer->mAudioDataByteSize = [src getAudio:(uint8_t *)buffer->mAudioData length:buffer->mAudioDataBytesCapacity];
+  size_t len = buffer->mAudioDataBytesCapacity;
+  // silence is golden
+  memset(buffer->mAudioData, 0, len);
+  NSError *err = [src getAudio:(uint8_t *)buffer->mAudioData length:&len];
+  buffer->mAudioDataByteSize = len;
   buffer->mPacketDescriptionCount = 0;
   [src release];
   [pool release];
+  return err;
 }
 
 - (id)init {
@@ -101,21 +115,16 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
     outputIdentifier_ = nil;
     isPaused_ = YES;
     numBuffers_ = 0;
-    [self newQueue];
+    //[self newQueue];
   }
   DEBUG(@"done init");
   return self;
 }
 
 - (void)newQueue {
-  DEBUG(@"new queue");
+  ERROR(@"new queue");
   double volume = 0.5;
-  if (queue_) {
-    volume = self.volume;
-    CheckStatus(AudioQueueDispose, queue_, true);
-    queue_ = NULL;
-    numBuffers_ = 0;
-  }
+  assert(queue_ == NULL);
   AudioStreamBasicDescription format = [self stereoFormat];
   CheckStatus(AudioQueueNewOutput, &format, BufferCallback, (void *)self, nil, nil, 0, &queue_);
   if (outputIdentifier_) {
@@ -133,22 +142,30 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
 }
 
 - (void)startQueue {
-  DEBUG(@"starting queue");
+  ERROR(@"start queue");
+  assert(queue_ != NULL);
   CheckStatus(AudioQueueStart, queue_, NULL);
-  while (numBuffers_ < (kCoreAudioSinkNumBuffers - 1)) {
-    INFO(@"prefilling buffers");
+  NSError *err = nil;
+  while (numBuffers_ < kCoreAudioSinkNumBuffers) {
+    INFO(@"prefilling buffer");
     AudioQueueBufferRef buf = NULL;
     if (CheckStatus(AudioQueueAllocateBuffer, queue_, 32768, &buf)) {
       return;
     }
-    [self fillBuffer:buf];
+    err = [self fillBuffer:buf];
+    if (err) {
+      NSLog(@"err filling buffer: %@", err);
+    }
     numBuffers_++;
     if (buf->mAudioDataByteSize > 0) {
-      CheckStatus(AudioQueueEnqueueBuffer, queue_, buf, 0, NULL);
       INFO(@"enqueueing buffer");
+      if (CheckStatus(AudioQueueEnqueueBuffer, queue_, buf, 0, NULL)) {
+        return;
+      }
     } else {
       DEBUG(@"freeing empty buffer");
-      CheckStatus(AudioQueueFreeBuffer, queue_, buf);
+      if (CheckStatus(AudioQueueFreeBuffer, queue_, buf))
+        return;
       numBuffers_--;
       break;
     }
@@ -178,19 +195,25 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
     if (isPaused == isPaused_) {
       return;
     }
+    ERROR(@"pause: %d", (int)isPaused);
     [self willChangeValueForKey:@"paused"];
     isPaused_ = isPaused;
-    if (!isPaused) {
-      INFO(@"unpausing");
-      [self startQueue];
+    if (!isPaused_) {
+      ERROR(@"unpausing");
+      [self newQueue];
     } else {
-      if (queue_) {
-        INFO(@"pausing");
-        CheckStatus(AudioQueuePause, queue_);
-      }
+      ERROR(@"unpausing");
+      [self resetQueue];
     }
     [self didChangeValueForKey:@"paused"];
   }
+}
+
+- (void)resetQueue {
+  if (queue_)
+    CheckStatus(AudioQueueDispose, queue_, true);
+  queue_ = NULL;
+  numBuffers_ = 0;
 }
 
 - (double)volume {
@@ -208,31 +231,29 @@ static void BufferCallback(void *inUserData, AudioQueueRef queue, AudioQueueBuff
 }
 
 - (int64_t)elapsed {
-  return self.audioSource.elapsed;
+  return audioSource_.elapsed;
 }
 
 - (int64_t)duration {
-  return self.audioSource.duration;
+  return audioSource_.duration;
 }
 
 - (void)seek:(int64_t)seconds {
-  [self.audioSource seek:seconds];
+  [audioSource_ seek:seconds];
 }
 
 - (bool)isSeeking {
-  return self.audioSource.isSeeking;
+  return audioSource_.isSeeking;
 }
 
 - (void)setOutputDeviceID:(NSString *)uid {
-  INFO(@"set output device ID: %@", uid);
+  ERROR(@"set output device ID: %@", uid);
   @synchronized(self) {
     [outputIdentifier_ release];
     outputIdentifier_ = [uid retain];
   }
+  [self resetQueue];
   [self newQueue];
-  if (!isPaused_) {
-    [self startQueue];
-  }
 }
 
 @end

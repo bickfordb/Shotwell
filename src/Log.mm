@@ -39,7 +39,8 @@ void LogMessage(const char *name, int line, enum LogLevel log_level, NSString *m
   NSString *fmt = [NSString stringWithFormat:@"%s:%d:\t%s\t%@", name, line, level, msg, nil];
   NSString *fmted = [[NSString alloc] initWithFormat:fmt arguments:args];
   if (log_level == WarnLogLevel || log_level == ErrorLogLevel) {
-    NSLogv(fmt, args);
+    if (fmted)
+      NSLog(@"%@", fmted);
   }
   const char *buf = fmted.UTF8String;
   ssize_t n = strlen(buf);

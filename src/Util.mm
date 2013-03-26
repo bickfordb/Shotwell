@@ -171,3 +171,15 @@ dispatch_source_t CreateDispatchTimer(double seconds, dispatch_queue_t queue, di
   return timer;
 }
 
+NSError *CheckError(NSError **error, NSString *domain, int code) {
+  NSError *e = MkError(domain, code);
+  if (error) { *error = e; }
+  return e;
+}
+
+NSError *MkError(NSString *domain, int code) {
+  if (code != 0)
+    return [NSError errorWithDomain:domain code:code userInfo:@{}];
+  else
+    return nil;
+}
