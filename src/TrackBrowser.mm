@@ -14,10 +14,20 @@
 #import "Util.h"
 
 static NSString * const kStatus = @"status";
+static NSString * const kIsPaused = @"isPaused";
+static NSString * const kIsDone = @"isDone";
 static NSString * const kOnSortDescriptorsChanged = @"OnSortDescriptorsChanged";
 static double const kTrackFontSize = 11.0;
 
-@implementation TrackBrowser
+@implementation TrackBrowser {
+  SortedSeq *tracks_;
+  NSFont *playingFont_;
+  NSFont *font_;
+  NSImage *emptyImage_;
+  NSImage *playImage_;
+  Library *library_;
+}
+
 @synthesize emptyImage = emptyImage_;
 @synthesize font = font_;
 @synthesize playImage = playImage_;
@@ -54,6 +64,22 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   });
 }
 
+- (id)currentTrack {
+  return nil;
+}
+
+- (void)setCurrentTrack:(NSMutableDictionary *)track {
+  __block NSUInteger row = NSNotFound;
+  NSObject *trackID = (NSObject *)track[kTrackID];
+  [[NSUserDefaults standardUserDefaults] setObject:trackID forKey:@"lastTrackID"];
+  ForkToMainWith(^{
+    [self.tableView reloadData];
+    if (row != NSNotFound) {
+    }
+  });
+  [self seekToTrackID:trackID];
+
+}
 
 - (void)delete:(id)sender {
   [self cutSelectedTracks];
@@ -201,19 +227,18 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
       @{@"identifier": kTrackCreatedAt,
         @"title": @"Created",
         @"width": @150,
-        @"bindingOptions": @{NSValueTransformerBindingOption: [[[MicroSecondsToDate alloc] init] autorelease]},
+        @"bindingOptions": @{},
         @"key": kTrackCreatedAt},
       @{@"identifier": kTrackUpdatedAt,
         @"title": @"Updated",
         @"width": @150,
-        @"bindingOptions": @{NSValueTransformerBindingOption: [[[MicroSecondsToDate alloc] init] autorelease]},
+        @"bindingOptions": @{},
         @"key": kTrackUpdatedAt},
         @{@"identifier": kTrackLastPlayedAt,
         @"title": @"Last Played",
         @"width": @150,
-        @"bindingOptions": @{NSValueTransformerBindingOption: [[[MicroSecondsToDate alloc] init] autorelease]},
+        @"bindingOptions": @{},
         @"key": kTrackLastPlayedAt}];
-
     for (NSDictionary *colSpec in colSpecs) {
       NSTableColumn *col = [[[NSTableColumn alloc] initWithIdentifier:colSpec[@"identifier"]] autorelease];
       if (colSpec[@"width"])
@@ -280,6 +305,8 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
       [self.library each:^(NSMutableDictionary *t) {
         [tracks_ addObject:t];
       }];
+      id lastTrackID = [[NSUserDefaults standardUserDefaults] objectForKey:@"lastTrackID"];
+      [self seekToTrackID:lastTrackID];
     });
     [[NSNotificationCenter defaultCenter]
       addObserver:self
@@ -291,14 +318,45 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
       toObject:tracks_
       withKeyPath:@"arrangedObjects"
       options:nil];
+    [self bind:@"currentTrack" toObject:[Player shared] withKeyPath:@"track" options:nil];
+    [[Player shared] addObserver:self
+      forKeyPath:@"isDone"
+      options:(NSKeyValueObservingOptionNew) context:kIsDone];
+    [[Player shared] addObserver:self
+      forKeyPath:@"isPaused"
+      options:(NSKeyValueObservingOptionNew) context:kIsPaused];
   }
   return self;
+}
+
+- (void)seekToTrackID:(id)trackID {
+  if (!trackID) return;
+  __block NSUInteger location = NSNotFound;
+  __block NSUInteger i = 0;
+  [tracks_ each:^(id item, bool *stop) {
+    id otherID = item[kTrackID];
+    if ([otherID isEqual:trackID]) {
+      location = i;
+    }
+    i++;
+  }];
+  if (location != NSNotFound) {
+    ForkToMainWith(^{
+      [self.tableView scrollRowToVisible:(NSInteger)location];
+    });
+  }
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
   if (context == kOnSortDescriptorsChanged) {
     self.tracks.comparator = GetComparatorFromSortDescriptors(self.tableView.sortDescriptors);
-  } else {
+  } else if (context == kIsDone) {
+    if ([Player shared].isDone) {
+      INFO(@"player is done");
+      ForkWith(^{ [self playNextTrack];});
+    }
+  } else if (context == kIsPaused) {
+  } else if ([super respondsToSelector:@selector(observeValueForKeyPath:ofObject:change:context:)]) {
     [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
   }
 }
@@ -322,6 +380,8 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   [self.tableView unbind:@"content"];
   [self.tableView removeObserver:self forKeyPath:@"sortDescriptors" context:kOnSortDescriptorsChanged];
   [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [[Player shared] removeObserver:self forKeyPath:@"isDone" context:kIsDone];
+  [[Player shared] removeObserver:self forKeyPath:@"isPaused" context:kIsPaused];
   [library_ release];
   [playingFont_ release];
   [font_ release];
@@ -332,7 +392,8 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
 }
 
 - (void)playTrackAtIndex:(int)index {
-  [[Player shared] playTrack:[tracks_ get:index]];
+  NSMutableDictionary *t = [tracks_ get:index];
+  [[Player shared] playTrack:t];
 }
 
 /*

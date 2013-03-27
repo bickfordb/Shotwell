@@ -18,7 +18,6 @@
   NSTextField *elapsedTextField_;
   NSTextField *durationTextField_;
   BOOL isEnabled_;
-  NSTimer *timer_;
 }
 
 @synthesize view = view_;
@@ -30,7 +29,9 @@
     duration = 0;
   if (duration_ != duration) {
     duration_ = duration;
-    durationTextField_.stringValue = [[NSNumber numberWithLongLong:duration] formatSeconds];
+    ForkToMainWith(^{
+      durationTextField_.stringValue = [[NSNumber numberWithLongLong:duration] formatSeconds];
+    });
   }
 }
 
@@ -56,8 +57,10 @@
     elapsed = 0;
   if (slider_.isMouseDown)
     return;
-  elapsedTextField_.stringValue = [[NSNumber numberWithLongLong:elapsed] formatSeconds];
-  slider_.doubleValue = elapsed / ((double)duration_);
+  ForkToMainWith(^{
+    elapsedTextField_.stringValue = [[NSNumber numberWithLongLong:elapsed] formatSeconds];
+    slider_.doubleValue = elapsed / ((double)duration_);
+  });
 }
 
 - (int64_t)elapsed {
@@ -65,7 +68,9 @@
 }
 
 - (void)dealloc {
-  [timer_ invalidate];
+  [self unbind:@"duration"];
+  [self unbind:@"currentTrack"];
+  [self unbind:@"elapsed"];
   [view_ release];
   [slider_ release];
   [elapsedTextField_ release];
@@ -90,7 +95,6 @@
     slider_.target = self;
     slider_.autoresizingMask = NSViewWidthSizable;
     slider_.action = @selector(onSliderAction:);
-
 
     elapsedTextField_ = [[NSTextField alloc] initWithFrame: CGRectMake(5, 3, 60, 15)];
     elapsedTextField_.font = [NSFont systemFontOfSize:9.0];
@@ -117,24 +121,24 @@
     [view_ addSubview:slider_];
     [view_ addSubview:durationTextField_];
     view_.frame = frame;
-    timer_ = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(onTimer:) userInfo:nil repeats:YES];
+    [self bind:@"duration" toObject:[Player shared] withKeyPath:@"duration" options:nil];
+    [self bind:@"elapsed" toObject:[Player shared] withKeyPath:@"elapsed" options:nil];
+    [self bind:@"currentTrack" toObject:[Player shared] withKeyPath:@"track" options:nil];
   }
   return self;
 }
 
-- (void)onTimer:(NSTimer *)timer {
-  __block ProgressControl *weakSelf = self;
+- (void)setCurrentTrack:(NSMutableDictionary *)track {
   ForkToMainWith(^{
-    Player *player = [Player shared];
-    if (!player.track) {
-      weakSelf.isEnabled = NO;
-    } else if (!player.isSeeking) {
-      weakSelf.isEnabled = NO;
-      weakSelf.duration = player.duration;
-      weakSelf.elapsed = player.elapsed;
-    }
+      if (!track) {
+      self.isEnabled = NO;
+      } else if (![Player shared].isSeeking) {
+        slider_.enabled = YES;
+      }
   });
 }
+
+- (id)currentTrack { return nil; }
 
 - (void)onSliderAction:(id)slider {
   double amt = slider_.doubleValue;

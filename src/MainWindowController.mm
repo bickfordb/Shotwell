@@ -24,21 +24,6 @@ static NSString * const kVolumeControl = @"VolumeControl";
 static const double kPollStatsInterval = 5.0;
 static MainWindowController *mainWindowController = nil;
 
-static NSString *GetWindowTitle(NSMutableDictionary *t) {
-  NSString *title = t[kTrackTitle];
-  NSString *artist = t[kTrackArtist];
-  NSString *album = t[kTrackAlbum];
-  NSString *path = t[kTrackPath];
-  if ([title length] && [artist length] && [album length])
-    return [NSString stringWithFormat:@"%@ - %@ - %@ ", title, artist, album, nil];
-  else if ([title length])
-    return title;
-  else if (path)
-    return path;
-  else
-    return kDefaultWindowTitle;
-}
-
 @implementation MainWindowController {
   PlaybackControls *playbackControls_;
   NSProgressIndicator *progressIndicator_;
@@ -166,10 +151,9 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
     pollStatsTimer_ = CreateDispatchTimer(kPollStatsInterval, dispatch_get_main_queue(), ^{
       [weakSelf pollStats];
     });
+    [self bind:@"currentTrack" toObject:[Player shared] withKeyPath:@"track" options:nil];
     trackBrowser_ = [[TrackBrowser alloc] init];
     [self setContent:trackBrowser_];
-
-
   }
   return self;
 }
@@ -296,13 +280,34 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
   statusBarText_.backgroundColor = [NSColor clearColor];
   statusBarText_.autoresizingMask = NSViewWidthSizable | NSViewMaxYMargin;
   statusBarText_.alignment = NSCenterTextAlignment;
-
   NSTextFieldCell *cell = (NSTextFieldCell *)[statusBarText_ cell];
   cell.font = [NSFont systemFontOfSize:11.0];
   cell.font = [NSFont systemFontOfSize:11.0];
   [cell setControlSize:NSSmallControlSize];
   [cell setBackgroundStyle:NSBackgroundStyleRaised];
   [[self.window contentView] addSubview:statusBarText_];
+}
+
+- (void)setCurrentTrack:(NSMutableDictionary *)t {
+  NSString *result = @"";
+  NSString *title = t[kTrackTitle];
+  NSString *artist = t[kTrackArtist];
+  NSString *album = t[kTrackAlbum];
+  NSString *path = t[kTrackPath];
+  if (title.length && artist.length && album.length) {
+    result = [NSString stringWithFormat:@"%@ - %@ - %@ ", title, artist, album, nil];
+  } else if (title.length) {
+    result = title;
+  } else if (path) {
+    result = path;
+  } else {
+    result = kDefaultWindowTitle;
+  }
+  ForkToMainWith(^{ self.window.title = result; });
+ }
+
+- (id)currentTrack {
+  return nil;
 }
 
 - (void)setupAudioSelect {
@@ -335,7 +340,7 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
       };
       playbackControls_.onPlay = ^{
         Player *player = [Player shared];
-        if (!player.isDone) {
+        if (player.track && !player.isDone) {
           player.isPaused = !player.isPaused;
         } else {
           [weakSelf->trackBrowser_ playNextTrack];
@@ -385,10 +390,6 @@ static NSString *GetWindowTitle(NSMutableDictionary *t) {
 }
 
 - (void)toolbarWillRemoveItem:(NSNotification *)notification {
-}
-
-- (void)onTrackChange:(NSNotification *)notification {
-  self.window.title = GetWindowTitle([Player shared].track);
 }
 
 - (void)pollStats {

@@ -18,7 +18,6 @@
   dispatch_release(pollTimer_);
   [stopImage_ release];
   [startImage_ release];
-
   [super dealloc];
 }
 
@@ -34,14 +33,14 @@
     [self setImageScaling:NSImageScaleProportionallyUpOrDown forSegment:1];
     [self setImage:[NSImage imageNamed:@"right"] forSegment:2];
     [self setImageScaling:NSImageScaleProportionallyUpOrDown forSegment:2];
-    [self sizeToFit];
+    //[self sizeToFit];
     self.action = @selector(onClick:);
     self.target = self;
     startImage_ = [[NSImage imageNamed:@"start"] retain];
     stopImage_ = [[NSImage imageNamed:@"stop"] retain];
     __block PlaybackControls *weakSelf = self;
     pollTimer_ = CreateDispatchTimer(0.5, dispatch_get_main_queue(), ^{
-        [weakSelf setImage:([Player shared].isPlaying ? weakSelf->stopImage_ : weakSelf->startImage_) forSegment:1];
+        [weakSelf setImage:(![Player shared].isPaused ? weakSelf->stopImage_ : weakSelf->startImage_) forSegment:1];
     });
   }
   return self;

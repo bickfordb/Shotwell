@@ -29,7 +29,7 @@ static NSString * const kQuietImage = @"quiet";
     slider_.minValue = 0.0;
     slider_.maxValue = 1.0;
     slider_.continuous = YES;
-    slider_.doubleValue = 0.5;
+    slider_.doubleValue = [Player shared].volume;
     slider_.target = self;
     slider_.autoresizingMask = NSViewWidthSizable;
     slider_.action = @selector(onSliderAction:);
@@ -43,17 +43,9 @@ static NSString * const kQuietImage = @"quiet";
     [view_ addSubview:slider_];
     [view_ addSubview:quietIcon];
     [view_ addSubview:loudIcon];
-    timer_ = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(copyVolume:) userInfo:nil repeats:YES];
+    //timer_ = [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(copyVolume:) userInfo:nil repeats:YES];
   }
   return self;
-}
-
-- (void)copyVolume:(NSTimer *)sender {
-  [self performSelectorOnMainThread:@selector(copyVolume0:) withObject:sender waitUntilDone:YES];
-}
-
-- (void)copyVolume0:(NSTimer *)sender {
-  slider_.doubleValue = [Player shared].volume;
 }
 
 - (void)onSliderAction:(id)slider {

@@ -2,22 +2,20 @@
 
 extern NSString *PlayerTrackChange;
 
-
 @interface Player : NSObject
 
-- (void)playTrack:(NSMutableDictionary *)track;
 + (Player *)shared;
-- (int64_t)elapsed;
-- (int64_t)duration;
-- (BOOL)isSeeking;
-- (BOOL)isPlaying;
-@property (retain) NSMutableDictionary *track;
-@property double volume;
+- (void)playTrack:(NSMutableDictionary *)track;
+- (void)seek:(int64_t)amt;
+
 @property (assign) NSString *outputDevice;
 @property (readonly) NSDictionary *outputDevices;
-
-- (void)seek:(int64_t)amt;
-- (BOOL)isDone;
+@property (retain) NSMutableDictionary *track;
 @property BOOL isPaused;
+@property BOOL isDone;
+@property BOOL isSeeking;
+@property double volume;
+@property int64_t duration;
+@property int64_t elapsed;
 @end
 
