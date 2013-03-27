@@ -126,7 +126,6 @@ static MainWindowController *mainWindowController = nil;
     searchField_ = [[NSSearchField alloc] initWithFrame:CGRectMake(0, 0, 300, 22)];
     searchField_.font = [NSFont systemFontOfSize:12.0];
     searchField_.autoresizingMask = NSViewMinXMargin;
-    searchField_.target = trackBrowser_;
     searchField_.action = @selector(onSearch:);
     [searchField_ setRecentsAutosaveName:@"recentSearches"];
     [self setupWindow];
@@ -153,6 +152,7 @@ static MainWindowController *mainWindowController = nil;
     });
     [self bind:@"currentTrack" toObject:[Player shared] withKeyPath:@"track" options:nil];
     trackBrowser_ = [[TrackBrowser alloc] init];
+    searchField_.target = trackBrowser_;
     [self setContent:trackBrowser_];
   }
   return self;
@@ -203,13 +203,6 @@ static MainWindowController *mainWindowController = nil;
   [verticalSplit_ release];
   [volumeControl_ release];
   [super dealloc];
-}
-
-- (void)search:(NSString *)term after:(On0)after {
-  after = [after copy];
-  if (![searchField_.stringValue isEqual:term])
-    searchField_.stringValue = term;
-  [self.content search:term after:after];
 }
 
 - (void)setupBusyIndicator {

@@ -110,6 +110,11 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   return tracks;
 }
 
+- (void)onSearch:(id)sender {
+  NSSearchField *searchField = (NSSearchField *)sender;
+  [self search:searchField.stringValue after:nil];
+}
+
 - (void)copy:(id)sender {
   NSArray *tracks = self.selectedTracks;
   ForkWith(^{
@@ -131,6 +136,7 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
 
 
 - (void)search:(NSString *)term after:(On0)after {
+  DEBUG(@"search: %@", term);
   self.lastSearch = term;
   after = [after copy];
   ForkToMainWith(^{
