@@ -6,6 +6,7 @@
 #include <string>
 
 #import "AppDelegate.h"
+#import "AVFile.h"
 #import "CoverArtScraper.h"
 #import "HTTP.h"
 #import "HTTPResponse.h"
@@ -19,7 +20,6 @@
 #import "Table.h"
 #import "Track.h"
 #import "Util.h"
-#import "Tag.h"
 
 static NSString * const kPathsToScan = @"PathsToScan";
 static NSString * const kIsITunesImported = @"IsITunesImported";
@@ -194,20 +194,22 @@ static void OnFileEvent(
   NSDate *createdAt = track[kTrackCreatedAt];
   NSError *error = nil;
   NSDictionary *tag = nil;
+  BOOL readTag = NO;
   if (!track) {
     track = TrackNew();
-    tag = TagRead(path, &error);
+    readTag = YES;
   } else if (createdAt && [createdAt compare:lastModified] < 0) {
-    tag = TagRead(path, &error);
+    readTag = YES;
   } else {
-    DEBUG(@"no tag!");
     return nil;
   }
-  if (error || !tag) {
-    DEBUG(@"error: %@, tag: %@", error, tag);
-    return nil;
+  if (readTag) {
+    AVFile *file = [[[AVFile alloc] initWithURL:[NSURL fileURLWithPath:path] error:&error] autorelease];
+    if (!file || error) return nil;
+    NSDictionary *tag = [file tag];
+    if (!tag) return nil;
+    [track addEntriesFromDictionary:tag];
   }
-  [track addEntriesFromDictionary:tag];
   NSString *title = track[kTrackTitle];
   if (!title || !title.length) {
     track[kTrackTitle] = path.lastPathComponent.stringByDeletingPathExtension;
