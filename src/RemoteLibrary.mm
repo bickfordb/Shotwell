@@ -67,7 +67,7 @@ int kRefreshInterval = 10000;
     self.tracks = tracks;
     self.lastUpdatedAt = [NSDate date];
     for (id t in self.tracks) {
-      [self notifyTrack:t change:kLibraryTrackAdded];
+      [self notifyTrackChange:t[@"id"] to:t type:kLibraryTrackAdded];
     }
   }];
 }

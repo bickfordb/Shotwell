@@ -26,6 +26,7 @@
 //- (void)getArrangedObjects:(id *)buffer range:(NSRange)inRange;
 - (void)addObject:(id)something;
 - (void)removeObject:(id)something;
+- (void)removeBy:(FilterF1)block;
 
 @end
 

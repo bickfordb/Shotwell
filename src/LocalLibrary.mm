@@ -210,6 +210,7 @@ static void OnFileEvent(
     if (!tag) return nil;
     [track addEntriesFromDictionary:tag];
   }
+  track[kTrackPath] = path;
   NSString *title = track[kTrackTitle];
   if (!title || !title.length) {
     track[kTrackTitle] = path.lastPathComponent.stringByDeletingPathExtension;
@@ -238,10 +239,10 @@ static void OnFileEvent(
     if (!oldTrack) {
       return;
     }
-    trackTable_[track[kTrackID]] = nil;
-    pathIndex_[track[kTrackPath]] = nil;
+    trackTable_[trackID] = nil;
+    pathIndex_[oldTrack[kTrackPath]] = nil;
     self.lastUpdatedAt = [NSDate date];
-    [self notifyTrack:track change:kLibraryTrackDeleted];
+    [self notifyTrackChange:trackID to:track type:kLibraryTrackDeleted];
   } else {
     // make sure trackID is set
     track = FilterKeys(track, @[kTrackURL, kTrackLibrary]);
@@ -250,7 +251,8 @@ static void OnFileEvent(
     pathIndex_[oldTrack[kTrackPath]] = nil;
     pathIndex_[track[kTrackPath]] = trackID;
     trackTable_[trackID] = track;
-    [self notifyTrack:track change:oldTrack ? kLibraryTrackSaved : kLibraryTrackAdded];
+    assert(track != nil);
+    [self notifyTrackChange:trackID to:track type:oldTrack ? kLibraryTrackSaved : kLibraryTrackAdded];
   }
 }
 

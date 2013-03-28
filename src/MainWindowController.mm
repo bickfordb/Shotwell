@@ -55,8 +55,10 @@ static MainWindowController *mainWindowController = nil;
   NSMenuItem *formatMenuItem = [mainMenu itemWithTitle:@"Format"];
   NSMenuItem *viewMenuItem = [mainMenu itemWithTitle:@"View"];
   NSMenuItem *fileMenuItem = [mainMenu itemWithTitle:@"File"];
-  [mainMenu removeItem:formatMenuItem];
-  [mainMenu removeItem:viewMenuItem];
+  if (formatMenuItem)
+    [mainMenu removeItem:formatMenuItem];
+  if (viewMenuItem)
+    [mainMenu removeItem:viewMenuItem];
   NSMenu *fileMenu = [fileMenuItem submenu];
   [fileMenu removeAllItems];
   // Edit Menu:
@@ -64,20 +66,18 @@ static MainWindowController *mainWindowController = nil;
   [editMenu removeAllItems];
   NSMenuItem *i = nil;
   i = [editMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
-  i.target = self;
+  i.target = trackBrowser_;
   i = [editMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
-  i.target = self;
-  i = [editMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
-  i.target = self;
+  i.target = trackBrowser_;
   i = [editMenu addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
-  i.target = self;
+  i.target = trackBrowser_;
   i = [editMenu addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:[NSString stringWithFormat:@"%C", (unsigned short)NSBackspaceCharacter]];
-  i.target = self;
+  i.target = trackBrowser_;
   [i setKeyEquivalentModifierMask:0];
   i = [editMenu addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
-  i.target = self;
+  i.target = trackBrowser_;
   i = [editMenu addItemWithTitle:@"Select None" action:@selector(deselectAll:) keyEquivalent:@"A"];
-  i.target = self;
+  i.target = trackBrowser_;
 
   // File Menu
   i = [fileMenu addItemWithTitle:@"Add to Library" action:@selector(addToLibrary:) keyEquivalent:@"o"];
@@ -123,14 +123,17 @@ static MainWindowController *mainWindowController = nil;
 - (id)init {
   self = [super init];
   if (self) {
+    trackBrowser_ = [[TrackBrowser alloc] init];
     searchField_ = [[NSSearchField alloc] initWithFrame:CGRectMake(0, 0, 300, 22)];
     searchField_.font = [NSFont systemFontOfSize:12.0];
     searchField_.autoresizingMask = NSViewMinXMargin;
     searchField_.action = @selector(onSearch:);
+    searchField_.target = trackBrowser_;
     [searchField_ setRecentsAutosaveName:@"recentSearches"];
     [self setupWindow];
     [self setupStatusBarText];
     [self setupBusyIndicator];
+    [self setupMenu];
     __block MainWindowController *weakSelf = self;
     pollPlayerTimer_ = CreateDispatchTimer(kPollMovieInterval, dispatch_get_main_queue(), ^{
 
@@ -151,8 +154,6 @@ static MainWindowController *mainWindowController = nil;
       [weakSelf pollStats];
     });
     [self bind:@"currentTrack" toObject:[Player shared] withKeyPath:@"track" options:nil];
-    trackBrowser_ = [[TrackBrowser alloc] init];
-    searchField_.target = trackBrowser_;
     [self setContent:trackBrowser_];
   }
   return self;
@@ -412,21 +413,7 @@ static MainWindowController *mainWindowController = nil;
   return mainWindowController;
 }
 
-- (void)paste:(id)sender {
-  NSPasteboard *pboard = [NSPasteboard generalPasteboard];
-  NSArray *items = [pboard readObjectsForClasses:[NSArray arrayWithObjects:[NSURL class], nil]
-    options:nil];
-  NSMutableArray *paths = [NSMutableArray array];
-  for (NSURL *u in items) {
-    if (!u.isFileURL) {
-      continue;
-    }
-    [paths addObject:u.path];
-  }
-  if (paths.count > 0) {
-    [[LocalLibrary shared] scan:paths];
-  }
-}
+
 @end
 
 

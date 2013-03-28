@@ -11,6 +11,19 @@
   NSObject *ilock_;
 }
 
+- (void)removeBy:(FilterF1)block {
+  [self willChangeArrangedObjects:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, items_.count)]];
+
+  NSPredicate *p = [NSPredicate predicateWithBlock:^(id obj, NSDictionary *bindings) {
+      return (BOOL)block(obj);
+  }];
+  @synchronized(ilock_) {
+    [items_ filterUsingPredicate:p];
+    [filteredItems_ filterUsingPredicate:p];
+  }
+  [self didChangeArrangedObjects:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, items_.count)]];
+}
+
 - (NSPredicate *)predicate {
   @synchronized(ilock_) {
     return predicate_;

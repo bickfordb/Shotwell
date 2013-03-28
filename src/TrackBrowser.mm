@@ -32,8 +32,8 @@ static double const kTrackFontSize = 11.0;
 @synthesize font = font_;
 @synthesize playImage = playImage_;
 @synthesize playingFont = playingFont_;
-@synthesize tracks = tracks_;
 @synthesize library = library_;
+@synthesize tracks = tracks_;
 
 NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   NSMutableArray *sds = [NSMutableArray array];
@@ -92,10 +92,9 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
 }
 
 - (BOOL)acceptURLs:(NSArray *)urls {
-  INFO(@"accept URLS:", urls);
   NSArray *fileURLs = Filter(urls, ^(id url) { return (bool)[url isFileURL]; });
   NSArray *paths = [fileURLs valueForKey:@"path"];
-  [self.library scan:paths];
+  [library_ scan:paths];
   return paths.count > 0;
 }
 
@@ -104,7 +103,7 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   NSArray *tracks = [self.tracks getMany:indices];
   ForkWith(^{
     for (id track in tracks) {
-      self.library[track[kTrackID]] = nil;
+      library_[track[kTrackID]] = nil;
     }
   });
   return tracks;
@@ -152,7 +151,7 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
 - (id)init {
   self = [super init];
   if (self) {
-    self.library = [LocalLibrary shared];
+    library_ = [[LocalLibrary shared] retain];
     self.tracks = [[[SortedSeq alloc] init] autorelease];
     self.scrollView.borderType = NSNoBorder;
     __block TrackBrowser *weakSelf = self;
@@ -161,7 +160,6 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
     self.tableView.onKeyDown = ^(NSEvent *e) {
       if (e.keyCode == 49) {
         /* handle play click here*/
-
         return false;
       }
       return true;
@@ -308,17 +306,14 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
       return (int)[weakSelf.tracks count];
     };
     ForkWith(^{
-      [self.library each:^(NSMutableDictionary *t) {
+      [library_ each:^(NSMutableDictionary *t) {
         [tracks_ addObject:t];
       }];
       id lastTrackID = [[NSUserDefaults standardUserDefaults] objectForKey:@"lastTrackID"];
       [self seekToTrackID:lastTrackID];
     });
     [[NSNotificationCenter defaultCenter]
-      addObserver:self
-      selector:@selector(onTrackChange:)
-      name:kLibraryTrackChanged
-      object:library_];
+      addObserver:self selector:@selector(onTrackChange:) name:kLibraryTrackChanged object:nil];
     [self.tableView
       bind:@"content"
       toObject:tracks_
@@ -358,7 +353,6 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
     self.tracks.comparator = GetComparatorFromSortDescriptors(self.tableView.sortDescriptors);
   } else if (context == kIsDone) {
     if ([Player shared].isDone) {
-      INFO(@"player is done");
       ForkWith(^{ [self playNextTrack];});
     }
   } else if (context == kIsPaused) {
@@ -371,13 +365,15 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   NSString *change = [notification.userInfo valueForKey:@"change"];
   NSMutableDictionary *t = [notification.userInfo valueForKey:@"track"];
   ForkWith(^{
-    if (change == kLibraryTrackAdded) {
-      [self.tracks addObject:t];
-    } else if (change == kLibraryTrackDeleted) {
-      [self.tracks removeObject:t];
-    } else if (change == kLibraryTrackSaved) {
-      [self.tracks removeObject:t];
-      [self.tracks addObject:t];
+    id trackID = notification.userInfo[@"id"];
+    if (change != kLibraryTrackAdded) {
+      [tracks_ removeBy:^(id item) {
+        return ![trackID isEqual:item[kTrackID]];
+      }];
+    }
+
+    if (change == kLibraryTrackAdded || change == kLibraryTrackChanged) {
+      [tracks_ addObject:t];
     }
   });
 }
@@ -423,6 +419,22 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   }
   if (found > 0) {
     [self playTrackAtIndex:found - 1];
+  }
+}
+
+- (void)paste:(id)sender {
+  NSPasteboard *pboard = [NSPasteboard generalPasteboard];
+  NSArray *items = [pboard readObjectsForClasses:[NSArray arrayWithObjects:[NSURL class], nil]
+    options:nil];
+  NSMutableArray *paths = [NSMutableArray array];
+  for (NSURL *u in items) {
+    if (!u.isFileURL) {
+      continue;
+    }
+    [paths addObject:u.path];
+  }
+  if (paths.count > 0) {
+    [[LocalLibrary shared] scan:paths];
   }
 }
 @end

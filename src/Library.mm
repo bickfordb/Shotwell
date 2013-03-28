@@ -39,13 +39,20 @@ NSString * const kLibraryTrackChanged = @"LibraryTrackChanged";
 
 - (void)delete:(NSMutableDictionary *)track { }
 
-- (void)notifyTrack:(NSMutableDictionary *)t change:(NSString *)change {
+- (void)notifyTrackChange:(id)trackID to:(NSMutableDictionary *)track type:(NSString *)change {
+  if (!trackID || !change) {
+    return;
+  }
+
+  NSMutableDictionary *info = [NSMutableDictionary dictionary];
+  if (track)
+    info[@"track"] = track;
+  info[@"id"] = trackID;
+  info[@"change"] = change;
   [[NSNotificationCenter defaultCenter]
     postNotificationName:kLibraryTrackChanged
     object:self
-    userInfo:[NSDictionary dictionaryWithObjectsAndKeys:
-      t, @"track",
-      change, @"change", nil]];
+    userInfo:info];
 }
 
 - (NSURL *)coverArtURL:(NSMutableDictionary *)t {
