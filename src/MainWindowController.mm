@@ -46,7 +46,6 @@ static MainWindowController *mainWindowController = nil;
   NSView *navContent_;
   bool isBusy_;
   dispatch_source_t pollStatsTimer_;
-  dispatch_source_t pollPlayerTimer_;
 }
 
 - (void)setupMenu {
@@ -96,13 +95,15 @@ static MainWindowController *mainWindowController = nil;
   playbackItem.submenu = [[[NSMenu alloc] initWithTitle:@"Playback"] autorelease];
   NSMenu *playbackMenu = playbackItem.submenu;
 
-  NSMenuItem *playItem = [playbackMenu addItemWithTitle:@"Play" action:@selector(playClicked:) keyEquivalent:@" "];
-  [playItem setKeyEquivalentModifierMask:0];
+  i = [playbackMenu addItemWithTitle:@"Play" action:@selector(playClicked:) keyEquivalent:@" "];
+  [i setKeyEquivalentModifierMask:0];
+  i.target = trackBrowser_;
   NSString *leftArrow = [NSString stringWithFormat:@"%C", (unsigned short)0xF702];
   NSString *rightArrow = [NSString stringWithFormat:@"%C", (unsigned short)0xF703];
-  [playbackMenu addItemWithTitle:@"Previous" action:@selector(previousClicked:) keyEquivalent:leftArrow];
-  [playbackMenu addItemWithTitle:@"Next" action:@selector(nextClicked:) keyEquivalent:rightArrow];
-
+  i = [playbackMenu addItemWithTitle:@"Previous" action:@selector(previousClicked:) keyEquivalent:leftArrow];
+  i.target = trackBrowser_;
+  i = [playbackMenu addItemWithTitle:@"Next" action:@selector(nextClicked:) keyEquivalent:rightArrow];
+  i.target = trackBrowser_;
 }
 
 - (void)addToLibrary:(id)sender {
@@ -135,9 +136,7 @@ static MainWindowController *mainWindowController = nil;
     [self setupBusyIndicator];
     [self setupMenu];
     __block MainWindowController *weakSelf = self;
-    pollPlayerTimer_ = CreateDispatchTimer(kPollMovieInterval, dispatch_get_main_queue(), ^{
 
-    });
     isBusy_ = false;
     /*
     [loop_ every:kPollProgressInterval with:^{
@@ -189,7 +188,6 @@ static MainWindowController *mainWindowController = nil;
 
 - (void)dealloc {
   dispatch_release(pollStatsTimer_);
-  dispatch_release(pollPlayerTimer_);
   [albums_ release];
   [artists_ release];
   [audioOutputPopUpButton_ release];
@@ -335,6 +333,7 @@ static MainWindowController *mainWindowController = nil;
       playbackControls_.onPlay = ^{
         Player *player = [Player shared];
         if (player.track && !player.isDone) {
+          NSLog(@"toggling pause");
           player.isPaused = !player.isPaused;
         } else {
           [weakSelf->trackBrowser_ playNextTrack];

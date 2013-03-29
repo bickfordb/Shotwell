@@ -7,38 +7,40 @@
 #import "Util.h"
 
 static Player *sharedPlayer = nil;
-static NSArray *movieKeys = @[@"isPaused", @"isDone", @"volume", @"duration", @"elapsed", @"isSeeking", @"outputDevice"];
+static NSArray *listenerKeys = @[@"volume", @"duration", @"elapsed", @"isSeeking", @"isDone", @"isPaused", @"outputDevice"];
 
 @implementation Player {
   CAMovie *movie_;
   NSMutableDictionary *track_;
-  BOOL isPaused_;
-  BOOL isDone_;
-  BOOL isSeeking_;
-  double volume_;
-  int64_t duration;
-  int64_t elapsed;
   NSObject *lock_;
+  NSObject *playLock_;
 }
 
 @synthesize track = track_;
-@synthesize isPaused = isPaused_;
-@synthesize isDone = isDone_;
-@synthesize volume = volume_;
-@synthesize duration = duration_;
-@synthesize elapsed = elapsed_;
-@synthesize isSeeking = isSeeking_;
+
+- (int64_t)elapsed {
+  return movie_ ? movie_.elapsed : 0;
+}
+
+- (int64_t)duration {
+  return movie_ ? movie_.duration : 0;
+}
 
 - (double)volume {
-  return volume_;
+  if (movie_) {
+    return movie_.volume;
+  }
+  NSNumber *volume = [[NSUserDefaults standardUserDefaults] objectForKey:@"volume"];
+  if (volume) {
+    return volume.doubleValue;
+  } else {
+    return 0.5;
+  }
 }
 
 - (void)setVolume:(double)v {
-  if (v == volume_) return;
   [self willChangeValueForKey:@"volume"];
   [[NSUserDefaults standardUserDefaults] setObject:@(v) forKey:@"volume"];
-  volume_ = v;
-  movie_.volume = v;
   [self didChangeValueForKey:@"volume"];
 }
 
@@ -46,19 +48,11 @@ static NSArray *movieKeys = @[@"isPaused", @"isDone", @"volume", @"duration", @"
   self = [super init];
   if (self) {
     lock_ = [[NSObject alloc] init];
-    volume_ = 0.5;
-    NSNumber *volume = [[NSUserDefaults standardUserDefaults] objectForKey:@"volume"];
-    if (volume) {
-      volume_ = volume.doubleValue;
-    }
   }
   return self;
 }
 
 - (void)dealloc {
-  for (id key in movieKeys) {
-    [self unbind:key];
-  }
   [track_ release];
   track_ = nil;
   [movie_ release];
@@ -67,19 +61,36 @@ static NSArray *movieKeys = @[@"isPaused", @"isDone", @"volume", @"duration", @"
   [super dealloc];
 }
 
-- (void)playTrack:(NSMutableDictionary *)track {
-    NSError *error = nil;
-    self.track = track;
-    if (movie_) {
-     for (id key in movieKeys) {
-       [self unbind:key];
-     }
-     [movie_ release];
-     movie_ = nil;
-    }
-    self.duration = 0;
-    self.elapsed = 0;
+- (BOOL)isDone {
+  return movie_ ? movie_.isDone : YES;
+}
 
+- (BOOL)isPaused {
+  return movie_ ? movie_.isPaused : YES;
+}
+
+- (void)setIsPaused:(BOOL)isPaused {
+  movie_.isPaused = isPaused;
+}
+
+- (void)playTrack:(NSMutableDictionary *)track {
+  @synchronized(playLock_) {
+    NSError *error = nil;
+    [self willChangeValueForKey:@"track"];
+    @synchronized (lock_) {
+      [track_ release];
+      track_ = [track retain];
+    }
+    [self didChangeValueForKey:@"track"];
+    @synchronized(lock_) {
+      if (movie_) {
+        for (id key in listenerKeys) {
+          [movie_ removeObserver:self forKeyPath:key context:listenerKeys];
+        }
+        [movie_ release];
+        movie_ = nil;
+      }
+    }
     NSURL *url = track_[kTrackURL];
     if (!url)
       return;
@@ -93,20 +104,35 @@ static NSArray *movieKeys = @[@"isPaused", @"isDone", @"volume", @"duration", @"
       ERROR(@"unexpected error creating CAMovie: %@", error);
       return;
     }
-    movie_.volume = self.volume;
-
-    for (id key in movieKeys) {
-      id val = [movie_ valueForKey:key];
-      [self setValue:val forKey:key];
-      [self bind:key toObject:movie_ withKeyPath:key options:nil];
+    NSNumber *volume = [[NSUserDefaults standardUserDefaults] objectForKey:@"volume"];
+    if (volume) {
+      movie_.volume = volume.doubleValue;
     }
-    DEBUG(@"unpausing");
+
+    for (id key in listenerKeys) {
+      [self willChangeValueForKey:key];
+      [self didChangeValueForKey:key];
+    }
+    for (id key in listenerKeys) {
+      [movie_ addObserver:self forKeyPath:key options:NSKeyValueObservingOptionPrior context:listenerKeys];
+    }
     movie_.isPaused = NO;
-    DEBUG(@"updating track play date");
     self.track[kTrackLastPlayedAt] = [NSDate date];
     id trackID = self.track[kTrackID];
     Library *library = self.track[kTrackLibrary];
     library[trackID] = self.track;
+  }
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
+  if (context == listenerKeys) {
+    NSNumber *isPrior = change[NSKeyValueChangeNotificationIsPriorKey];
+    if (isPrior && isPrior.boolValue) {
+      [self willChangeValueForKey:keyPath];
+    } else {
+      [self didChangeValueForKey:keyPath];
+    }
+  }
 }
 
 + (Player *)shared {

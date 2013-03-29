@@ -14,9 +14,11 @@
 #import "Util.h"
 
 static NSString * const kStatus = @"status";
-static NSString * const kIsPaused = @"isPaused";
-static NSString * const kIsDone = @"isDone";
+//static NSString * const kIsPaused = @"isPaused";
+//static NSString * const kIsDone = @"isDone";
 static NSString * const kOnSortDescriptorsChanged = @"OnSortDescriptorsChanged";
+static NSArray *playerKeys = @[@"isDone", @"isPaused", @"track"];
+
 static double const kTrackFontSize = 11.0;
 
 @implementation TrackBrowser {
@@ -68,18 +70,6 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   return nil;
 }
 
-- (void)setCurrentTrack:(NSMutableDictionary *)track {
-  __block NSUInteger row = NSNotFound;
-  NSObject *trackID = (NSObject *)track[kTrackID];
-  [[NSUserDefaults standardUserDefaults] setObject:trackID forKey:@"lastTrackID"];
-  ForkToMainWith(^{
-    [self.tableView reloadData];
-    if (row != NSNotFound) {
-    }
-  });
-  [self seekToTrackID:trackID];
-
-}
 
 - (void)delete:(id)sender {
   [self cutSelectedTracks];
@@ -319,13 +309,11 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
       toObject:tracks_
       withKeyPath:@"arrangedObjects"
       options:nil];
-    [self bind:@"currentTrack" toObject:[Player shared] withKeyPath:@"track" options:nil];
-    [[Player shared] addObserver:self
-      forKeyPath:@"isDone"
-      options:(NSKeyValueObservingOptionNew) context:kIsDone];
-    [[Player shared] addObserver:self
-      forKeyPath:@"isPaused"
-      options:(NSKeyValueObservingOptionNew) context:kIsPaused];
+    for (id key in playerKeys) {
+      [[Player shared] addObserver:self
+        forKeyPath:key
+        options:(NSKeyValueObservingOptionNew) context:playerKeys];
+    }
   }
   return self;
 }
@@ -351,11 +339,21 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
   if (context == kOnSortDescriptorsChanged) {
     self.tracks.comparator = GetComparatorFromSortDescriptors(self.tableView.sortDescriptors);
-  } else if (context == kIsDone) {
-    if ([Player shared].isDone) {
-      ForkWith(^{ [self playNextTrack];});
+  } else if (context == playerKeys) {
+    if ([keyPath isEqual:@"track"]) {
+      __block NSUInteger row = NSNotFound;
+      NSMutableDictionary *track = [[Player shared] track];
+      NSObject *trackID = (NSObject *)track[kTrackID];
+      if (trackID)
+        [[NSUserDefaults standardUserDefaults] setObject:trackID forKey:@"lastTrackID"];
+      ForkToMainWith(^{ [self.tableView reloadData]; });
+      [self seekToTrackID:trackID];
+    } else if ([keyPath isEqual:@"isDone"]) {
+      if ([Player shared].isDone) {
+        ForkWith(^{ [self playNextTrack];});
+      }
+    } else if ([keyPath isEqual:@"isPaused"]) {
     }
-  } else if (context == kIsPaused) {
   } else if ([super respondsToSelector:@selector(observeValueForKeyPath:ofObject:change:context:)]) {
     [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
   }
@@ -382,8 +380,9 @@ NSComparator GetComparatorFromSortDescriptors(NSArray *sortDescriptors) {
   [self.tableView unbind:@"content"];
   [self.tableView removeObserver:self forKeyPath:@"sortDescriptors" context:kOnSortDescriptorsChanged];
   [[NSNotificationCenter defaultCenter] removeObserver:self];
-  [[Player shared] removeObserver:self forKeyPath:@"isDone" context:kIsDone];
-  [[Player shared] removeObserver:self forKeyPath:@"isPaused" context:kIsPaused];
+  for (id key in playerKeys) {
+    [[Player shared] removeObserver:self forKeyPath:key context:playerKeys];
+  }
   [library_ release];
   [playingFont_ release];
   [font_ release];

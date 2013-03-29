@@ -8,14 +8,14 @@ extern NSString *PlayerTrackChange;
 - (void)playTrack:(NSMutableDictionary *)track;
 - (void)seek:(int64_t)amt;
 
-@property (assign) NSString *outputDevice;
+@property (copy) NSString *outputDevice;
 @property (readonly) NSDictionary *outputDevices;
-@property (retain) NSMutableDictionary *track;
+@property (readonly) NSMutableDictionary *track;
 @property BOOL isPaused;
-@property BOOL isDone;
-@property BOOL isSeeking;
+@property (readonly) BOOL isDone;
+@property (readonly) BOOL isSeeking;
 @property double volume;
-@property int64_t duration;
-@property int64_t elapsed;
+@property (readonly) int64_t duration;
+@property (readonly) int64_t elapsed;
 @end
 
